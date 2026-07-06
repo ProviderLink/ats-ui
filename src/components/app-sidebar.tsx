@@ -19,7 +19,6 @@ import {
   BriefcaseIcon,
   Building2Icon,
   CalendarIcon,
-  CommandIcon,
   ExternalLinkIcon,
   HomeIcon,
   LayoutDashboardIcon,
@@ -100,8 +99,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <Link to="/ats/dashboard">
-                <CommandIcon className="size-5!" />
+              <Link to="/ats/dashboard" className="flex items-center gap-2">
+                <img
+                  src="/arista-ats.png"
+                  alt="Arista ATS"
+                  className="size-5 rounded-sm object-contain"
+                />
                 <span className="text-base font-semibold">Arista ATS.</span>
               </Link>
             </SidebarMenuButton>

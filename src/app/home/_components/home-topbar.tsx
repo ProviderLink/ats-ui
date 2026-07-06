@@ -1,4 +1,3 @@
-import { CommandIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -13,9 +12,11 @@ export function HomeTopbar() {
           className="flex items-center gap-2 text-sm font-semibold text-foreground"
           to="/ats"
         >
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <CommandIcon className="size-4" />
-          </span>
+          <img
+            src="/arista-ats.png"
+            alt="Arista ATS"
+            className="size-7 rounded-md object-contain"
+          />
           <span>Arista ATS</span>
         </Link>
         <Link

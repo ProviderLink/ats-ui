@@ -14,13 +14,7 @@ import {
 import { publicApi } from '@/lib/public-api';
 import { cn } from '@/lib/utils';
 import type { Job } from '@/store';
-import {
-  BriefcaseIcon,
-  CommandIcon,
-  MapPinIcon,
-  SearchIcon,
-  UsersIcon,
-} from 'lucide-react';
+import { BriefcaseIcon, MapPinIcon, SearchIcon, UsersIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -87,9 +81,11 @@ export default function CareersPage() {
           className="flex items-center gap-2 text-sm font-semibold text-foreground"
           to="/careers"
         >
-          <span className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
-            <CommandIcon className="size-4" />
-          </span>
+          <img
+            src="/arista-ats.png"
+            alt="Arista Careers"
+            className="size-7 rounded-md object-contain"
+          />
           <span>Arista Careers</span>
         </Link>
         <h1 className="font-heading text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
