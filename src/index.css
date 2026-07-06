@@ -1,0 +1,358 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Primitive Palette ────────────────────────────────── */
+:root {
+  --color-silver-50: oklch(96.31% 0.002 145.56);
+  --color-silver-100: oklch(92.64% 0.004 121.56);
+  --color-silver-200: oklch(85.05% 0.009 128.58);
+  --color-silver-300: oklch(77.18% 0.01 125.72);
+  --color-silver-400: oklch(69.22% 0.015 128.71);
+  --color-silver-500: oklch(61.11% 0.02 127.32);
+  --color-silver-600: oklch(52.03% 0.017 128.82);
+  --color-silver-700: oklch(42.62% 0.012 125.92);
+  --color-silver-800: oklch(32.79% 0.011 128.85);
+  --color-silver-900: oklch(21.99% 0.006 121.93);
+  --color-silver-950: oklch(18.48% 0.004 128.72);
+
+  --color-ash-grey-50: oklch(96.31% 0.002 145.56);
+  --color-ash-grey-100: oklch(92.39% 0.002 145.56);
+  --color-ash-grey-200: oklch(84.79% 0.006 137.78);
+  --color-ash-grey-300: oklch(76.92% 0.008 132.43);
+  --color-ash-grey-400: oklch(68.77% 0.01 134.9);
+  --color-ash-grey-500: oklch(60.36% 0.012 136.59);
+  --color-ash-grey-600: oklch(51.54% 0.01 134.93);
+  --color-ash-grey-700: oklch(42.32% 0.009 132.52);
+  --color-ash-grey-800: oklch(32.46% 0.008 137.81);
+  --color-ash-grey-900: oklch(21.63% 0.002 145.49);
+  --color-ash-grey-950: oklch(18.18% 0.002 106.6);
+
+  --color-pine-teal-50: oklch(96.55% 0.007 160.08);
+  --color-pine-teal-100: oklch(93.01% 0.014 162.46);
+  --color-pine-teal-200: oklch(85.82% 0.025 164.34);
+  --color-pine-teal-300: oklch(78.65% 0.04 162.92);
+  --color-pine-teal-400: oklch(71.23% 0.053 161.8);
+  --color-pine-teal-500: oklch(63.92% 0.067 161.5);
+  --color-pine-teal-600: oklch(54.33% 0.056 160.89);
+  --color-pine-teal-700: oklch(44.54% 0.045 161.34);
+  --color-pine-teal-800: oklch(33.95% 0.031 162.45);
+  --color-pine-teal-900: oklch(22.65% 0.02 160.47);
+  --color-pine-teal-950: oklch(18.73% 0.012 167.01);
+
+  --color-parchment-50: oklch(96.41% 0.004 91.45);
+  --color-parchment-100: oklch(92.81% 0.007 88.64);
+  --color-parchment-200: oklch(85.54% 0.016 86.43);
+  --color-parchment-300: oklch(77.87% 0.023 83.26);
+  --color-parchment-400: oklch(70.23% 0.031 84.58);
+  --color-parchment-500: oklch(62.46% 0.04 84.5);
+  --color-parchment-600: oklch(53.14% 0.032 84.52);
+  --color-parchment-700: oklch(43.46% 0.026 83.15);
+  --color-parchment-800: oklch(33.45% 0.02 86.45);
+  --color-parchment-900: oklch(22.26% 0.01 88.8);
+  --color-parchment-950: oklch(18.76% 0.009 84.57);
+}
+
+/* ─── Light Theme ──────────────────────────────────────── */
+:root {
+  /* Brand */
+  --primary: var(--color-pine-teal-800);
+  --primary-foreground: #ffffff;
+
+  /* Surfaces */
+  --background: var(--color-parchment-50);
+  --foreground: var(--color-pine-teal-950);
+  --card: #ffffff;
+  --card-foreground: var(--color-pine-teal-950);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-pine-teal-950);
+
+  /* Secondary / Soft */
+  --secondary: var(--color-silver-100);
+  --secondary-foreground: var(--color-pine-teal-900);
+  --muted: var(--color-silver-100);
+  --muted-foreground: var(--color-ash-grey-700);
+
+  /* Accent — light pine tint for hovers */
+  --accent: var(--color-pine-teal-100);
+  --accent-foreground: var(--color-pine-teal-800);
+
+  /* Borders */
+  --border: var(--color-silver-300);
+  --border-subtle: var(--color-silver-400);
+  --input: var(--color-silver-300);
+  --ring: var(--color-pine-teal-700);
+
+  /* Destructive */
+  --destructive: oklch(0.577 0.245 27.325);
+
+  /* Status */
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+
+  /* Text hierarchy */
+  --text-secondary: var(--color-ash-grey-700);
+  --text-muted: var(--color-ash-grey-600);
+
+  /* Charts */
+  --chart-1: var(--color-pine-teal-700);
+  --chart-2: var(--color-pine-teal-300);
+  --chart-3: var(--color-pine-teal-400);
+  --chart-4: #f3a64a;
+  --chart-5: var(--color-ash-grey-500);
+
+  /* Sidebar */
+  --sidebar: var(--color-pine-teal-800);
+  --sidebar-foreground: rgba(255, 255, 255, 0.72);
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: var(--color-pine-teal-800);
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.72);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(255, 255, 255, 0.3);
+
+  /* Shadows */
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.05);
+
+  /* Radius — 16px base */
+  --radius: 1rem;
+
+  /* Typography */
+  font-family: 'Inter Variable', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Dark Theme ───────────────────────────────────────── */
+.dark {
+  --primary: var(--color-pine-teal-400);
+  --primary-foreground: var(--color-pine-teal-950);
+
+  --background: var(--color-pine-teal-950);
+  --foreground: var(--color-parchment-50);
+  --card: var(--color-pine-teal-900);
+  --card-foreground: var(--color-parchment-50);
+  --popover: var(--color-pine-teal-900);
+  --popover-foreground: var(--color-parchment-50);
+
+  --secondary: var(--color-pine-teal-800);
+  --secondary-foreground: var(--color-parchment-50);
+  --muted: var(--color-pine-teal-800);
+  --muted-foreground: var(--color-ash-grey-400);
+
+  --accent: var(--color-pine-teal-800);
+  --accent-foreground: var(--color-parchment-50);
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: var(--color-pine-teal-400);
+
+  --destructive: oklch(0.704 0.191 22.216);
+
+  --chart-1: var(--color-pine-teal-400);
+  --chart-2: var(--color-pine-teal-200);
+  --chart-3: var(--color-pine-teal-300);
+  --chart-4: #f3a64a;
+  --chart-5: var(--color-ash-grey-400);
+
+  --sidebar: var(--color-pine-teal-900);
+  --sidebar-foreground: rgba(255, 255, 255, 0.72);
+  --sidebar-primary: var(--color-pine-teal-400);
+  --sidebar-primary-foreground: var(--color-pine-teal-950);
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.72);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: rgba(255, 255, 255, 0.3);
+}
+
+/* ─── Careers Theme — neutral B&W palette ──────────────────
+ * Scoped to /careers pages. Always renders light regardless of
+ * system theme. Palette:
+ *
+ *   #0a0a0a  near-black  (foreground, primary)
+ *   #ffffff  white       (background, card)
+ *   #f5f5f5  light grey  (muted surfaces, secondary)
+ *   #737373  mid grey    (secondary text — 4.5:1 on white)
+ *   #e5e5e5  soft grey   (borders, inputs)
+ *   #b91c1c  red         (destructive — errors, required)
+ */
+.careers-theme {
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --destructive: #b91c1c;
+  --ring: #0a0a0a;
+}
+:root:not(.dark) .careers-theme,
+.dark .careers-theme {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #0a0a0a;
+  --border: #e5e5e5;
+  --border-subtle: #ededed;
+  --input: #e5e5e5;
+}
+
+/* ─── Tailwind Theme Mapping ───────────────────────────── */
+@theme inline {
+  --font-sans: 'Inter Variable', sans-serif;
+  --font-heading: 'Inter Variable', sans-serif;
+
+  /* Palette — exposed as Tailwind utilities */
+  --color-silver-50: var(--color-silver-50);
+  --color-silver-100: var(--color-silver-100);
+  --color-silver-200: var(--color-silver-200);
+  --color-silver-300: var(--color-silver-300);
+  --color-silver-400: var(--color-silver-400);
+  --color-silver-500: var(--color-silver-500);
+  --color-silver-600: var(--color-silver-600);
+  --color-silver-700: var(--color-silver-700);
+  --color-silver-800: var(--color-silver-800);
+  --color-silver-900: var(--color-silver-900);
+  --color-silver-950: var(--color-silver-950);
+
+  --color-ash-grey-50: var(--color-ash-grey-50);
+  --color-ash-grey-100: var(--color-ash-grey-100);
+  --color-ash-grey-200: var(--color-ash-grey-200);
+  --color-ash-grey-300: var(--color-ash-grey-300);
+  --color-ash-grey-400: var(--color-ash-grey-400);
+  --color-ash-grey-500: var(--color-ash-grey-500);
+  --color-ash-grey-600: var(--color-ash-grey-600);
+  --color-ash-grey-700: var(--color-ash-grey-700);
+  --color-ash-grey-800: var(--color-ash-grey-800);
+  --color-ash-grey-900: var(--color-ash-grey-900);
+  --color-ash-grey-950: var(--color-ash-grey-950);
+
+  --color-pine-teal-50: var(--color-pine-teal-50);
+  --color-pine-teal-100: var(--color-pine-teal-100);
+  --color-pine-teal-200: var(--color-pine-teal-200);
+  --color-pine-teal-300: var(--color-pine-teal-300);
+  --color-pine-teal-400: var(--color-pine-teal-400);
+  --color-pine-teal-500: var(--color-pine-teal-500);
+  --color-pine-teal-600: var(--color-pine-teal-600);
+  --color-pine-teal-700: var(--color-pine-teal-700);
+  --color-pine-teal-800: var(--color-pine-teal-800);
+  --color-pine-teal-900: var(--color-pine-teal-900);
+  --color-pine-teal-950: var(--color-pine-teal-950);
+
+  --color-parchment-50: var(--color-parchment-50);
+  --color-parchment-100: var(--color-parchment-100);
+  --color-parchment-200: var(--color-parchment-200);
+  --color-parchment-300: var(--color-parchment-300);
+  --color-parchment-400: var(--color-parchment-400);
+  --color-parchment-500: var(--color-parchment-500);
+  --color-parchment-600: var(--color-parchment-600);
+  --color-parchment-700: var(--color-parchment-700);
+  --color-parchment-800: var(--color-parchment-800);
+  --color-parchment-900: var(--color-parchment-900);
+  --color-parchment-950: var(--color-parchment-950);
+
+  /* Semantic tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  /* Radius scale — 8 / 12 / 16 / 20 / 24 / 32 / 999 */
+  --radius-sm: calc(var(--radius) * 0.5); /* 8px  */
+  --radius-md: calc(var(--radius) * 0.75); /* 12px */
+  --radius-lg: var(--radius); /* 16px */
+  --radius-xl: calc(var(--radius) * 1.25); /* 20px */
+  --radius-2xl: calc(var(--radius) * 1.5); /* 24px */
+  --radius-3xl: calc(var(--radius) * 2); /* 32px */
+  --radius-full: 999px;
+
+  /* Shadow utilities */
+  --shadow-sm: var(--shadow);
+  --shadow-md: var(--shadow-hover);
+}
+
+/* ─── Base Styles ──────────────────────────────────────── */
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  width: 100%;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  button,
+  a,
+  [role='menuitem'] {
+    cursor: pointer;
+  }
+}
+
+/* ─── Talent Pool Utilities ────────────────────────────── */
+.tp-duration {
+  font-style: italic !important;
+  font-synthesis: style !important;
+}
