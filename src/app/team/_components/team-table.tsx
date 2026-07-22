@@ -513,7 +513,11 @@ export function TeamTable({ members, loading }: Props) {
   }, [confirmId, mutating]);
 
   const filtered = useMemo(() => {
-    let data = members;
+    // Always exclude CRM-only roles (client, va) — these are managed elsewhere
+    let data = members.filter(m => {
+      const roles = m.roles ?? [];
+      return !roles.includes('client') && !roles.includes('va');
+    });
     if (roleFilter !== 'all')
       data = data.filter(m => m.roles?.includes(roleFilter));
     if (appFilter !== 'all')
