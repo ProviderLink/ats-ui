@@ -14,7 +14,6 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { logOptimisticActivity } from '@/lib/activity';
 import { useUserStore } from '@/store/slices/users.store';
-import type { AppAccess } from '@/store/types/enums';
 import type { User } from '@/store/types/user.types';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -48,8 +47,6 @@ export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [roles, setRoles] = useState<UserRole[]>([]);
-  const [ats, setAts] = useState(false);
-  const [crm, setCrm] = useState(false);
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
@@ -58,8 +55,6 @@ export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
       setLastName(member.lastName);
       setPhone(member.phone ?? '');
       setRoles((member.roles as UserRole[]) ?? []);
-      setAts(member.appAccess?.includes('ats') ?? false);
-      setCrm(member.appAccess?.includes('crm') ?? false);
       setIsActive(member.isActive);
     }
   }, [open, member]);
@@ -70,14 +65,10 @@ export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
     );
   }
 
-  const isValid =
-    firstName.trim() && lastName.trim() && roles.length > 0 && (ats || crm);
+  const isValid = firstName.trim() && lastName.trim() && roles.length > 0;
 
   async function handleSave() {
     if (!member || !isValid) return;
-    const appAccess: AppAccess[] = [];
-    if (ats) appAccess.push('ats');
-    if (crm) appAccess.push('crm');
     try {
       await update(member._id, {
         firstName: firstName.trim(),
@@ -85,7 +76,6 @@ export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
         phone: phone.trim() || undefined,
         roles,
         isActive,
-        appAccess,
       });
       logOptimisticActivity(
         'user',
@@ -165,42 +155,6 @@ export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
                 </div>
               ))}
             </div>
-          </Field>
-
-          <Field label="App Access">
-            <div className="flex flex-col gap-2.5 pt-1">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="edit-ats"
-                  checked={ats}
-                  onCheckedChange={v => setAts(!!v)}
-                />
-                <label
-                  htmlFor="edit-ats"
-                  className="text-sm cursor-pointer select-none"
-                >
-                  ATS
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="edit-crm"
-                  checked={crm}
-                  onCheckedChange={v => setCrm(!!v)}
-                />
-                <label
-                  htmlFor="edit-crm"
-                  className="text-sm cursor-pointer select-none"
-                >
-                  CRM
-                </label>
-              </div>
-            </div>
-            {!ats && !crm && (
-              <p className="text-xs text-destructive mt-1">
-                Select at least one app.
-              </p>
-            )}
           </Field>
 
           <div className="flex items-center justify-between rounded-md border px-4 py-3">

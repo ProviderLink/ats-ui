@@ -75,6 +75,7 @@ import {
   PhoneIcon,
   PlayIcon,
   SearchIcon,
+  ShieldCheckIcon,
   SparklesIcon,
   StarIcon,
   Trash2Icon,
@@ -1670,6 +1671,79 @@ type Props = {
   mutating?: boolean;
   hideAiScore?: boolean;
 };
+
+/**
+ * Small inline button for provisioning/revoking CRM access on a hired candidate.
+ */
+function CandidateCrmButton({
+  candidateId,
+  candidateStatus,
+}: {
+  candidateId: string;
+  candidateStatus: string;
+}) {
+  const { provisionVA, revokeCrmAccess } = useUserStore();
+  const allUsers = useUserStore(s => s.items);
+  const [busy, setBusy] = useState(false);
+
+  if (candidateStatus !== 'hired') return null;
+
+  const crmUser = allUsers.find(
+    u => u.candidateRef === candidateId && u.appAccess?.includes('crm')
+  );
+  const hasCrmAccess = !!crmUser;
+
+  async function handleProvision() {
+    setBusy(true);
+    try {
+      await provisionVA(candidateId);
+      toast.success('VA provisioned. Invite email will be sent.');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to provision VA');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRevoke() {
+    if (!crmUser) return;
+    setBusy(true);
+    try {
+      await revokeCrmAccess(crmUser._id);
+      toast.success('CRM access revoked');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to revoke CRM access');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (hasCrmAccess) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-pine-teal-500/40 bg-pine-teal-50 px-2 py-0.5 text-[11px] font-medium text-pine-teal-700 dark:bg-pine-teal-950/50 dark:text-pine-teal-400">
+        <ShieldCheckIcon className="size-3" />
+        CRM Active
+        {!crmUser?.isInviteAccepted && (
+          <span className="text-amber-600 dark:text-amber-400">(invited)</span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 gap-1 px-2 text-xs"
+      onClick={handleProvision}
+      disabled={busy}
+      title="Send CRM portal invite to this VA"
+    >
+      <ShieldCheckIcon className="size-3 text-muted-foreground" />
+      {busy ? '…' : 'Give CRM Portal Access'}
+    </Button>
+  );
+}
 
 export function CandidateDetailSheet({
   candidate,
@@ -3572,6 +3646,10 @@ export function CandidateDetailSheet({
                   <StarIcon className="size-3.5" />
                   {c.inTalentPool ? 'Remove from Pool' : 'Add to Pool'}
                 </Button>
+                <CandidateCrmButton
+                  candidateId={c._id}
+                  candidateStatus={c.status}
+                />
                 <Button
                   size="sm"
                   variant="outline"
@@ -3610,6 +3688,11 @@ export function CandidateDetailSheet({
                     ? 'Applied Directly'
                     : 'Internal Upload'}
                 </span>
+                {/* CRM Provision for hired candidates */}
+                <CandidateCrmButton
+                  candidateId={c._id}
+                  candidateStatus={c.status}
+                />
                 <Button
                   variant="outline"
                   className="ml-auto"

@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -20,7 +19,6 @@ import {
 } from '@/components/ui/sheet';
 import { logOptimisticActivity } from '@/lib/activity';
 import { useUserStore } from '@/store/slices/users.store';
-import type { AppAccess } from '@/store/types/enums';
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -53,8 +51,6 @@ const EMPTY = {
   email: '',
   phone: '',
   role: '' as UserRole | '',
-  ats: false,
-  crm: false,
 };
 
 export function InviteTeamSheet({ open, onOpenChange }: Props) {
@@ -69,22 +65,17 @@ export function InviteTeamSheet({ open, onOpenChange }: Props) {
     form.firstName.trim() &&
     form.lastName.trim() &&
     form.email.trim() &&
-    form.role &&
-    (form.ats || form.crm);
+    form.role;
 
   async function handleSubmit() {
     if (!isValid || !form.role) return;
     try {
-      const appAccess: AppAccess[] = [];
-      if (form.ats) appAccess.push('ats');
-      if (form.crm) appAccess.push('crm');
       const member = await create({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
         roles: [form.role],
-        appAccess,
       });
       logOptimisticActivity(
         'user',
@@ -165,42 +156,6 @@ export function InviteTeamSheet({ open, onOpenChange }: Props) {
                 ))}
               </SelectContent>
             </Select>
-          </Field>
-
-          <Field label="App Access">
-            <div className="flex flex-col gap-2.5 pt-1">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="access-ats"
-                  checked={form.ats}
-                  onCheckedChange={v => set('ats', !!v)}
-                />
-                <label
-                  htmlFor="access-ats"
-                  className="text-sm cursor-pointer select-none"
-                >
-                  ATS
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="access-crm"
-                  checked={form.crm}
-                  onCheckedChange={v => set('crm', !!v)}
-                />
-                <label
-                  htmlFor="access-crm"
-                  className="text-sm cursor-pointer select-none"
-                >
-                  CRM
-                </label>
-              </div>
-            </div>
-            {!form.ats && !form.crm && form.role && (
-              <p className="text-xs text-destructive mt-1">
-                Select at least one app.
-              </p>
-            )}
           </Field>
         </div>
 

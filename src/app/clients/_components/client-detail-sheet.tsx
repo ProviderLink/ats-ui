@@ -57,6 +57,7 @@ import {
   PhoneCallIcon,
   PhoneIcon,
   PlusIcon,
+  ShieldCheckIcon,
   StarIcon,
   Trash2Icon,
   UserIcon,
@@ -1646,6 +1647,45 @@ export function ClientDetailSheet({
 }: Props) {
   if (!client) return null;
 
+  const { provisionClient, revokeCrmAccess } = useUserStore();
+  const allUsers = useUserStore(s => s.items);
+  const [provisioning, setProvisioning] = useState(false);
+
+  // Determine CRM provision status for this client
+  const crmUser = allUsers.find(
+    u => u.clientRef === client._id && u.appAccess?.includes('crm')
+  );
+  const hasCrmAccess = !!crmUser;
+
+  // Can provision: client has hired candidates (indicated by job counts or crmProfile existence)
+  // Show the button if the client is active and has any jobs
+  const canProvisionCrm = client.status === 'active';
+
+  async function handleProvision() {
+    setProvisioning(true);
+    try {
+      await provisionClient(client!._id);
+      toast.success('CRM access provisioned. Invite email will be sent.');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to provision CRM access');
+    } finally {
+      setProvisioning(false);
+    }
+  }
+
+  async function handleRevoke() {
+    if (!crmUser) return;
+    setProvisioning(true);
+    try {
+      await revokeCrmAccess(crmUser._id);
+      toast.success('CRM access revoked');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to revoke CRM access');
+    } finally {
+      setProvisioning(false);
+    }
+  }
+
   const status = statusConfig[client.status];
   const crmHealth = client.crmProfile?.healthStatus
     ? healthConfig[client.crmProfile.healthStatus]
@@ -1678,6 +1718,43 @@ export function ClientDetailSheet({
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base">Client Details</SheetTitle>
             <div className="flex items-center gap-1.5">
+              {canProvisionCrm && !hasCrmAccess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
+                  onClick={handleProvision}
+                  disabled={provisioning}
+                  title="Send CRM portal invite to this client's primary contact"
+                >
+                  <ShieldCheckIcon className="size-3 text-muted-foreground" />
+                  {provisioning ? '…' : 'Give CRM Access'}
+                </Button>
+              )}
+              {hasCrmAccess && (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-pine-teal-500/40 bg-pine-teal-50 px-2 py-0.5 text-[11px] font-medium text-pine-teal-700 dark:bg-pine-teal-950/50 dark:text-pine-teal-400">
+                    <ShieldCheckIcon className="size-3" />
+                    CRM Active
+                    {!crmUser?.isInviteAccepted && (
+                      <span className="text-amber-600 dark:text-amber-400 ml-0.5">
+                        (invited)
+                      </span>
+                    )}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40"
+                    onClick={handleRevoke}
+                    disabled={provisioning}
+                    title="Remove CRM portal access from this client"
+                  >
+                    <XCircleIcon className="size-3" />
+                    {provisioning ? '…' : 'Revoke'}
+                  </Button>
+                </>
+              )}
               {onEdit && (
                 <Button
                   variant="outline"

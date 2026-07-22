@@ -11,7 +11,6 @@ export const ALL_ROLES = [
   'coordinator',
   'interviewer',
   'account_manager',
-  'va',
 ] as const;
 
 export const AVATAR_BG = [

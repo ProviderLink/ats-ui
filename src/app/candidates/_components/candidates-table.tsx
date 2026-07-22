@@ -50,6 +50,7 @@ import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
+import { useUserStore } from '@/store/slices/users.store';
 import type {
   Application,
   Candidate,
@@ -80,6 +81,7 @@ import {
   MousePointerClickIcon,
   PlusIcon,
   SearchIcon,
+  ShieldCheckIcon,
   SparklesIcon,
   StarIcon,
   Trash2Icon,
@@ -123,6 +125,13 @@ export function SortHeader({
 
 export function CandidateCell({ candidate }: { candidate: Candidate }) {
   const bg = avatarBg(candidate.firstName);
+  const allUsers = useUserStore(s => s.items);
+  const hasCrm = allUsers.some(
+    u =>
+      u.candidateRef === candidate._id &&
+      u.appAccess?.includes('crm') &&
+      u.isActive
+  );
   return (
     <div className="flex items-center gap-3 min-w-0">
       {candidate.avatar ? (
@@ -145,6 +154,19 @@ export function CandidateCell({ candidate }: { candidate: Candidate }) {
       <div className="min-w-0">
         <p className="text-sm font-medium leading-tight truncate flex items-center gap-1">
           {candidate.firstName} {candidate.lastName}
+          {hasCrm && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-0.5 rounded-full border border-pine-teal-500/30 bg-pine-teal-50 px-1.5 py-0.5 text-[9px] font-semibold text-pine-teal-700 dark:bg-pine-teal-950/40 dark:text-pine-teal-400 shrink-0 select-none">
+                  <ShieldCheckIcon className="size-2.5" />
+                  CRM
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                CRM access active
+              </TooltipContent>
+            </Tooltip>
+          )}
           {candidate.inTalentPool && (
             <Tooltip>
               <TooltipTrigger asChild>

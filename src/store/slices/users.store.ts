@@ -43,6 +43,9 @@ interface UserActions {
     id: string,
     permissions: UserPermissions
   ) => Promise<void>;
+  provisionClient: (clientId: string) => Promise<User>;
+  provisionVA: (candidateId: string) => Promise<User>;
+  revokeCrmAccess: (userId: string) => Promise<User>;
   reset: () => void;
   _patch: (user: User) => void;
   _remove: (id: string) => void;
@@ -261,6 +264,80 @@ export const useUserStore = create<UserState & UserActions>()(
             s.error = (e as Error).message;
           });
           toast.error((e as Error).message);
+          throw e;
+        }
+      },
+
+      provisionClient: async clientId => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          const user = await postJson<User>('/shared/users/provision-client', {
+            clientId,
+          });
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === user._id);
+            if (idx !== -1) s.items[idx] = user;
+            else s.items.push(user);
+            s.mutating = false;
+          });
+          return user;
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
+          throw e;
+        }
+      },
+
+      provisionVA: async candidateId => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          const user = await postJson<User>('/shared/users/provision-va', {
+            candidateId,
+          });
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === user._id);
+            if (idx !== -1) s.items[idx] = user;
+            else s.items.push(user);
+            s.mutating = false;
+          });
+          return user;
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
+          throw e;
+        }
+      },
+
+      revokeCrmAccess: async userId => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          const user = await postJson<User>(
+            `/shared/users/${userId}/revoke-crm`
+          );
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === userId);
+            if (idx !== -1) s.items[idx] = user;
+            s.mutating = false;
+          });
+          return user;
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
           throw e;
         }
       },

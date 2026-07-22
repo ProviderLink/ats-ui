@@ -38,6 +38,7 @@ import { useSearchWithPageRestore } from '@/hooks/use-search-with-page-restore';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { cn } from '@/lib/utils';
 import { useApplicationStore, useClientStore, useJobStore } from '@/store';
+import { useUserStore } from '@/store/slices/users.store';
 import type { Client, ClientContact, ClientStatus } from '@/store/types';
 import {
   flexRender,
@@ -60,6 +61,7 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
+  ShieldCheckIcon,
   TagIcon,
   Trash2Icon,
   UserIcon,
@@ -170,7 +172,26 @@ function CompanyCell({ client }: { client: Client }) {
             : '—'}
         </p>
       </div>
+      <CrmIndicator clientId={client._id} />
     </div>
+  );
+}
+
+/** Tiny inline badge indicating CRM access status. Wrapped in its own component to use the store efficiently. */
+function CrmIndicator({ clientId }: { clientId: string }) {
+  const allUsers = useUserStore(s => s.items);
+  const hasCrm = allUsers.some(
+    u => u.clientRef === clientId && u.appAccess?.includes('crm') && u.isActive
+  );
+  if (!hasCrm) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-full border border-pine-teal-500/30 bg-pine-teal-50 px-1.5 py-0.5 text-[9px] font-semibold text-pine-teal-700 dark:bg-pine-teal-950/40 dark:text-pine-teal-400 shrink-0 select-none"
+      title="CRM access active"
+    >
+      <ShieldCheckIcon className="size-2.5" />
+      CRM
+    </span>
   );
 }
 
