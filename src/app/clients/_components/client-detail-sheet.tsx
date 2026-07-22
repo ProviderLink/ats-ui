@@ -1649,6 +1649,8 @@ export function ClientDetailSheet({
 
   const { provisionClient, revokeCrmAccess } = useUserStore();
   const allUsers = useUserStore(s => s.items);
+  const apps = useApplicationStore(s => s.items);
+  const fetchApps = useApplicationStore(s => s.fetch);
   const [provisioning, setProvisioning] = useState(false);
 
   // Determine CRM provision status for this client
@@ -1657,9 +1659,16 @@ export function ClientDetailSheet({
   );
   const hasCrmAccess = !!crmUser;
 
-  // Can provision: client has hired candidates (indicated by job counts or crmProfile existence)
-  // Show the button if the client is active and has any jobs
-  const canProvisionCrm = client.status === 'active';
+  // Fetch applications for this client when the sheet opens, so we can check hires
+  useEffect(() => {
+    if (open) void fetchApps({ clientId: client._id, limit: 9999 });
+  }, [open, client._id, fetchApps]);
+
+  // Only show provision button if this client has ≥1 hired candidate
+  const hasHiredCandidate = apps.some(
+    a => a.clientId === client._id && a.phase === 'hired'
+  );
+  const canProvisionCrm = client.status === 'active' && hasHiredCandidate;
 
   async function handleProvision() {
     setProvisioning(true);
