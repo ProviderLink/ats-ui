@@ -1682,7 +1682,7 @@ function CandidateCrmButton({
   candidateId: string;
   candidateStatus: string;
 }) {
-  const { provisionVA, revokeCrmAccess } = useUserStore();
+  const { provisionVA } = useUserStore();
   const allUsers = useUserStore(s => s.items);
   const [busy, setBusy] = useState(false);
 
@@ -1700,19 +1700,6 @@ function CandidateCrmButton({
       toast.success('VA provisioned. Invite email will be sent.');
     } catch (e) {
       toast.error((e as Error).message || 'Failed to provision VA');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleRevoke() {
-    if (!crmUser) return;
-    setBusy(true);
-    try {
-      await revokeCrmAccess(crmUser._id);
-      toast.success('CRM access revoked');
-    } catch (e) {
-      toast.error((e as Error).message || 'Failed to revoke CRM access');
     } finally {
       setBusy(false);
     }

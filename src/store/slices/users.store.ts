@@ -325,7 +325,8 @@ export const useUserStore = create<UserState & UserActions>()(
         });
         try {
           const user = await postJson<User>(
-            `/shared/users/${userId}/revoke-crm`
+            `/shared/users/${userId}/revoke-crm`,
+            {}
           );
           set(s => {
             const idx = s.items.findIndex(x => x._id === userId);
