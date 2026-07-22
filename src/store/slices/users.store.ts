@@ -112,7 +112,12 @@ export const useUserStore = create<UserState & UserActions>()(
                 }
               : undefined,
           };
-          const apiUser = await postJson<User>('/shared/users', payload);
+          const response = await postJson<{ user: User; inviteToken?: string }>(
+            '/shared/users',
+            payload
+          );
+          // POST /shared/users returns { user, inviteToken } — extract the user
+          const apiUser = response.user ?? (response as unknown as User);
           const user: User = {
             ...apiUser,
             roles: apiUser.roles ?? data.roles ?? [],
