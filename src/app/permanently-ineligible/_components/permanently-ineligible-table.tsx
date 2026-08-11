@@ -95,9 +95,7 @@ export function PermanentlyIneligibleTable() {
         accessorKey: 'candidate',
         header: 'Candidate',
         size: 250,
-        cell: ({ row }) => (
-          <CandidateCell candidate={row.original} highlight="" />
-        ),
+        cell: ({ row }) => <CandidateCell candidate={row.original} />,
       },
       {
         accessorKey: 'reason',
@@ -230,7 +228,7 @@ export function PermanentlyIneligibleTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  if (loading && data.length === 0) return <TableSkeleton />;
+  if (loading && data.length === 0) return <TableSkeleton cols={5} />;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -302,9 +300,11 @@ export function PermanentlyIneligibleTable() {
             </table>
           </div>
           <TablePagination
-            page={pagination?.page ?? 1}
-            limit={pagination?.limit ?? 20}
-            total={data.length}
+            table={table}
+            pageIndex={table.getState().pagination.pageIndex}
+            pageSize={table.getState().pagination.pageSize}
+            totalRows={data.length}
+            label="candidates"
           />
         </>
       )}

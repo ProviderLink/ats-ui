@@ -1772,7 +1772,15 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
         </p>
         <div className="flex flex-col gap-2">
           {items.map((entry, i) => {
-            const m = entry.metadata ?? {};
+            const m = (entry.metadata ?? {}) as Record<
+              string,
+              string | undefined
+            >;
+            const destination = m.destination;
+            const reasonLabel = m.reasonLabel;
+            const lastStage = m.lastStage;
+            const notes = m.internalNotes;
+            const performedBy = entry.performedBy;
             return (
               <div
                 key={entry._id ?? i}
@@ -1785,32 +1793,32 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
                   <Badge
                     variant="secondary"
                     className={
-                      m.destination === 'permanently_ineligible'
+                      destination === 'permanently_ineligible'
                         ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px]'
                         : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-[10px]'
                     }
                   >
-                    {m.destination === 'permanently_ineligible'
+                    {destination === 'permanently_ineligible'
                       ? 'Ineligible'
                       : 'Candidate Pool'}
                   </Badge>
                 </div>
-                {m.reasonLabel && (
-                  <p className="mt-0.5 font-medium">{m.reasonLabel}</p>
+                {reasonLabel && (
+                  <p className="mt-0.5 font-medium">{reasonLabel}</p>
                 )}
-                {m.lastStage && (
+                {lastStage && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Last stage: {m.lastStage}
+                    Last stage: {lastStage}
                   </p>
                 )}
-                {m.internalNotes && (
+                {notes && (
                   <p className="text-xs text-muted-foreground mt-1 italic">
-                    {m.internalNotes}
+                    {notes}
                   </p>
                 )}
-                {entry.performedBy && (
+                {performedBy && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    By: {entry.performedBy}
+                    By: {performedBy}
                   </p>
                 )}
               </div>
@@ -1868,8 +1876,6 @@ export function CandidateDetailSheet({
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
   const approveApp = useApplicationStore(s => s.approve);
-  const rejectApp = useApplicationStore(s => s.reject);
-
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
   const approveCandidate = useCandidateStore(s => s.approve);
