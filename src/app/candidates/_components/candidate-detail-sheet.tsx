@@ -1876,7 +1876,6 @@ export function CandidateDetailSheet({
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
   const approveApp = useApplicationStore(s => s.approve);
-  const approveApp = useApplicationStore(s => s.approve);
   const rejectApp = useApplicationStore(s => s.remove);
 
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
@@ -2304,7 +2303,7 @@ export function CandidateDetailSheet({
     }
     setActionLoading(true);
     try {
-      await rejectApp(pendingApplication._id, reason || undefined);
+      await rejectApp(pendingApplication._id);
       logOptimisticActivity(
         'application',
         pendingApplication._id,
@@ -2328,7 +2327,7 @@ export function CandidateDetailSheet({
     }
     setActionLoading(true);
     try {
-      await rejectApp(pendingApplication._id, reason || undefined);
+      await rejectApp(pendingApplication._id);
       logOptimisticActivity(
         'application',
         pendingApplication._id,
@@ -2419,7 +2418,7 @@ export function CandidateDetailSheet({
     if (!activePipelineApp) return;
     setPipelineLoading(true);
     try {
-      await rejectApp(activePipelineApp._id, rejectReason || undefined);
+      await rejectApp(activePipelineApp._id);
       logOptimisticActivity(
         'application',
         activePipelineApp._id,
