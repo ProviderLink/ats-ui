@@ -1,9 +1,14 @@
 import { cn } from '@/lib/utils';
-import { Settings2Icon, UserIcon } from 'lucide-react';
+import { ListFilterIcon, Settings2Icon, UserIcon } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { label: 'General', href: '/ats/settings/general', icon: Settings2Icon },
+  {
+    label: 'Disposition Reasons',
+    href: '/ats/settings/disposition-reasons',
+    icon: ListFilterIcon,
+  },
   { label: 'Account', href: '/ats/account', icon: UserIcon },
 ];
 

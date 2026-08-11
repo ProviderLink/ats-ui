@@ -19,11 +19,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -275,11 +283,17 @@ function AssignJobDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onConfirm: (jobId: string) => void;
-  jobs: { _id: string; title: string; clientName?: string }[];
+  onConfirm: (jobId: string, startStageId?: string) => void;
+  jobs: {
+    _id: string;
+    title: string;
+    clientName?: string;
+    stages?: { _id: string; name: string }[];
+  }[];
 }) {
   const [selected, setSelected] = useState('');
   const [search, setSearch] = useState('');
+  const [selectedStageId, setSelectedStageId] = useState('');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return jobs;
@@ -290,6 +304,18 @@ function AssignJobDialog({
         (j.clientName ?? '').toLowerCase().includes(q)
     );
   }, [jobs, search]);
+
+  const selectedJob = useMemo(
+    () => jobs.find(j => j._id === selected),
+    [jobs, selected]
+  );
+  const stages = selectedJob?.stages ?? [];
+
+  // Reset stage when job changes
+  const handleSelectJob = (jobId: string) => {
+    setSelected(jobId);
+    setSelectedStageId('');
+  };
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -322,7 +348,7 @@ function AssignJobDialog({
                       'flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
                       selected === j._id && 'bg-muted font-medium'
                     )}
-                    onClick={() => setSelected(j._id)}
+                    onClick={() => handleSelectJob(j._id)}
                   >
                     <span
                       className={cn(
@@ -347,6 +373,30 @@ function AssignJobDialog({
               </div>
             )}
           </div>
+          {/* Stage picker */}
+          {stages.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Starting pipeline stage (optional)
+              </Label>
+              <Select
+                value={selectedStageId}
+                onValueChange={setSelectedStageId}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="First stage (default)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">First stage (default)</SelectItem>
+                  {stages.map(s => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -355,8 +405,9 @@ function AssignJobDialog({
           <Button
             disabled={!selected}
             onClick={() => {
-              onConfirm(selected);
+              onConfirm(selected, selectedStageId || undefined);
               setSelected('');
+              setSelectedStageId('');
               setSearch('');
             }}
           >
@@ -503,6 +554,10 @@ export function TalentPoolTable() {
         _id: j._id,
         title: j.title,
         clientName: clientMap.get(j.clientId) ?? '',
+        stages: (j.pipeline?.stages ?? [])
+          .filter(s => s.isActive)
+          .sort((a, b) => a.order - b.order)
+          .map(s => ({ _id: s._id, name: s.name })),
       }));
   }, [jobs, clients]);
 
@@ -657,13 +712,10 @@ export function TalentPoolTable() {
     };
   }
 
-  async function handleAssignToJob(jobId: string) {
+  async function handleAssignToJob(jobId: string, startStageId?: string) {
     if (!assignTarget) return;
     try {
-      await assignJob(assignTarget._id, jobId);
-      // Refresh applications so the candidate appears in the pipeline tab
-      // on the candidates page immediately (socket may be missed while on
-      // this page since we were not previously in the applications room).
+      await assignJob(assignTarget._id, jobId, startStageId);
       await fetchApps({ limit: 9999 });
       toast.success(
         `${assignTarget.firstName} ${assignTarget.lastName} assigned to job`

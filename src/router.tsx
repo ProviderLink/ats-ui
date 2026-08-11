@@ -22,7 +22,9 @@ import JobDetailPage from '@/app/jobs/[id]/page';
 import JobNewPage from '@/app/jobs/new/page';
 import JobsPage from '@/app/jobs/page';
 import NotFoundPage from '@/app/not-found';
+import PermanentlyIneligiblePage from '@/app/permanently-ineligible/page';
 import SettingsAccountPage from '@/app/settings/account/page';
+import SettingsDispositionReasonsPage from '@/app/settings/disposition-reasons/page';
 import SettingsGeneralPage from '@/app/settings/general/page';
 import TagsPage from '@/app/tags/page';
 import TalentPoolPage from '@/app/talent-pool/page';
@@ -83,6 +85,14 @@ export const router = createBrowserRouter([
               },
               { path: 'candidates/:id', element: <CandidateDetailPage /> },
               { path: 'talent-pool', element: <TalentPoolPage /> },
+              {
+                path: 'permanently-ineligible',
+                element: (
+                  <RoleGuard allowedRoles={['admin']}>
+                    <PermanentlyIneligiblePage />
+                  </RoleGuard>
+                ),
+              },
               { path: 'calendar', element: <CalendarPage /> },
               {
                 path: 'team',
@@ -116,6 +126,14 @@ export const router = createBrowserRouter([
                     ]}
                   >
                     <SettingsGeneralPage />
+                  </RoleGuard>
+                ),
+              },
+              {
+                path: 'settings/disposition-reasons',
+                element: (
+                  <RoleGuard allowedRoles={['admin']}>
+                    <SettingsDispositionReasonsPage />
                   </RoleGuard>
                 ),
               },

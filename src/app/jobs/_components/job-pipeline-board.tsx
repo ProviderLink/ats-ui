@@ -3,15 +3,7 @@ import {
   scoreTextColor,
   statusConfig,
 } from '@/app/candidates/_utils/candidate-styles';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { DispositionDialog } from '@/components/disposition-dialog';
 import { getJson } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import type { Application, Candidate, Job } from '@/store';
@@ -32,7 +24,6 @@ import { Trash2Icon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 
 type AppWithCandidate = { application: Application; candidate: Candidate };
 
@@ -285,7 +276,6 @@ function DroppableColumn({
 export function JobPipelineBoard({ job }: { job: Job }) {
   const navigate = useNavigate();
   const moveStage = useApplicationStore(s => s.moveStage);
-  const removeApp = useApplicationStore(s => s.remove);
 
   // Direct API fetches to avoid race conditions with other components
   // that share the application/candidate stores.
@@ -430,7 +420,7 @@ export function JobPipelineBoard({ job }: { job: Job }) {
     buildStageMap(pairs, firstStageId)
   );
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<AppWithCandidate | null>(
+  const [disposeTarget, setDisposeTarget] = useState<AppWithCandidate | null>(
     null
   );
 
@@ -456,27 +446,6 @@ export function JobPipelineBoard({ job }: { job: Job }) {
   );
 
   const activeItem = pairs.find(p => p.application._id === activeId);
-
-  async function handleDeleteApp() {
-    if (!deleteTarget) return;
-    const appId = deleteTarget.application._id;
-    try {
-      await removeApp(appId);
-      setApplications(prev => prev.filter(a => a._id !== appId));
-      const cached = cache.get(job._id);
-      if (cached) {
-        cache.set(job._id, {
-          ...cached,
-          applications: cached.applications.filter(a => a._id !== appId),
-        });
-      }
-      toast.success('Application removed');
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setDeleteTarget(null);
-    }
-  }
 
   function handleDragStart({ active }: DragStartEvent) {
     setActiveId(active.id as string);
@@ -522,7 +491,7 @@ export function JobPipelineBoard({ job }: { job: Job }) {
                 onOpen={c => navigate(`/ats/candidates/${c._id}`)}
                 onDelete={(pair, e) => {
                   e.stopPropagation();
-                  setDeleteTarget(pair);
+                  setDisposeTarget(pair);
                 }}
               />
             );
@@ -571,43 +540,14 @@ export function JobPipelineBoard({ job }: { job: Job }) {
         </DragOverlay>
       </DndContext>
 
-      <Dialog
-        open={!!deleteTarget}
+      <DispositionDialog
+        open={!!disposeTarget}
         onOpenChange={open => {
-          if (!open) setDeleteTarget(null);
+          if (!open) setDisposeTarget(null);
         }}
-      >
-        <DialogContent showCloseButton={false} className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Application?</DialogTitle>
-            <DialogDescription>
-              Remove{' '}
-              <strong>
-                {deleteTarget?.candidate.firstName}{' '}
-                {deleteTarget?.candidate.lastName}
-              </strong>{' '}
-              from this job's pipeline? The candidate record will not be
-              deleted.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setDeleteTarget(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              onClick={() => void handleDeleteApp()}
-            >
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        applicationId={disposeTarget?.application._id ?? ''}
+        currentStageName={disposeTarget?.application.currentStage?.stageName}
+      />
     </div>
   );
 }

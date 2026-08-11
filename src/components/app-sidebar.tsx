@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { usePermission } from '@/hooks/use-permission';
+import { useAuthStore } from '@/store/slices/auth.store';
 import {
   BookmarkCheckIcon,
   BriefcaseIcon,
@@ -23,6 +24,7 @@ import {
   HomeIcon,
   LayoutDashboardIcon,
   Settings2Icon,
+  ShieldAlertIcon,
   TagIcon,
   UserRoundSearchIcon,
   UsersIcon,
@@ -41,6 +43,11 @@ const data = {
       title: 'Talent Pool',
       url: '/ats/talent-pool',
       icon: <BookmarkCheckIcon />,
+    },
+    {
+      title: 'Ineligible',
+      url: '/ats/permanently-ineligible',
+      icon: <ShieldAlertIcon />,
     },
   ],
   navSecondary: [
@@ -68,12 +75,14 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { hasPermission } = usePermission();
+  const user = useAuthStore(s => s.user);
 
   const filteredNavMain = data.navMain.filter(item => {
     if (item.title === 'Clients') return hasPermission('clients', 'read');
     if (item.title === 'Jobs') return hasPermission('jobs', 'read');
     if (item.title === 'Candidates' || item.title === 'Talent Pool')
       return hasPermission('candidates', 'read');
+    if (item.title === 'Ineligible') return user?.roles.includes('admin');
     return true;
   });
 

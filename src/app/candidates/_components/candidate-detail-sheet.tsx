@@ -26,7 +26,7 @@ import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
-import { getAuthToken } from '@/lib/api-client';
+import { getAuthToken, getJson } from '@/lib/api-client';
 import { getTagIds } from '@/lib/tags';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
@@ -1729,6 +1729,96 @@ function CandidateCrmButton({
       <ShieldCheckIcon className="size-3 text-muted-foreground" />
       {busy ? '…' : 'Give CRM Portal Access'}
     </Button>
+  );
+}
+
+function DispositionHistory({ candidateId }: { candidateId: string }) {
+  interface DispositionEntry {
+    _id: string;
+    action: string;
+    createdAt: string;
+    performedBy?: string | null;
+    metadata?: Record<string, unknown>;
+  }
+  const [items, setItems] = useState<DispositionEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    getJson<DispositionEntry[]>(
+      `/shared/activity-logs/candidate/${candidateId}`
+    )
+      .then(all => {
+        const dispositions = (all ?? []).filter(
+          entry => entry.action === 'disposition'
+        );
+        setItems(dispositions);
+      })
+      .catch(() => {
+        // silently fail — activity timeline already shows full history
+      })
+      .finally(() => setLoading(false));
+  }, [candidateId]);
+
+  if (loading) return null;
+  if (items.length === 0) return null;
+
+  return (
+    <>
+      <Separator />
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Disposition History
+        </p>
+        <div className="flex flex-col gap-2">
+          {items.map((entry, i) => {
+            const m = entry.metadata ?? {};
+            return (
+              <div
+                key={entry._id ?? i}
+                className="rounded-md border bg-muted/20 px-3 py-2 text-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(entry.createdAt).toLocaleDateString()}
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      m.destination === 'permanently_ineligible'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px]'
+                        : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-[10px]'
+                    }
+                  >
+                    {m.destination === 'permanently_ineligible'
+                      ? 'Ineligible'
+                      : 'Candidate Pool'}
+                  </Badge>
+                </div>
+                {m.reasonLabel && (
+                  <p className="mt-0.5 font-medium">{m.reasonLabel}</p>
+                )}
+                {m.lastStage && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Last stage: {m.lastStage}
+                  </p>
+                )}
+                {m.internalNotes && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    {m.internalNotes}
+                  </p>
+                )}
+                {entry.performedBy && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    By: {entry.performedBy}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -3469,6 +3559,10 @@ export function CandidateDetailSheet({
                   compact
                 />
               </div>
+
+              {/* Disposition history — filtered from the same ActivityLog,
+                  shown as a compact summary when disposition events exist */}
+              <DispositionHistory candidateId={c._id} />
             </div>
           </div>
 

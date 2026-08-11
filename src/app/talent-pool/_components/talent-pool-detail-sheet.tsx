@@ -11,6 +11,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
@@ -394,17 +402,33 @@ function AssignJobDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onConfirm: (jobId: string) => void;
-  jobs: { _id: string; title: string }[];
+  onConfirm: (jobId: string, startStageId?: string) => void;
+  jobs: {
+    _id: string;
+    title: string;
+    stages?: { _id: string; name: string }[];
+  }[];
 }) {
   const [selected, setSelected] = useState('');
   const [search, setSearch] = useState('');
+  const [selectedStageId, setSelectedStageId] = useState('');
 
   const filtered = useMemo(() => {
     if (!search.trim()) return jobs;
     const q = search.toLowerCase();
     return jobs.filter(j => j.title.toLowerCase().includes(q));
   }, [jobs, search]);
+
+  const selectedJob = useMemo(
+    () => jobs.find(j => j._id === selected),
+    [jobs, selected]
+  );
+  const stages = selectedJob?.stages ?? [];
+
+  const handleSelectJob = (jobId: string) => {
+    setSelected(jobId);
+    setSelectedStageId('');
+  };
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -437,7 +461,7 @@ function AssignJobDialog({
                       'flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
                       selected === j._id && 'bg-muted font-medium'
                     )}
-                    onClick={() => setSelected(j._id)}
+                    onClick={() => handleSelectJob(j._id)}
                   >
                     <span
                       className={cn(
@@ -455,6 +479,30 @@ function AssignJobDialog({
               </div>
             )}
           </div>
+          {/* Stage picker */}
+          {stages.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Starting pipeline stage (optional)
+              </Label>
+              <Select
+                value={selectedStageId}
+                onValueChange={setSelectedStageId}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="First stage (default)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">First stage (default)</SelectItem>
+                  {stages.map(s => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -463,8 +511,9 @@ function AssignJobDialog({
           <Button
             disabled={!selected}
             onClick={() => {
-              onConfirm(selected);
+              onConfirm(selected, selectedStageId || undefined);
               setSelected('');
+              setSelectedStageId('');
               setSearch('');
             }}
           >
@@ -516,7 +565,14 @@ export function TalentPoolDetailSheet({
     () =>
       jobs
         .filter(j => j.status === 'open')
-        .map(j => ({ _id: j._id, title: j.title })),
+        .map(j => ({
+          _id: j._id,
+          title: j.title,
+          stages: (j.pipeline?.stages ?? [])
+            .filter(s => s.isActive)
+            .sort((a, b) => a.order - b.order)
+            .map(s => ({ _id: s._id, name: s.name })),
+        })),
     [jobs]
   );
 
@@ -562,10 +618,10 @@ export function TalentPoolDetailSheet({
     }
   }
 
-  async function handleAssignToJob(jobId: string) {
+  async function handleAssignToJob(jobId: string, startStageId?: string) {
     if (!candidate) return;
     try {
-      await assignJob(candidate._id, jobId);
+      await assignJob(candidate._id, jobId, startStageId);
       logOptimisticActivity(
         'candidate',
         candidate._id,
@@ -667,7 +723,29 @@ export function TalentPoolDetailSheet({
                     onChange={handleUpdateTags}
                     compact
                   />
+                  {c.eligibilityStatus === 'permanently_ineligible' && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[11px]"
+                    >
+                      Permanently Ineligible
+                    </Badge>
+                  )}
+                  {c.legalHold && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[11px]"
+                    >
+                      Legal Hold
+                    </Badge>
+                  )}
                 </div>
+                {c.talentPoolAddedAt && (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Added to pool:{' '}
+                    {new Date(c.talentPoolAddedAt).toLocaleDateString()}
+                  </p>
+                )}
               </div>
 
               {c.inTalentPool && (

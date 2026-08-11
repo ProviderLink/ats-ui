@@ -29,6 +29,7 @@ export interface Application {
   clientId: string;
   phase: ApplicationPhase;
   currentStage?: ApplicationCurrentStage | null;
+  lastStage?: ApplicationCurrentStage | null;
   source: ApplicationSource;
   aiValidation?: ApplicationAiValidation | null;
   aiScore?: ApplicationAiScore | null;
@@ -37,6 +38,13 @@ export interface Application {
   rejectedAt?: string | null;
   rejectedBy?: string | null;
   rejectionReason?: string | null;
+  closedAt?: string | null;
+  closedBy?: string | null;
+  dispositionDate?: string | null;
+  dispositionReasonId?: string | null;
+  dispositionDestination?: 'candidate_pool' | 'permanently_ineligible' | null;
+  internalNotes?: string | null;
+  isBlocked?: boolean;
   interviewIds: string[];
   notes?: string | null;
   hiredAt?: string | null;

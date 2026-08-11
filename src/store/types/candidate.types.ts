@@ -88,6 +88,11 @@ export interface Candidate {
   talentPoolAddedAt?: string | null;
   talentPoolNotes?: string | null;
   status: CandidateStatus;
+  eligibilityStatus?: 'eligible' | 'permanently_ineligible';
+  permanentlyIneligibleAt?: string | null;
+  permanentlyIneligibleBy?: string | null;
+  permanentlyIneligibleReason?: string | null;
+  legalHold?: boolean;
   crmProfile?: CandidateCrmProfile | null;
   createdBy?: string;
   updatedBy?: string;
@@ -130,4 +135,5 @@ export interface CandidateFilters {
   tags?: string[];
   page?: number;
   limit?: number;
+  includeIneligible?: boolean;
 }

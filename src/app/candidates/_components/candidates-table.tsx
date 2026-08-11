@@ -1,4 +1,5 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import { DispositionDialog } from '@/components/disposition-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -177,12 +178,43 @@ export function CandidateCell({ candidate }: { candidate: Candidate }) {
               </TooltipContent>
             </Tooltip>
           )}
+          {candidate.eligibilityStatus === 'permanently_ineligible' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center shrink-0 rounded-full border border-red-500/30 bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400 select-none">
+                  INELIGIBLE
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Permanently Ineligible
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {candidate.legalHold && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center shrink-0 rounded-full border border-amber-500/30 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 select-none">
+                  HOLD
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Legal hold
+              </TooltipContent>
+            </Tooltip>
+          )}
         </p>
         <p className="text-xs text-muted-foreground truncate">
           {candidate.email}
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {candidate.yearsOfExperience} yrs of exp
+        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+          <span>{candidate.yearsOfExperience} yrs exp</span>
+          {candidate.currentSalaryUSD != null && (
+            <span className="text-[11px] font-medium text-foreground/80">
+              ·{' '}
+              {`$${(candidate.currentSalaryUSD / 1000).toFixed(candidate.currentSalaryUSD % 1000 === 0 ? 0 : 1)}K`}
+              /mo
+            </span>
+          )}
         </p>
       </div>
     </div>
@@ -436,7 +468,6 @@ function ReviewActionsDropdown({
 }) {
   const candStore = useCandidateStore();
   const appStore = useApplicationStore();
-  const allApps = useApplicationStore(s => s.items);
   const [approveOpen, setApproveOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [acting, setActing] = useState(false);
@@ -452,29 +483,6 @@ function ReviewActionsDropdown({
       setApproveOpen(false);
       await candStore.fetch();
       await appStore.fetch({ limit: 9999 });
-      onMutated?.();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setActing(false);
-    }
-  }
-
-  async function handleReject() {
-    const candidateApps = allApps.filter(
-      a => a.candidateId === candidate._id && a.phase !== 'rejected'
-    );
-    const warnMsg =
-      candidateApps.length > 0
-        ? `${name} has ${candidateApps.length} active application(s). Deleting the candidate will also remove all associated data. Are you sure you want to permanently delete ${name}?`
-        : `Permanently delete ${name}? This cannot be undone.`;
-    if (!confirm(warnMsg)) return;
-
-    setActing(true);
-    try {
-      await candStore.reject(candidate._id);
-      toast.success(`${name} rejected and removed`);
-      await candStore.fetch();
       onMutated?.();
     } catch (e) {
       toast.error((e as Error).message);
@@ -529,24 +537,6 @@ function ReviewActionsDropdown({
               <span className="text-sm">Approve</span>
               <span className="text-[11px] text-muted-foreground">
                 Create application for applied job
-              </span>
-            </span>
-          </DropdownMenuItem>
-          <div className="mx-2 my-2 h-px bg-border" />
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 pb-1.5 pt-0.5">
-            Reject
-          </div>
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-            onClick={handleReject}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
-              <XIcon className="size-3.5 text-red-600 dark:text-red-400" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">Reject</span>
-              <span className="text-[11px] text-muted-foreground">
-                Permanently delete candidate
               </span>
             </span>
           </DropdownMenuItem>
@@ -864,14 +854,13 @@ function PipelineActionsMenu({
 
   const [stageOpen, setStageOpen] = useState(false);
   const [hireOpen, setHireOpen] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
+  const [disposeOpen, setDisposeOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [appDeleteOpen, setAppDeleteOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [acting, setActing] = useState(false);
 
@@ -880,7 +869,6 @@ function PipelineActionsMenu({
     [allJobs]
   );
   const stageSelectRef = useRef<HTMLButtonElement>(null);
-  const rejectRef = useRef<HTMLTextAreaElement>(null);
 
   const name = `${candidate.firstName} ${candidate.lastName}`;
 
@@ -945,32 +933,6 @@ function PipelineActionsMenu({
       await appStore.hire(application._id);
       toast.success(`${name} hired`);
       setHireOpen(false);
-      await candStore.fetch();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setActing(false);
-    }
-  }
-
-  async function handleReject() {
-    if (!application) return;
-
-    setActing(true);
-    try {
-      const result = await appStore.reject(
-        application._id,
-        rejectReason || undefined
-      );
-      if (result.candidateDeleted) {
-        toast.success(
-          `${name} rejected from ${job?.title ?? 'this job'} and removed from system`
-        );
-      } else {
-        toast.success(`${name} rejected from ${job?.title ?? 'this job'}`);
-      }
-      setRejectOpen(false);
-      setRejectReason('');
       await candStore.fetch();
     } catch (e) {
       toast.error((e as Error).message);
@@ -1096,18 +1058,15 @@ function PipelineActionsMenu({
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={!application}
-            onClick={() => {
-              setRejectReason('');
-              setRejectOpen(true);
-            }}
+            onClick={() => setDisposeOpen(true)}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
               <BanIcon className="size-3.5 text-red-600 dark:text-red-400" />
             </span>
             <span className="flex flex-col">
-              <span className="text-sm">Reject</span>
+              <span className="text-sm">Dispose</span>
               <span className="text-[11px] text-muted-foreground">
-                Rejected from this job only
+                Close application &amp; move from pipeline
               </span>
             </span>
           </DropdownMenuItem>
@@ -1276,76 +1235,13 @@ function PipelineActionsMenu({
         </DialogContent>
       </Dialog>
 
-      {/* Reject Dialog */}
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Reject from this Job</DialogTitle>
-            <DialogDescription>
-              {(() => {
-                const hasOtherActive = allApps.some(
-                  a =>
-                    a.candidateId === candidate._id &&
-                    a._id !== application?._id &&
-                    (a.phase === 'pending' || a.phase === 'approved')
-                );
-                const willCascade =
-                  !hasOtherActive &&
-                  !candidate.inTalentPool &&
-                  candidate.status !== 'hired';
-                if (willCascade) {
-                  return (
-                    <>
-                      Rejecting <span className="font-medium">{name}</span> from{' '}
-                      <span className="font-medium">
-                        {job?.title ?? 'this job'}
-                      </span>{' '}
-                      will also{' '}
-                      <span className="font-semibold text-destructive">
-                        permanently delete
-                      </span>{' '}
-                      the candidate and all associated data — they have no other
-                      active applications, are not in the talent pool, and are
-                      not hired.
-                    </>
-                  );
-                }
-                return (
-                  <>
-                    Reject <span className="font-medium">{name}</span> for{' '}
-                    <span className="font-medium">
-                      {job?.title ?? 'this job'}
-                    </span>
-                    . The candidate will remain in the system.
-                  </>
-                );
-              })()}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Reason (optional)</Label>
-            <textarea
-              ref={rejectRef}
-              className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="e.g. Not enough experience..."
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReject}
-              disabled={acting}
-            >
-              {acting ? 'Rejecting…' : 'Reject'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dispose Dialog */}
+      <DispositionDialog
+        open={disposeOpen}
+        onOpenChange={setDisposeOpen}
+        applicationId={application?._id ?? ''}
+        currentStageName={application?.currentStage?.stageName}
+      />
 
       {/* Reassign Dialog */}
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>

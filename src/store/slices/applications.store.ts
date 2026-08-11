@@ -16,15 +16,18 @@ interface ApplicationState {
   filters: ApplicationFilters;
 }
 
-export interface RejectCascadeResult {
-  candidateDeleted: boolean;
-}
-
 interface ApplicationActions {
   fetch: (params?: ApplicationFilters) => Promise<void>;
   fetchOne: (id: string) => Promise<void>;
   approve: (id: string) => Promise<void>;
-  reject: (id: string, reason?: string) => Promise<RejectCascadeResult>;
+  dispose: (
+    id: string,
+    payload: {
+      dispositionReasonId: string;
+      destination: 'candidate_pool' | 'permanently_ineligible';
+      internalNotes?: string;
+    }
+  ) => Promise<void>;
   moveStage: (id: string, stageId: string) => Promise<void>;
   hire: (id: string) => Promise<void>;
   updateNotes: (id: string, notes: string) => Promise<void>;
@@ -171,28 +174,22 @@ export const useApplicationStore = create<
         }
       },
 
-      reject: async (id, reason) => {
+      dispose: async (id, payload) => {
         set(s => {
           s.mutating = true;
           s.error = null;
         });
         try {
-          const app = await patchJson<
-            Application & { candidateDeleted?: boolean }
-          >(`/ats/applications/${id}/reject`, { rejectionReason: reason });
-          const candidateDeleted = app.candidateDeleted === true;
+          const app = await patchJson<Application>(
+            `/ats/applications/${id}/dispose`,
+            payload
+          );
           set(s => {
-            if (candidateDeleted) {
-              // Candidate was cascade-deleted — remove all their apps
-              s.items = s.items.filter(x => x.candidateId !== app.candidateId);
-            } else {
-              const idx = s.items.findIndex(x => x._id === id);
-              if (idx !== -1) s.items[idx] = app;
-            }
+            const idx = s.items.findIndex(x => x._id === id);
+            if (idx !== -1) s.items[idx] = app;
             if (s.detail[id]) s.detail[id] = app;
             s.mutating = false;
           });
-          return { candidateDeleted };
         } catch (e) {
           set(s => {
             s.mutating = false;
@@ -328,6 +325,13 @@ export const useApplicationStore = create<
               hiredAt: app.hiredAt ?? prev.hiredAt,
               hiredBy: app.hiredBy ?? prev.hiredBy,
               rejectionReason: app.rejectionReason ?? prev.rejectionReason,
+              closedAt: app.closedAt ?? prev.closedAt,
+              dispositionDate: app.dispositionDate ?? prev.dispositionDate,
+              dispositionReasonId:
+                app.dispositionReasonId ?? prev.dispositionReasonId,
+              dispositionDestination:
+                app.dispositionDestination ?? prev.dispositionDestination,
+              isBlocked: app.isBlocked ?? prev.isBlocked,
             };
             return merged as T;
           };

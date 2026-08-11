@@ -42,7 +42,11 @@ interface CandidateActions {
     action: 'add' | 'remove',
     notes?: string
   ) => Promise<void>;
-  assignJob: (id: string, jobId: string) => Promise<void>;
+  assignJob: (
+    id: string,
+    jobId: string,
+    startStageId?: string
+  ) => Promise<void>;
   approve: (
     id: string,
     jobId: string
@@ -52,7 +56,6 @@ interface CandidateActions {
     applicationId: string;
     approved: boolean;
   }>;
-  reject: (id: string) => Promise<void>;
   setFilters: (f: Partial<CandidateFilters>) => void;
   reset: () => void;
   _patch: (c: Candidate) => void;
@@ -334,12 +337,15 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
         }
       },
 
-      assignJob: async (id, jobId) => {
+      assignJob: async (id, jobId, startStageId) => {
         set(s => {
           s.mutating = true;
         });
         try {
-          await postJson(`/ats/candidates/${id}/assign-job`, { jobId });
+          await postJson(`/ats/candidates/${id}/assign-job`, {
+            jobId,
+            ...(startStageId ? { startStageId } : {}),
+          });
           set(s => {
             s.mutating = false;
           });
@@ -369,26 +375,6 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             s.mutating = false;
           });
           return result;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      reject: async id => {
-        set(s => {
-          s.mutating = true;
-        });
-        try {
-          await postJson(`/ats/candidates/${id}/reject`, {});
-          set(s => {
-            s.items = s.items.filter(x => x._id !== id);
-            delete s.detail[id];
-            s.mutating = false;
-          });
         } catch (e) {
           set(s => {
             s.mutating = false;
