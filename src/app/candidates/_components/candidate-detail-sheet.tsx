@@ -2295,7 +2295,7 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectConfirm(reason: string) {
+  async function handleRejectConfirm(_reason: string) {
     if (!pendingApplication) {
       toast.error('No pending application to reject');
       setRejectOpen(false);
@@ -2319,7 +2319,7 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectAndEmailConfirm(reason: string) {
+  async function handleRejectAndEmailConfirm(_reason: string) {
     if (!pendingApplication) {
       toast.error('No pending application to reject');
       setRejectEmailOpen(false);
