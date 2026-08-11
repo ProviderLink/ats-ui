@@ -43,7 +43,7 @@ import { toast } from 'sonner';
 
 export function PermanentlyIneligibleTable() {
   const navigate = useNavigate();
-  const { items, loading, pagination, fetch } = useCandidateStore();
+  const { items, loading, fetch } = useCandidateStore();
 
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);

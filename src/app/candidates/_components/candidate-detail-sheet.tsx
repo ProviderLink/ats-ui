@@ -1876,6 +1876,9 @@ export function CandidateDetailSheet({
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
   const approveApp = useApplicationStore(s => s.approve);
+  const approveApp = useApplicationStore(s => s.approve);
+  const rejectApp = useApplicationStore(s => s.remove);
+
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
   const approveCandidate = useCandidateStore(s => s.approve);
