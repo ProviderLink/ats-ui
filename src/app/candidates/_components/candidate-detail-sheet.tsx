@@ -34,11 +34,13 @@ import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useEmailTemplateStore } from '@/store/slices/email-templates.store';
+import { useInterviewScorecardStore } from '@/store/slices/interview-scorecards.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useSettingsStore } from '@/store/slices/settings.store';
 import { useTagStore } from '@/store/slices/tags.store';
 import { useUserStore } from '@/store/slices/users.store';
+// Interview Scorecard UI — sibling components in this folder.
 import type {
   Application,
   Candidate,
@@ -93,6 +95,8 @@ import {
   scoreBarColor,
   scoreTextColor,
 } from '../_utils/candidate-styles';
+import { InterviewScorecardForm } from './interview-scorecard-form';
+import { InterviewScorecardHistory } from './interview-scorecard-history';
 
 /** Substitute `{{var}}` placeholders in template strings with values. */
 function substituteTemplate(tpl: string, vars: Record<string, string>): string {
@@ -1921,6 +1925,12 @@ export function CandidateDetailSheet({
   const fetchInterviewsByApplication = useInterviewStore(
     s => s.fetchByApplication
   );
+  // Interview Scorecards (new feature) — gated to approved candidates
+  // in the JSX below; fetch is candidate-scoped and lazy.
+  const fetchScorecardsByCandidate = useInterviewScorecardStore(
+    s => s.fetchByCandidate
+  );
+  const interviewScorecards = useInterviewScorecardStore(s => s.items);
   const cancelInterview = useInterviewStore(s => s.cancel);
   const completeAndFeedback = useInterviewStore(s => s.completeAndFeedback);
   const updateInterview = useInterviewStore(s => s.update);
@@ -2373,6 +2383,17 @@ export function CandidateDetailSheet({
     fetchInterviews,
     fetchInterviewsByApplication,
   ]);
+
+  // Interview Scorecards fetch — mirrors the interviews fetch effect
+  // directly above, but only fires when an approved candidate is open.
+  useEffect(() => {
+    if (open && candidate && candidate.status === 'approved') {
+      void fetchScorecardsByCandidate(candidate._id);
+    }
+  }, [open, candidate, fetchScorecardsByCandidate]);
+
+  // Dialog open-state for the Interview Scorecard entry form.
+  const [scorecardFormOpen, setScorecardFormOpen] = useState(false);
 
   async function handleMoveStage() {
     if (!activePipelineApp || !selectedStageId) return;
@@ -3323,6 +3344,47 @@ export function CandidateDetailSheet({
                       </div>
                     );
                   })()}
+
+                  {/* Interview Scorecards (new feature) — own section,
+                      same visibility gate as the Interviews section above. */}
+                  <Separator />
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <SectionLabel>Interview Scorecards</SectionLabel>
+                      <span className="text-xs text-muted-foreground">
+                        ({interviewScorecards.length})
+                      </span>
+                    </div>
+                    <InterviewScorecardHistory
+                      candidateId={c._id}
+                      jobOptions={jobs.map(j => ({
+                        _id: j._id,
+                        title: j.title,
+                      }))}
+                      users={users.map(u => ({
+                        _id: u._id,
+                        firstName: u.firstName,
+                        lastName: u.lastName,
+                      }))}
+                      onAdd={() => setScorecardFormOpen(true)}
+                    />
+                    {/* Entry form — Dialog, mounted inside the gated section
+                        so it only renders for approved candidates. Job
+                        defaults to the active pipeline application's job. */}
+                    <InterviewScorecardForm
+                      open={scorecardFormOpen}
+                      onOpenChange={setScorecardFormOpen}
+                      candidateId={c._id}
+                      defaultJobId={pipelineJob?._id ?? null}
+                      jobOptions={jobs.map(j => ({
+                        _id: j._id,
+                        title: j.title,
+                      }))}
+                      onCreated={() => {
+                        if (c._id) void fetchScorecardsByCandidate(c._id);
+                      }}
+                    />
+                  </div>
 
                   {/* Notes */}
                   {(() => {
