@@ -388,29 +388,73 @@ export function TableSkeleton({ cols }: { cols: number }) {
   );
 }
 
-function CurrentStageCell({
-  stageName,
-  color,
+function PipelineStageSelectCell({
+  applicationId,
+  stageId,
   assignedAt,
+  stages,
+  onOpenChange,
 }: {
-  stageName: string;
-  color: string;
+  applicationId: string;
+  stageId: string;
   assignedAt?: string;
+  stages: NonNullable<Job['pipeline']>['stages'];
+  onOpenChange?: (open: boolean) => void;
 }) {
+  const appStore = useApplicationStore();
+  const [changing, setChanging] = useState(false);
+
+  async function handleChange(newStageId: string) {
+    if (newStageId === stageId) return;
+    setChanging(true);
+    try {
+      await appStore.moveStage(applicationId, newStageId);
+      toast.success('Pipeline stage updated');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setChanging(false);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <span
-        className="size-2 rounded-full shrink-0"
-        style={{ backgroundColor: color }}
-      />
-      <div className="min-w-0">
-        <span className="text-sm font-medium truncate block">{stageName}</span>
-        {assignedAt && (
-          <span className="text-xs text-muted-foreground">
-            {timeAgo(assignedAt)}
-          </span>
-        )}
-      </div>
+    <div
+      className="flex w-full min-w-0 flex-col gap-1"
+      onClick={e => e.stopPropagation()}
+    >
+      <Select
+        value={stageId}
+        onValueChange={handleChange}
+        onOpenChange={onOpenChange}
+        disabled={changing || stages.length === 0}
+      >
+        <SelectTrigger
+          size="sm"
+          className="w-full min-w-40 max-w-64 min-h-8 items-start whitespace-normal rounded-sm border border-dashed border-muted-foreground/25 bg-transparent px-1.5 py-1 shadow-none hover:bg-foreground/5 dark:hover:bg-white/5 data-[state=open]:bg-foreground/5 data-[size=sm]:h-auto *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:items-start *:data-[slot=select-value]:whitespace-normal *:data-[slot=select-value]:text-left [&_svg]:mt-0.5 [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground/50"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border border-border bg-popover shadow-lg ring-1 ring-black/10 dark:ring-white/10">
+          {stages
+            .filter(s => s.isActive !== false)
+            .map(s => (
+              <SelectItem key={s._id} value={s._id}>
+                <span className="flex items-start gap-2">
+                  <span
+                    className="size-2 rounded-full shrink-0 mt-1"
+                    style={{ backgroundColor: s.color }}
+                  />
+                  <span className="whitespace-normal">{s.name}</span>
+                </span>
+              </SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
+      {assignedAt && (
+        <span className="text-xs text-muted-foreground pl-0.5">
+          {timeAgo(assignedAt)}
+        </span>
+      )}
     </div>
   );
 }
@@ -1479,6 +1523,7 @@ export function CandidatesTable() {
   const [activeTab, setActiveTab] = useState<TabValue>('pending');
   const [inputValue, setInputValue] = useState('');
   const [query, setQuery] = useState('');
+  const [openStageRowId, setOpenStageRowId] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'createdAt', desc: true },
   ]);
@@ -1550,7 +1595,14 @@ export function CandidatesTable() {
     const jobById = new Map(allJobs.map(j => [j._id, j]));
     const map = new Map<
       string,
-      { stageName: string; stageColor: string; assignedAt: string }
+      {
+        stageName: string;
+        stageColor: string;
+        stageId: string;
+        assignedAt: string;
+        applicationId: string;
+        stages: NonNullable<Job['pipeline']>['stages'];
+      }
     >();
     for (const a of allApps) {
       if (a.phase !== 'approved' || !a.currentStage || map.has(a.candidateId))
@@ -1562,7 +1614,10 @@ export function CandidatesTable() {
       map.set(a.candidateId, {
         stageName: a.currentStage.stageName,
         stageColor: stage?.color ?? '#3b82f6',
+        stageId: a.currentStage.stageId,
         assignedAt: a.currentStage.assignedAt,
+        applicationId: a._id,
+        stages: job?.pipeline?.stages ?? [],
       });
     }
     return map;
@@ -1840,10 +1895,14 @@ export function CandidatesTable() {
         if (!info)
           return <span className="text-xs text-muted-foreground">—</span>;
         return (
-          <CurrentStageCell
-            stageName={info.stageName}
-            color={info.stageColor}
+          <PipelineStageSelectCell
+            applicationId={info.applicationId}
+            stageId={info.stageId}
             assignedAt={info.assignedAt}
+            stages={info.stages}
+            onOpenChange={open =>
+              setOpenStageRowId(open ? row.original._id : null)
+            }
           />
         );
       },
@@ -2260,7 +2319,13 @@ export function CandidatesTable() {
         </p>
 
         {/* Table */}
-        <div className="rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="relative rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-0 z-10 bg-background/40 opacity-0 transition-opacity duration-150 dark:bg-background/60',
+              openStageRowId && 'opacity-100'
+            )}
+          />
           <div className="overflow-auto flex-1">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-foreground/5 dark:bg-muted">
@@ -2289,7 +2354,11 @@ export function CandidatesTable() {
                   table.getRowModel().rows.map(row => (
                     <TableRow
                       key={row.id}
-                      className="border-b last:border-0 hover:bg-foreground/4 dark:hover:bg-white/3 cursor-pointer"
+                      className={cn(
+                        'border-b last:border-0 hover:bg-foreground/4 dark:hover:bg-white/3 cursor-pointer has-aria-expanded:bg-transparent',
+                        openStageRowId === row.original._id &&
+                          'relative z-20 bg-background/90'
+                      )}
                       onClick={() => openDetail(row.original)}
                     >
                       {row.getVisibleCells().map(cell => (
