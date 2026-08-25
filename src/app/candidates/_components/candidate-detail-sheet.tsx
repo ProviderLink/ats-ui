@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getAuthToken, getJson } from '@/lib/api-client';
+import { downloadFileWithAuth } from '@/lib/download';
 import { getTagIds } from '@/lib/tags';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
@@ -215,8 +216,20 @@ function ResumeViewer({ url, filename }: { url: string; filename: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const blobUrlRef = useRef<string | null>(null);
   const cancelledRef = useRef(false);
+
+  const handleDownload = useCallback(async () => {
+    setDownloading(true);
+    try {
+      await downloadFileWithAuth(url, filename);
+    } catch {
+      toast.error('Failed to download the resume');
+    } finally {
+      setDownloading(false);
+    }
+  }, [url, filename]);
 
   const loadPdf = useCallback(async () => {
     const isPdf = filename?.toLowerCase().endsWith('.pdf');
@@ -289,17 +302,15 @@ function ResumeViewer({ url, filename }: { url: string; filename: string }) {
             variant="outline"
             size="sm"
             className="h-7 gap-1 px-2 text-xs"
-            asChild
+            onClick={handleDownload}
+            disabled={downloading}
           >
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              download={filename}
-            >
+            {downloading ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
               <DownloadIcon className="size-3.5" />
-              Download
-            </a>
+            )}
+            Download
           </Button>
           <Button
             variant="outline"

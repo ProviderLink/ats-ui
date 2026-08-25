@@ -66,17 +66,11 @@ type ReviewData = {
   education: ParsedEducation[];
 };
 
-type CandidateApiResponse = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  yearsOfExperience: number;
-  parsedData: CandidateParsedData | null;
+type ResumeUploadResult = {
   resumeUrl: string;
   resumeOriginalName: string;
-  resumeRawText?: string;
+  resumeRawText: string;
+  parsedData: CandidateParsedData | null;
 };
 
 // --- Zod schema ---
@@ -596,11 +590,18 @@ function InputStep({
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
-              <Field
-                label="Resume File (PDF only)"
-                required
-                error={resumeError ?? undefined}
-              >
+              {resumeError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-3 rounded-md border border-destructive bg-destructive/10 p-4"
+                >
+                  <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
+                  <p className="text-sm leading-relaxed text-destructive">
+                    {resumeError}
+                  </p>
+                </div>
+              )}
+              <Field label="Resume File (PDF only)" required>
                 <div
                   role="button"
                   tabIndex={0}
@@ -657,8 +658,8 @@ function InputStep({
                   <p className="text-xs leading-relaxed">
                     <strong className="font-semibold">Important:</strong> Upload
                     a <strong className="font-semibold">text-based PDF</strong>{' '}
-                    only. Image-based or scanned PDFs cannot be parsed and will
-                    result in missing data, making your application invalid.
+                    only. Image-based or scanned PDFs are not accepted and will
+                    be blocked — please upload a text-based PDF.
                   </p>
                 </div>
               </Field>
@@ -709,7 +710,7 @@ function InputStep({
 
 function ReviewStep({
   job,
-  candidate,
+  values,
   reviewData,
   setReviewData,
   videoIntroUrl,
@@ -718,7 +719,7 @@ function ReviewStep({
   submitting,
 }: {
   job: Job;
-  candidate: CandidateApiResponse;
+  values: InputFormValues;
   reviewData: ReviewData;
   setReviewData: React.Dispatch<React.SetStateAction<ReviewData>>;
   videoIntroUrl: string;
@@ -727,11 +728,11 @@ function ReviewStep({
   submitting: boolean;
 }) {
   const basicInfo = [
-    ['First Name', candidate.firstName],
-    ['Last Name', candidate.lastName],
-    ['Email', candidate.email],
-    ['Phone', candidate.phone],
-    ['Years of Experience', String(candidate.yearsOfExperience)],
+    ['First Name', values.firstName],
+    ['Last Name', values.lastName],
+    ['Email', values.email],
+    ['Phone', values.phone],
+    ['Years of Experience', String(values.yearsOfExperience)],
   ] as const;
 
   return (
@@ -949,6 +950,10 @@ const EMPTY_REVIEW: ReviewData = {
   education: [],
 };
 
+// Minimum time the "parsing" spinner stays on screen so a rejection feels
+// like a result of processing instead of an instant snap back to the form.
+const MIN_PARSE_DURATION_MS = 1200;
+
 export default function CareerApplyPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -960,7 +965,7 @@ export default function CareerApplyPage() {
   const [step, setStep] = useState<Step>('input');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
-  const [candidate, setCandidate] = useState<CandidateApiResponse | null>(null);
+  const [resumeData, setResumeData] = useState<ResumeUploadResult | null>(null);
   const [inputValues, setInputValues] = useState<InputFormValues | null>(null);
   const [reviewData, setReviewData] = useState<ReviewData>(EMPTY_REVIEW);
 
@@ -1010,6 +1015,7 @@ export default function CareerApplyPage() {
       return;
     }
     setResumeError(null);
+    const startedAt = Date.now();
     setInputValues(values);
     setStep('parsing');
 
@@ -1036,34 +1042,16 @@ export default function CareerApplyPage() {
     fd.append('file', resumeFile);
 
     try {
-      const created = await publicApi.postForm<CandidateApiResponse>(
+      const result = await publicApi.postForm<ResumeUploadResult>(
         '/ats/candidates/public/upload-and-parse',
         fd
       );
-      setCandidate(created);
+      setResumeData(result);
 
-      const MAX_POLLS = 30;
-      let parsedData: CandidateParsedData | null = created.parsedData ?? null;
-
-      for (let i = 0; i < MAX_POLLS && !parsedData; i++) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        try {
-          const updated = await publicApi.get<CandidateApiResponse>(
-            `/ats/candidates/${created._id}?includeRawText=true`
-          );
-          parsedData = updated.parsedData ?? null;
-          if (parsedData) {
-            setCandidate(updated);
-          }
-        } catch {
-          // Polling may fail if endpoint requires auth; break and use whatever we have
-          break;
-        }
-      }
-
+      const parsedData = result.parsedData;
       if (!parsedData) {
         toast.warning(
-          'AI parsing is taking longer than expected. You can edit manually or the data may appear later.'
+          'AI parsing did not return any data. You can fill the details manually below.'
         );
       }
 
@@ -1077,18 +1065,34 @@ export default function CareerApplyPage() {
       });
       setStep('review');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      if (/image-based|scanned|text-based PDF/i.test(message)) {
+        // Keep the parsing spinner visible briefly so the rejection reads as
+        // a processing result rather than an instant snap-back to the form.
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < MIN_PARSE_DURATION_MS) {
+          await new Promise(resolve =>
+            setTimeout(resolve, MIN_PARSE_DURATION_MS - elapsed)
+          );
+        }
+        setResumeFile(null);
+        setResumeError(
+          'This PDF appears to be image-based or scanned and cannot be parsed. Please upload a text-based PDF.'
+        );
+        setStep('input');
+        return;
+      }
+      toast.error(message);
       setStep('input');
     }
   }
 
   async function handleSubmit() {
-    if (!candidate || !inputValues || !id) return;
+    if (!resumeData || !inputValues || !id) return;
     setStep('submitting');
 
     try {
       await publicApi.post(`/ats/jobs/${id}/apply`, {
-        candidateId: candidate._id,
         firstName: inputValues.firstName,
         lastName: inputValues.lastName,
         email: inputValues.email,
@@ -1099,9 +1103,9 @@ export default function CareerApplyPage() {
         currentSalaryUSD: inputValues.currentSalaryUSD ?? null,
         reasonForLeaving: inputValues.reasonForLeaving || null,
         cityOfResidence: inputValues.cityOfResidence || null,
-        resumeUrl: candidate.resumeUrl ?? '',
-        resumeOriginalName: candidate.resumeOriginalName ?? 'resume.pdf',
-        resumeRawText: candidate.resumeRawText ?? '',
+        resumeUrl: resumeData.resumeUrl,
+        resumeOriginalName: resumeData.resumeOriginalName,
+        resumeRawText: resumeData.resumeRawText,
         videoIntroUrl: inputValues.videoIntroUrl || undefined,
         parsedData: {
           summary: reviewData.summary,
@@ -1120,7 +1124,7 @@ export default function CareerApplyPage() {
   }
 
   function handleBackToUpload() {
-    setCandidate(null);
+    setResumeData(null);
     setInputValues(null);
     setReviewData(EMPTY_REVIEW);
     setStep('input');
@@ -1234,10 +1238,10 @@ export default function CareerApplyPage() {
         />
       )}
 
-      {inReview && candidate && inputValues && (
+      {inReview && inputValues && (
         <ReviewStep
           job={job}
-          candidate={candidate}
+          values={inputValues}
           reviewData={reviewData}
           setReviewData={setReviewData}
           videoIntroUrl={inputValues.videoIntroUrl ?? ''}

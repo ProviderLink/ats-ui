@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { getJson, patchJson, postForm, postJson } from '@/lib/api-client';
+import { postForm, postJson } from '@/lib/api-client';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import type { CandidateParsedData } from '@/store/types';
@@ -67,16 +67,6 @@ type ReviewData = {
   certifications: string[];
   experience: ParsedExperience[];
   education: ParsedEducation[];
-};
-
-type CandidateApiResponse = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  yearsOfExperience: number;
-  parsedData: CandidateParsedData | null;
 };
 
 // --- Zod schema ---
@@ -681,11 +671,18 @@ function InputStep({
               <CardTitle>Resume</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <Field
-                label="Resume File (PDF only)"
-                required
-                error={resumeError ?? undefined}
-              >
+              {resumeError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-3 rounded-md border border-destructive bg-destructive/10 p-4"
+                >
+                  <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
+                  <p className="text-sm leading-relaxed text-destructive">
+                    {resumeError}
+                  </p>
+                </div>
+              )}
+              <Field label="Resume File (PDF only)" required>
                 <div
                   role="button"
                   tabIndex={0}
@@ -742,8 +739,8 @@ function InputStep({
                   <p className="text-xs">
                     <strong>Important:</strong> Upload a{' '}
                     <strong>text-based PDF</strong> only. Image-based or scanned
-                    PDFs cannot be parsed and will result in missing data,
-                    making the candidacy invalid.
+                    PDFs are not accepted and will be blocked — please upload a
+                    text-based PDF.
                   </p>
                 </div>
               </Field>
@@ -815,7 +812,7 @@ function InputStep({
 // --- Step 3: Review parsed data ---
 
 function ReviewStep({
-  candidate,
+  values,
   reviewData,
   setReviewData,
   videoIntroUrl,
@@ -824,7 +821,7 @@ function ReviewStep({
   onImport,
   onCancel,
 }: {
-  candidate: CandidateApiResponse;
+  values: InputFormValues;
   reviewData: ReviewData;
   setReviewData: React.Dispatch<React.SetStateAction<ReviewData>>;
   videoIntroUrl: string;
@@ -836,11 +833,11 @@ function ReviewStep({
   const selectedJob = openJobs.find(j => j._id === jobId);
 
   const basicInfo = [
-    ['First Name', candidate.firstName],
-    ['Last Name', candidate.lastName],
-    ['Email', candidate.email],
-    ['Phone', candidate.phone],
-    ['Years of Experience', String(candidate.yearsOfExperience)],
+    ['First Name', values.firstName],
+    ['Last Name', values.lastName],
+    ['Email', values.email],
+    ['Phone', values.phone],
+    ['Years of Experience', String(values.yearsOfExperience)],
   ] as const;
 
   return (
@@ -1066,6 +1063,10 @@ const EMPTY_REVIEW: ReviewData = {
   education: [],
 };
 
+// Minimum time the "parsing" spinner stays on screen so a rejection feels
+// like a result of processing instead of an instant snap back to the form.
+const MIN_PARSE_DURATION_MS = 1200;
+
 export default function CandidateQuickImportPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1073,7 +1074,6 @@ export default function CandidateQuickImportPage() {
   const [step, setStep] = useState<Step>('input');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
-  const [candidate, setCandidate] = useState<CandidateApiResponse | null>(null);
   const [inputValues, setInputValues] = useState<InputFormValues | null>(null);
   const [reviewData, setReviewData] = useState<ReviewData>(EMPTY_REVIEW);
   const allJobs = useJobStore(s => s.items);
@@ -1146,55 +1146,24 @@ export default function CandidateQuickImportPage() {
       return;
     }
     setResumeError(null);
+    const startedAt = Date.now();
     setInputValues(values);
     setStep('parsing');
 
     const formData = new FormData();
-    formData.append('firstName', values.firstName);
-    formData.append('lastName', values.lastName);
-    formData.append('email', values.email);
-    formData.append('phone', values.phone);
-    formData.append('yearsOfExperience', String(values.yearsOfExperience));
-    if (values.englishProficiency)
-      formData.append('englishProficiency', values.englishProficiency);
-    if (values.currentSalaryPHP !== undefined)
-      formData.append('currentSalaryPHP', String(values.currentSalaryPHP));
-    if (values.currentSalaryUSD !== undefined)
-      formData.append('currentSalaryUSD', String(values.currentSalaryUSD));
-    if (values.reasonForLeaving)
-      formData.append('reasonForLeaving', values.reasonForLeaving);
-    if (values.cityOfResidence)
-      formData.append('cityOfResidence', values.cityOfResidence);
-    if (values.videoIntroUrl) {
-      formData.append('videoIntroUrl', values.videoIntroUrl);
-      formData.append('videoIntroSource', 'external');
-    }
     formData.append('file', resumeFile);
 
     try {
-      const created = await postForm<CandidateApiResponse>(
-        '/ats/candidates',
+      // Stateless parse — no candidate is created yet. The candidate is only
+      // persisted on "Import" so abandoned uploads never leave orphan records.
+      const parsedData = await postForm<CandidateParsedData | null>(
+        '/ats/candidates/public/parse',
         formData
       );
-      setCandidate(created);
-
-      const MAX_POLLS = 30;
-      let parsedData: CandidateParsedData | null = created.parsedData ?? null;
-
-      for (let i = 0; i < MAX_POLLS && !parsedData; i++) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const updated = await getJson<CandidateApiResponse>(
-          `/ats/candidates/${created._id}?includeRawText=true`
-        );
-        parsedData = updated.parsedData ?? null;
-        if (parsedData) {
-          setCandidate(updated);
-        }
-      }
 
       if (!parsedData) {
         toast.warning(
-          'AI parsing timed out. You can edit manually or the data may appear later.'
+          'AI parsing did not return any data. You can fill the details manually below.'
         );
       }
 
@@ -1208,50 +1177,91 @@ export default function CandidateQuickImportPage() {
       });
       setStep('review');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      if (/image-based|scanned|text-based PDF/i.test(message)) {
+        // Keep the parsing spinner visible briefly so the rejection reads as
+        // a processing result rather than an instant snap-back to the form.
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < MIN_PARSE_DURATION_MS) {
+          await new Promise(resolve =>
+            setTimeout(resolve, MIN_PARSE_DURATION_MS - elapsed)
+          );
+        }
+        setResumeFile(null);
+        setResumeError(
+          'This PDF appears to be image-based or scanned and cannot be parsed. Please upload a text-based PDF.'
+        );
+        setStep('input');
+        return;
+      }
+      toast.error(message);
       setStep('input');
     }
   }
 
   async function handleImport() {
-    if (!candidate || !inputValues) return;
+    if (!resumeFile || !inputValues) return;
     setStep('importing');
 
     try {
-      await patchJson(`/ats/candidates/${candidate._id}`, {
-        firstName: inputValues.firstName,
-        lastName: inputValues.lastName,
-        phone: inputValues.phone,
-        yearsOfExperience: inputValues.yearsOfExperience,
-        englishProficiency: inputValues.englishProficiency ?? null,
-        currentSalaryPHP: inputValues.currentSalaryPHP ?? null,
-        currentSalaryUSD: inputValues.currentSalaryUSD ?? null,
-        reasonForLeaving: inputValues.reasonForLeaving || null,
-        cityOfResidence: inputValues.cityOfResidence || null,
-        parsedData: {
+      const formData = new FormData();
+      formData.append('firstName', inputValues.firstName);
+      formData.append('lastName', inputValues.lastName);
+      formData.append('email', inputValues.email);
+      formData.append('phone', inputValues.phone);
+      formData.append(
+        'yearsOfExperience',
+        String(inputValues.yearsOfExperience)
+      );
+      if (inputValues.englishProficiency)
+        formData.append('englishProficiency', inputValues.englishProficiency);
+      if (inputValues.currentSalaryPHP !== undefined)
+        formData.append(
+          'currentSalaryPHP',
+          String(inputValues.currentSalaryPHP)
+        );
+      if (inputValues.currentSalaryUSD !== undefined)
+        formData.append(
+          'currentSalaryUSD',
+          String(inputValues.currentSalaryUSD)
+        );
+      if (inputValues.reasonForLeaving)
+        formData.append('reasonForLeaving', inputValues.reasonForLeaving);
+      if (inputValues.cityOfResidence)
+        formData.append('cityOfResidence', inputValues.cityOfResidence);
+      if (inputValues.videoIntroUrl) {
+        formData.append('videoIntroUrl', inputValues.videoIntroUrl);
+        formData.append('videoIntroSource', 'external');
+      }
+      formData.append(
+        'parsedData',
+        JSON.stringify({
           summary: reviewData.summary,
           skills: reviewData.skills,
           languages: reviewData.languages,
           certifications: reviewData.certifications,
           experience: reviewData.experience,
           education: reviewData.education,
-        },
-        videoIntroUrl: inputValues.videoIntroUrl || undefined,
-        videoIntroSource: inputValues.videoIntroUrl ? 'external' : undefined,
-      });
+        })
+      );
+      formData.append('file', resumeFile);
 
-      await postJson(`/ats/candidates/${candidate._id}/assign-job`, {
+      const created = await postForm<{ _id: string }>(
+        '/ats/candidates',
+        formData
+      );
+
+      await postJson(`/ats/candidates/${created._id}/assign-job`, {
         jobId: inputValues.jobId,
       });
 
       const job = allJobs.find(j => j._id === inputValues.jobId);
       toast.success(
-        `Candidate ${candidate.firstName} ${candidate.lastName} imported and assigned to ${job?.title ?? inputValues.jobId}`
+        `Candidate ${inputValues.firstName} ${inputValues.lastName} imported and assigned to ${job?.title ?? inputValues.jobId}`
       );
 
       form.reset();
       setResumeFile(null);
-      setCandidate(null);
       setInputValues(null);
       setReviewData(EMPTY_REVIEW);
       setStep('input');
@@ -1262,7 +1272,6 @@ export default function CandidateQuickImportPage() {
   }
 
   function handleCancelReview() {
-    setCandidate(null);
     setInputValues(null);
     setReviewData(EMPTY_REVIEW);
     setStep('input');
@@ -1331,9 +1340,9 @@ export default function CandidateQuickImportPage() {
         />
       )}
 
-      {step === 'review' && candidate && inputValues && (
+      {step === 'review' && inputValues && (
         <ReviewStep
-          candidate={candidate}
+          values={inputValues}
           reviewData={reviewData}
           setReviewData={setReviewData}
           videoIntroUrl={inputValues.videoIntroUrl ?? ''}
