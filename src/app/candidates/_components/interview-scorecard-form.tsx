@@ -9,6 +9,7 @@
  * recomputes on save. The computed `*Weighted` / `overallScore` /
  * `communicationRating` fields are NEVER sent to the backend.
  */
+import { ROLE_LABELS } from '@/app/settings/_data/settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -136,15 +137,19 @@ export function InterviewScorecardForm({
   const usersLoading = useUserStore(s => s.loading);
   const fetchUsers = useUserStore(s => s.fetch);
 
-  // Interviewer pool = users that have the `interviewer` role; plus the
-  // current user (so an admin/recruiter can pick themselves too).
+  // Interviewer pool = all active team members (ATS roles + admin +
+  // account_manager). Excludes CRM-only roles (client, va) — those aren't
+  // interviewers. Any team member can be assigned as the interviewer.
   const interviewerOptions = useMemo(() => {
     return users
-      .filter(
-        u => u.roles.includes('interviewer') || u._id === currentUser?._id
-      )
-      .map(u => ({ _id: u._id, name: `${u.firstName} ${u.lastName}` }));
-  }, [users, currentUser]);
+      .filter(u => u.isActive !== false)
+      .filter(u => u.roles.some(r => r !== 'client' && r !== 'va'))
+      .map(u => ({
+        _id: u._id,
+        name: `${u.firstName} ${u.lastName}`,
+        role: u.roles.map(r => ROLE_LABELS[r] ?? r).join(', '),
+      }));
+  }, [users]);
 
   const {
     register,
@@ -382,13 +387,18 @@ export function InterviewScorecardForm({
                           {interviewerOptions.length === 0 ? (
                             <div className="px-2 py-1.5 text-xs text-muted-foreground">
                               {usersLoading
-                                ? 'Loading interviewers…'
-                                : 'No interviewers available'}
+                                ? 'Loading team members…'
+                                : 'No team members available'}
                             </div>
                           ) : (
                             interviewerOptions.map(u => (
                               <SelectItem key={u._id} value={u._id}>
-                                {u.name}
+                                <span className="flex items-center justify-between gap-3">
+                                  <span>{u.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {u.role}
+                                  </span>
+                                </span>
                               </SelectItem>
                             ))
                           )}

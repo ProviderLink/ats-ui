@@ -12,6 +12,7 @@ export interface UserPermissions {
   candidates?: UserPermissionResource;
   jobs?: UserPermissionResource;
   interviews?: UserPermissionResource;
+  interviewScorecards?: UserPermissionResource;
   clients?: UserPermissionResource;
   emails?: UserPermissionResource;
   tags?: UserPermissionResource;
@@ -75,4 +76,6 @@ export interface UserFilters {
   roles?: UserRole[];
   appAccess?: string;
   isActive?: boolean;
+  page?: number;
+  limit?: number;
 }

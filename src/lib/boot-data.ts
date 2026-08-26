@@ -33,7 +33,7 @@ export async function bootAllData(): Promise<void> {
       useApplicationStore.getState().fetch({ limit: 9999 }),
       useInterviewStore.getState().fetch({ limit: 9999 }),
       useTagStore.getState().fetch(),
-      useUserStore.getState().fetch(),
+      useUserStore.getState().fetch({ limit: 9999 }),
       useSettingsStore.getState().fetch(),
       useEmailTemplateStore.getState().fetch(),
       usePipelineTemplateStore.getState().fetch(),
