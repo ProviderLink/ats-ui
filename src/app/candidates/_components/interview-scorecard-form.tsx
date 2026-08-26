@@ -41,7 +41,9 @@ import type {
   CreateInterviewScorecardDto,
   ExperienceSelection,
   FinalRecommendation,
+  InterviewScorecard,
   InterviewScorecardType,
+  UpdateInterviewScorecardDto,
 } from '@/store/types/interview-scorecard.types';
 import {
   CATEGORY_WEIGHTS,
@@ -111,6 +113,8 @@ interface Props {
   defaultJobId?: string | null;
   /** Allowed job choices (jobs scoped to this candidate's applications). */
   jobOptions: { _id: string; title: string }[];
+  /** When set, the form is in edit mode for this existing scorecard. */
+  editing?: InterviewScorecard | null;
   onCreated?: () => void;
 }
 
@@ -122,15 +126,67 @@ const RECOMMENDATION_OPTIONS: FinalRecommendation[] = [
   'do_not_recommend',
 ];
 
+/**
+ * Format a Date/ISO value for an `<input type="datetime-local">` in the
+ * user's LOCAL timezone. A naive `toISOString().slice(0, 16)` would render
+ * UTC, which on a later save gets re-interpreted as local time and silently
+ * shifts the stored date by the timezone offset.
+ */
+function toDatetimeLocal(value: string | Date): string {
+  const d = new Date(value);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+// Map an existing scorecard into the form's shape for edit mode.
+function toFormValues(sc: InterviewScorecard): ScorecardFormValues {
+  return {
+    jobId: sc.jobId,
+    interviewerId: sc.interviewerId,
+    interviewDate: toDatetimeLocal(sc.interviewDate),
+    commEnglishDiction: sc.commEnglishDiction,
+    commEnglishComprehension: sc.commEnglishComprehension,
+    experienceSelections: sc.experienceSelections,
+    experienceRating: sc.experienceRating,
+    profPreparedOnTime: sc.profPreparedOnTime,
+    profAppearanceDemeanor: sc.profAppearanceDemeanor,
+    profAttitudeReliability: sc.profAttitudeReliability,
+    profInterestInPosition: sc.profInterestInPosition,
+    professionalismRating: sc.professionalismRating,
+    techInternetSpeed: sc.techInternetSpeed,
+    techHeadsetNoiseCancelling: sc.techHeadsetNoiseCancelling,
+    techTwoScreens: sc.techTwoScreens,
+    techBackupInternet: sc.techBackupInternet,
+    techBackupGenerator: sc.techBackupGenerator,
+    technologyRating: sc.technologyRating,
+    availUsHours: sc.availUsHours,
+    availCompensationAcceptable: sc.availCompensationAcceptable,
+    availStartAvailability: sc.availStartAvailability,
+    availOverallFit: sc.availOverallFit,
+    availabilityRating: sc.availabilityRating,
+    strengths: sc.strengths ?? '',
+    concerns: sc.concerns ?? '',
+    generalNotes: sc.generalNotes ?? '',
+    recommendedPosition: sc.recommendedPosition ?? '',
+    earliestStartDate: sc.earliestStartDate
+      ? new Date(sc.earliestStartDate).toISOString().slice(0, 10)
+      : '',
+    compensationExpectation: sc.compensationExpectation ?? '',
+    finalRecommendation: sc.finalRecommendation,
+  };
+}
+
 export function InterviewScorecardForm({
   open,
   onOpenChange,
   candidateId,
   defaultJobId,
   jobOptions,
+  editing,
   onCreated,
 }: Props) {
   const create = useInterviewScorecardStore(s => s.create);
+  const update = useInterviewScorecardStore(s => s.update);
   const mutating = useInterviewScorecardStore(s => s.mutating);
   const currentUser = useAuthStore(s => s.user);
   const users = useUserStore(s => s.items);
@@ -141,7 +197,7 @@ export function InterviewScorecardForm({
   // account_manager). Excludes CRM-only roles (client, va) — those aren't
   // interviewers. Any team member can be assigned as the interviewer.
   const interviewerOptions = useMemo(() => {
-    return users
+    const options = users
       .filter(u => u.isActive !== false)
       .filter(u => u.roles.some(r => r !== 'client' && r !== 'va'))
       .map(u => ({
@@ -149,7 +205,24 @@ export function InterviewScorecardForm({
         name: `${u.firstName} ${u.lastName}`,
         role: u.roles.map(r => ROLE_LABELS[r] ?? r).join(', '),
       }));
-  }, [users]);
+
+    // In edit mode, the scorecard's existing interviewer may have been
+    // deactivated (or otherwise filtered out) since it was created — make
+    // sure their name still shows in the dropdown so it doesn't render blank.
+    const currentId = editing?.interviewerId;
+    if (currentId && !options.some(o => o._id === currentId)) {
+      const current = users.find(u => u._id === currentId);
+      if (current) {
+        options.push({
+          _id: current._id,
+          name: `${current.firstName} ${current.lastName}`,
+          role: current.roles.map(r => ROLE_LABELS[r] ?? r).join(', '),
+        });
+      }
+    }
+
+    return options;
+  }, [users, editing?.interviewerId]);
 
   const {
     register,
@@ -163,7 +236,7 @@ export function InterviewScorecardForm({
     defaultValues: {
       jobId: defaultJobId ?? '',
       interviewerId: currentUser?._id ?? '',
-      interviewDate: new Date().toISOString().slice(0, 16), // <datetime-local>
+      interviewDate: toDatetimeLocal(new Date()), // <datetime-local>
       commEnglishDiction: 0,
       commEnglishComprehension: 0,
       experienceSelections: [],
@@ -199,11 +272,18 @@ export function InterviewScorecardForm({
     if (open) void fetchUsers();
   }, [open, fetchUsers]);
 
-  // Auto-populate the Job field with the candidate's active pipeline job
-  // each time the sheet opens — still changeable via the select afterwards.
+  // Prefill on open: edit mode loads the existing scorecard; create mode
+  // resets to defaults and auto-selects the active pipeline job (still
+  // changeable via the select afterwards).
   useEffect(() => {
-    if (open && defaultJobId) setValue('jobId', defaultJobId);
-  }, [open, defaultJobId, setValue]);
+    if (!open) return;
+    if (editing) {
+      reset(toFormValues(editing));
+    } else {
+      reset();
+      if (defaultJobId) setValue('jobId', defaultJobId);
+    }
+  }, [open, editing, defaultJobId, reset, setValue]);
 
   // Live UX preview — subscribed ONLY to the rating fields that feed the
   // score computation, so typing notes / picking a job doesn't re-render
@@ -240,10 +320,7 @@ export function InterviewScorecardForm({
   }, [preview]);
 
   const onSubmit = async (values: ScorecardFormValues) => {
-    const payload: CreateInterviewScorecardDto = {
-      candidateId,
-      jobId: values.jobId,
-      interviewerId: values.interviewerId,
+    const fields = {
       interviewDate: new Date(values.interviewDate).toISOString(),
       interviewType: 'initial_screening' as InterviewScorecardType,
       commEnglishDiction: Number(values.commEnglishDiction),
@@ -277,8 +354,23 @@ export function InterviewScorecardForm({
       compensationExpectation: values.compensationExpectation ?? '',
       finalRecommendation: values.finalRecommendation,
     };
+
     try {
-      await create(payload);
+      if (editing) {
+        const payload: UpdateInterviewScorecardDto = {
+          interviewerId: values.interviewerId,
+          ...fields,
+        };
+        await update(editing._id, payload);
+      } else {
+        const payload: CreateInterviewScorecardDto = {
+          candidateId,
+          jobId: values.jobId,
+          interviewerId: values.interviewerId,
+          ...fields,
+        };
+        await create(payload);
+      }
       onOpenChange(false);
       reset();
       onCreated?.();
@@ -294,7 +386,9 @@ export function InterviewScorecardForm({
         className="flex max-w-none! w-full sm:w-[60vw] min-w-95 flex-col gap-0 p-0"
       >
         <SheetHeader className="shrink-0 border-b px-6 py-4">
-          <SheetTitle>New Interview Scorecard</SheetTitle>
+          <SheetTitle>
+            {editing ? 'Edit Interview Scorecard' : 'New Interview Scorecard'}
+          </SheetTitle>
           <SheetDescription>
             Rate the candidate across five categories. Overall score is computed
             automatically and finalized by the server on submit.
@@ -316,9 +410,11 @@ export function InterviewScorecardForm({
                   label="Job"
                   error={errors.jobId?.message}
                   hint={
-                    defaultJobId
-                      ? 'Auto-selected from the active pipeline job — change if needed.'
-                      : undefined
+                    editing
+                      ? 'Job is fixed when editing an existing scorecard.'
+                      : defaultJobId
+                        ? 'Auto-selected from the active pipeline job — change if needed.'
+                        : undefined
                   }
                   required
                 >
@@ -329,6 +425,7 @@ export function InterviewScorecardForm({
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
+                        disabled={!!editing}
                       >
                         <SelectTrigger
                           className="w-full"
@@ -730,7 +827,7 @@ export function InterviewScorecardForm({
                 {mutating && (
                   <Loader2Icon className="size-4 mr-2 animate-spin" />
                 )}
-                Submit Scorecard
+                {editing ? 'Save Changes' : 'Submit Scorecard'}
               </Button>
             </div>
           </SheetFooter>

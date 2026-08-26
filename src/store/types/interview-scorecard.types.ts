@@ -169,6 +169,13 @@ export interface CreateInterviewScorecardDto {
   finalRecommendation: FinalRecommendation;
 }
 
+// Shape PATCHed to the backend when editing. Immutable identifiers
+// (candidateId, jobId) are excluded — they never change after creation.
+export type UpdateInterviewScorecardDto = Omit<
+  CreateInterviewScorecardDto,
+  'candidateId' | 'jobId'
+>;
+
 export interface InterviewScorecardListResponse {
   data: InterviewScorecard[];
   total: number;

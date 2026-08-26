@@ -25,7 +25,7 @@ import {
   FINAL_RECOMMENDATION_BADGE_CLASS,
   FINAL_RECOMMENDATION_LABELS,
 } from '@/store/types/interview-scorecard.types';
-import { StarIcon } from 'lucide-react';
+import { PencilIcon, StarIcon } from 'lucide-react';
 
 interface Props {
   scorecard: InterviewScorecard | null;
@@ -35,6 +35,8 @@ interface Props {
   jobTitle?: string | null;
   /** Human-readable interviewer name for display. */
   interviewerName?: string | null;
+  /** Triggered when the user clicks Edit. */
+  onEdit?: () => void;
 }
 
 export function InterviewScorecardDetail({
@@ -43,6 +45,7 @@ export function InterviewScorecardDetail({
   onOpenChange,
   jobTitle,
   interviewerName,
+  onEdit,
 }: Props) {
   if (!scorecard) return null;
 
@@ -85,8 +88,8 @@ export function InterviewScorecardDetail({
               </p>
             </div>
             <div className="text-xs text-muted-foreground text-right">
-              <p>Server-computed on submit</p>
-              <p>Immutable after creation</p>
+              <p>Server-computed on save</p>
+              <p>Editable anytime</p>
             </div>
           </section>
 
@@ -243,7 +246,12 @@ export function InterviewScorecardDetail({
             </div>
           </section>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {onEdit && (
+              <Button variant="outline" onClick={onEdit}>
+                <PencilIcon className="size-3.5 mr-1" /> Edit
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>

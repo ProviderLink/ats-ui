@@ -29,9 +29,16 @@ interface Props {
   jobOptions: { _id: string; title: string }[];
   users: { _id: string; firstName: string; lastName: string }[];
   onAdd: () => void;
+  /** Triggered when the user requests to edit an existing scorecard. */
+  onEdit?: (scorecard: InterviewScorecard) => void;
 }
 
-export function InterviewScorecardHistory({ jobOptions, users, onAdd }: Props) {
+export function InterviewScorecardHistory({
+  jobOptions,
+  users,
+  onAdd,
+  onEdit,
+}: Props) {
   const scorecards = useInterviewScorecardStore(s => s.items);
   const loading = useInterviewScorecardStore(s => s.loading);
 
@@ -149,6 +156,14 @@ export function InterviewScorecardHistory({ jobOptions, users, onAdd }: Props) {
         jobTitle={selected ? resolveJobTitle(selected.jobId) : null}
         interviewerName={
           selected ? resolveInterviewerName(selected.interviewerId) : null
+        }
+        onEdit={
+          selected
+            ? () => {
+                setDetailOpen(false);
+                onEdit?.(selected);
+              }
+            : undefined
         }
       />
     </div>

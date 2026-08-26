@@ -1,4 +1,4 @@
-import { getJson, postJson } from '@/lib/api-client';
+import { getJson, patchJson, postJson } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
@@ -7,6 +7,7 @@ import type {
   CreateInterviewScorecardDto,
   InterviewScorecard,
   InterviewScorecardListResponse,
+  UpdateInterviewScorecardDto,
 } from '../types/interview-scorecard.types';
 
 interface InterviewScorecardState {
@@ -21,6 +22,10 @@ interface InterviewScorecardActions {
   fetchByCandidate: (candidateId: string) => Promise<void>;
   fetchOne: (id: string) => Promise<void>;
   create: (payload: CreateInterviewScorecardDto) => Promise<InterviewScorecard>;
+  update: (
+    id: string,
+    payload: UpdateInterviewScorecardDto
+  ) => Promise<InterviewScorecard>;
   reset: () => void;
 }
 
@@ -100,6 +105,35 @@ export const useInterviewScorecardStore = create<
           s.mutating = false;
         });
         toast.success('Interview scorecard submitted');
+        return scorecard;
+      } catch (e) {
+        set(s => {
+          s.mutating = false;
+          s.error = (e as Error).message;
+        });
+        toast.error((e as Error).message);
+        throw e;
+      }
+    },
+
+    update: async (id, payload) => {
+      set(s => {
+        s.mutating = true;
+        s.error = null;
+      });
+      try {
+        const scorecard = await patchJson<InterviewScorecard>(
+          `/ats/interview-scorecards/${id}`,
+          payload
+        );
+        set(s => {
+          s.items = s.items
+            .map(it => (it._id === id ? scorecard : it))
+            .sort((a, b) => (a.interviewDate < b.interviewDate ? 1 : -1));
+          s.detail[id] = scorecard;
+          s.mutating = false;
+        });
+        toast.success('Interview scorecard updated');
         return scorecard;
       } catch (e) {
         set(s => {

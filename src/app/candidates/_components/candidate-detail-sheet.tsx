@@ -41,6 +41,7 @@ import { useJobStore } from '@/store/slices/jobs.store';
 import { useSettingsStore } from '@/store/slices/settings.store';
 import { useTagStore } from '@/store/slices/tags.store';
 import { useUserStore } from '@/store/slices/users.store';
+import type { InterviewScorecard } from '@/store/types/interview-scorecard.types';
 // Interview Scorecard UI — sibling components in this folder.
 import type {
   Application,
@@ -2405,6 +2406,9 @@ export function CandidateDetailSheet({
 
   // Dialog open-state for the Interview Scorecard entry form.
   const [scorecardFormOpen, setScorecardFormOpen] = useState(false);
+  // The scorecard currently being edited (null = create mode).
+  const [editingScorecard, setEditingScorecard] =
+    useState<InterviewScorecard | null>(null);
 
   async function handleMoveStage() {
     if (!activePipelineApp || !selectedStageId) return;
@@ -3377,16 +3381,27 @@ export function CandidateDetailSheet({
                         firstName: u.firstName,
                         lastName: u.lastName,
                       }))}
-                      onAdd={() => setScorecardFormOpen(true)}
+                      onAdd={() => {
+                        setEditingScorecard(null);
+                        setScorecardFormOpen(true);
+                      }}
+                      onEdit={scorecard => {
+                        setEditingScorecard(scorecard);
+                        setScorecardFormOpen(true);
+                      }}
                     />
                     {/* Entry form — Dialog, mounted inside the gated section
                         so it only renders for approved candidates. Job
                         defaults to the active pipeline application's job. */}
                     <InterviewScorecardForm
                       open={scorecardFormOpen}
-                      onOpenChange={setScorecardFormOpen}
+                      onOpenChange={open => {
+                        setScorecardFormOpen(open);
+                        if (!open) setEditingScorecard(null);
+                      }}
                       candidateId={c._id}
                       defaultJobId={pipelineJob?._id ?? null}
+                      editing={editingScorecard}
                       jobOptions={jobs.map(j => ({
                         _id: j._id,
                         title: j.title,
