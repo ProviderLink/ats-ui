@@ -30,6 +30,7 @@ interface ApplicationActions {
   ) => Promise<void>;
   moveStage: (id: string, stageId: string) => Promise<void>;
   hire: (id: string) => Promise<void>;
+  reject: (id: string, reason?: string) => Promise<void>;
   updateNotes: (id: string, notes: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   setFilters: (f: Partial<ApplicationFilters>) => void;
@@ -231,6 +232,31 @@ export const useApplicationStore = create<
           const app = await patchJson<Application>(
             `/ats/applications/${id}/hire`,
             {}
+          );
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === id);
+            if (idx !== -1) s.items[idx] = app;
+            if (s.detail[id]) s.detail[id] = app;
+            s.mutating = false;
+          });
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
+          throw e;
+        }
+      },
+
+      reject: async (id, reason) => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          const app = await patchJson<Application>(
+            `/ats/applications/${id}/reject`,
+            { reason: reason ?? undefined }
           );
           set(s => {
             const idx = s.items.findIndex(x => x._id === id);

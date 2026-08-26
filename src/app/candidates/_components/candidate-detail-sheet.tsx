@@ -1891,7 +1891,7 @@ export function CandidateDetailSheet({
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
   const approveApp = useApplicationStore(s => s.approve);
-  const rejectApp = useApplicationStore(s => s.remove);
+  const rejectApp = useApplicationStore(s => s.reject);
 
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
@@ -2316,7 +2316,7 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectConfirm(_reason: string) {
+  async function handleRejectConfirm(reason: string) {
     if (!pendingApplication) {
       toast.error('No pending application to reject');
       setRejectOpen(false);
@@ -2324,7 +2324,7 @@ export function CandidateDetailSheet({
     }
     setActionLoading(true);
     try {
-      await rejectApp(pendingApplication._id);
+      await rejectApp(pendingApplication._id, reason);
       logOptimisticActivity(
         'application',
         pendingApplication._id,
@@ -2340,7 +2340,7 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectAndEmailConfirm(_reason: string) {
+  async function handleRejectAndEmailConfirm(reason: string) {
     if (!pendingApplication) {
       toast.error('No pending application to reject');
       setRejectEmailOpen(false);
@@ -2348,7 +2348,7 @@ export function CandidateDetailSheet({
     }
     setActionLoading(true);
     try {
-      await rejectApp(pendingApplication._id);
+      await rejectApp(pendingApplication._id, reason);
       logOptimisticActivity(
         'application',
         pendingApplication._id,
@@ -2450,7 +2450,7 @@ export function CandidateDetailSheet({
     if (!activePipelineApp) return;
     setPipelineLoading(true);
     try {
-      await rejectApp(activePipelineApp._id);
+      await rejectApp(activePipelineApp._id, rejectReason);
       logOptimisticActivity(
         'application',
         activePipelineApp._id,
