@@ -40,6 +40,33 @@ export const InterviewType = {
 } as const;
 export type InterviewType = (typeof InterviewType)[keyof typeof InterviewType];
 
+export const InterviewMeetingType = {
+  initial_screening: 'initial_screening',
+  group_interview: 'group_interview',
+  technical_interview: 'technical_interview',
+  panel_interview: 'panel_interview',
+  final_interview: 'final_interview',
+  hr_interview: 'hr_interview',
+  culture_fit: 'culture_fit',
+  other: 'other',
+} as const;
+export type InterviewMeetingType =
+  (typeof InterviewMeetingType)[keyof typeof InterviewMeetingType];
+
+export const INTERVIEW_MEETING_TYPE_LABELS: Record<
+  InterviewMeetingType,
+  string
+> = {
+  initial_screening: 'Initial Screening',
+  group_interview: 'Group Interview',
+  technical_interview: 'Technical Interview',
+  panel_interview: 'Panel Interview',
+  final_interview: 'Final Interview',
+  hr_interview: 'HR Interview',
+  culture_fit: 'Culture Fit',
+  other: 'Other',
+};
+
 export const ClientStatus = {
   active: 'active',
   inactive: 'inactive',

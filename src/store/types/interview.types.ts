@@ -1,4 +1,5 @@
 import type {
+  InterviewMeetingType,
   InterviewRecommendation,
   InterviewStatus,
   InterviewType,
@@ -29,6 +30,7 @@ export interface Interview {
   clientId: string;
   title: string;
   type: InterviewType;
+  interviewType: InterviewMeetingType;
   round: number;
   status: InterviewStatus;
   scheduledAt: string;
@@ -50,6 +52,7 @@ export interface CreateInterviewDto {
   clientId: string;
   title: string;
   type: InterviewType;
+  interviewType?: InterviewMeetingType;
   round: number;
   scheduledAt: string;
   duration: number;
@@ -63,6 +66,8 @@ export interface CreateInterviewDto {
 export interface CreateNestedInterviewDto {
   title: string;
   type: InterviewType;
+  interviewType?: InterviewMeetingType;
+  jobId?: string;
   round: number;
   scheduledAt: string;
   duration: number;

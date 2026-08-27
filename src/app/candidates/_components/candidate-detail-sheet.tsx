@@ -48,11 +48,13 @@ import type {
   Candidate,
   EmailTemplate,
   Interview,
+  InterviewMeetingType,
   InterviewRecommendation,
   Job,
   ParsedEducation,
   ParsedExperience,
 } from '@/store/types';
+import { INTERVIEW_MEETING_TYPE_LABELS } from '@/store/types';
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
@@ -708,6 +710,7 @@ function ScheduleInterviewDialog({
   onConfirm,
   candidateName,
   job,
+  jobs,
   users,
   loading,
 }: {
@@ -716,6 +719,8 @@ function ScheduleInterviewDialog({
   onConfirm: (data: {
     title: string;
     type: string;
+    interviewType: InterviewMeetingType;
+    jobId: string;
     round: number;
     scheduledAt: string;
     duration: number;
@@ -727,11 +732,15 @@ function ScheduleInterviewDialog({
   }) => void;
   candidateName: string;
   job: Job | null;
+  jobs: { _id: string; title: string }[];
   users: { _id: string; firstName: string; lastName: string }[];
   loading?: boolean;
 }) {
   const [title, setTitle] = useState(`Interview - ${candidateName}`);
   const [type, setType] = useState('zoom');
+  const [interviewType, setInterviewType] =
+    useState<InterviewMeetingType>('initial_screening');
+  const [jobId, setJobId] = useState('');
   const [round, setRound] = useState(1);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00');
@@ -748,6 +757,8 @@ function ScheduleInterviewDialog({
     if (open) {
       setTitle(`Interview - ${candidateName} for ${job?.title ?? 'this job'}`);
       setType('zoom');
+      setInterviewType('initial_screening');
+      setJobId(job?._id ?? '');
       setRound(1);
       const now = new Date();
       now.setMinutes(0, 0, 0);
@@ -763,7 +774,14 @@ function ScheduleInterviewDialog({
       setPhoneNumber('');
       setAddress('');
     }
-  }, [open, candidateName, job?.title]);
+  }, [open, candidateName, job?.title, job?._id]);
+
+  const jobOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    if (job) map.set(job._id, job.title);
+    for (const j of jobs) map.set(j._id, j.title);
+    return Array.from(map.entries()).map(([_id, title]) => ({ _id, title }));
+  }, [jobs, job]);
 
   const scheduledAt = date && time ? `${date}T${time}:00` : '';
 
@@ -787,6 +805,43 @@ function ScheduleInterviewDialog({
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label>Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Interview Type</Label>
+            <Select
+              value={interviewType}
+              onValueChange={v => setInterviewType(v as InterviewMeetingType)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(
+                  Object.keys(
+                    INTERVIEW_MEETING_TYPE_LABELS
+                  ) as InterviewMeetingType[]
+                ).map(t => (
+                  <SelectItem key={t} value={t}>
+                    {INTERVIEW_MEETING_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Job</Label>
+            <Select value={jobId} onValueChange={setJobId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {jobOptions.map(j => (
+                  <SelectItem key={j._id} value={j._id}>
+                    {j.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Type</Label>
@@ -965,6 +1020,8 @@ function ScheduleInterviewDialog({
               onConfirm({
                 title,
                 type,
+                interviewType,
+                jobId,
                 round,
                 scheduledAt,
                 duration,
@@ -2540,6 +2597,8 @@ export function CandidateDetailSheet({
   async function handleScheduleInterview(data: {
     title: string;
     type: string;
+    interviewType: InterviewMeetingType;
+    jobId: string;
     round: number;
     scheduledAt: string;
     duration: number;
@@ -2560,6 +2619,8 @@ export function CandidateDetailSheet({
       await createInterviewForApplication(activePipelineApp._id, {
         title: data.title,
         type: data.type as Interview['type'],
+        interviewType: data.interviewType,
+        jobId: data.jobId || undefined,
         round: data.round,
         scheduledAt: new Date(data.scheduledAt).toISOString(),
         duration: data.duration,
@@ -2572,11 +2633,17 @@ export function CandidateDetailSheet({
         },
       });
       fetchInterviewsByApplication(activePipelineApp._id, { limit: 50 });
+      const typeLabel =
+        INTERVIEW_MEETING_TYPE_LABELS[data.interviewType] ?? data.interviewType;
+      const jobTitle =
+        jobs.find(j => j._id === data.jobId)?.title ??
+        pipelineJob?.title ??
+        'this job';
       logOptimisticActivity(
         'application',
         activePipelineApp._id,
         'interview_scheduled',
-        `Interview scheduled: ${data.title}`
+        `Interview scheduled: ${typeLabel} for ${jobTitle}`
       );
       setScheduleOpen(false);
     } catch {
@@ -4184,6 +4251,7 @@ export function CandidateDetailSheet({
         onConfirm={handleScheduleInterview}
         candidateName={fullName}
         job={pipelineJob}
+        jobs={openJobs}
         users={users.map(u => ({
           _id: u._id,
           firstName: u.firstName,
