@@ -81,17 +81,18 @@ const inputSchema = z.object({
   email: z.string().min(1, 'Required').email('Invalid email'),
   phone: z.string().min(1, 'Required'),
   yearsOfExperience: z.number().min(0, 'Must be 0 or more'),
-  videoIntroUrl: z.union([
-    z.string().url('Must be a valid URL'),
-    z.literal(''),
+  videoIntroUrl: z.string().min(1, 'Required').url('Must be a valid URL'),
+  englishProficiency: z.enum([
+    'basic',
+    'conversational',
+    'professional',
+    'fluent',
+    'native',
   ]),
-  englishProficiency: z
-    .enum(['basic', 'conversational', 'professional', 'fluent', 'native'])
-    .optional(),
-  currentSalaryPHP: z.number().min(0).optional(),
-  currentSalaryUSD: z.number().min(0).optional(),
+  currentSalaryPHP: z.number().min(0, 'Must be 0 or more').optional(),
+  currentSalaryUSD: z.number().min(0, 'Must be 0 or more').optional(),
   reasonForLeaving: z.string().max(500).optional(),
-  cityOfResidence: z.string().max(100).optional(),
+  cityOfResidence: z.string().min(1, 'Required').max(100),
 });
 
 type InputFormValues = z.infer<typeof inputSchema>;
@@ -488,6 +489,7 @@ function InputStep({
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Field
                   label="Years of Experience"
+                  required
                   error={errors.yearsOfExperience?.message}
                 >
                   <Input
@@ -501,6 +503,7 @@ function InputStep({
 
                 <Field
                   label="English Proficiency"
+                  required
                   error={errors.englishProficiency?.message}
                 >
                   <Controller
@@ -535,6 +538,7 @@ function InputStep({
 
               <Field
                 label="City of Residence"
+                required
                 error={errors.cityOfResidence?.message}
               >
                 <Input
@@ -666,6 +670,7 @@ function InputStep({
 
               <Field
                 label="Personal Intro Video URL"
+                required
                 error={errors.videoIntroUrl?.message}
               >
                 <Input
@@ -673,7 +678,7 @@ function InputStep({
                   {...register('videoIntroUrl')}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional — accepts Google Drive, Loom, YouTube, Vimeo, etc.
+                  Accepts Google Drive, Loom, YouTube, Vimeo, etc.
                 </p>
               </Field>
             </CardContent>
@@ -979,7 +984,6 @@ export default function CareerApplyPage() {
       phone: '',
       yearsOfExperience: 0,
       videoIntroUrl: '',
-      englishProficiency: undefined,
       currentSalaryPHP: undefined,
       currentSalaryUSD: undefined,
       reasonForLeaving: '',
