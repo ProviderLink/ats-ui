@@ -806,7 +806,7 @@ function ScheduleInterviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Schedule Interview</DialogTitle>
           <DialogDescription>
@@ -820,12 +820,27 @@ function ScheduleInterviewDialog({
             )}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 flex flex-col gap-1.5">
+        <div className="grid grid-cols-4 gap-3">
+          <div className="col-span-4 flex flex-col gap-1.5">
             <Label>Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="col-span-4 flex flex-col gap-1.5">
+            <Label>Job</Label>
+            <Select value={jobId} onValueChange={setJobId}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {jobOptions.map(j => (
+                  <SelectItem key={j._id} value={j._id}>
+                    {j.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2 flex flex-col gap-1.5">
             <Label>Interview Type</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -884,25 +899,10 @@ function ScheduleInterviewDialog({
               </PopoverContent>
             </Popover>
           </div>
-          <div className="col-span-2 flex flex-col gap-1.5">
-            <Label>Job</Label>
-            <Select value={jobId} onValueChange={setJobId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {jobOptions.map(j => (
-                  <SelectItem key={j._id} value={j._id}>
-                    {j.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="flex flex-col gap-1.5">
             <Label>Type</Label>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -952,7 +952,7 @@ function ScheduleInterviewDialog({
           <div className="flex flex-col gap-1.5">
             <Label>Timezone</Label>
             <Select value={timezone} onValueChange={setTimezone}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -2768,7 +2768,7 @@ export function CandidateDetailSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="flex flex-col p-0 max-w-none! w-full sm:w-[62vw] min-w-95"
+          className="flex flex-col p-0 max-w-none! w-full sm:w-[68vw] min-w-95"
         >
           {/* Header */}
           <SheetHeader className="shrink-0 border-b pl-6 pr-14 py-5">
