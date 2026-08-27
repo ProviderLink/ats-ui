@@ -1,6 +1,7 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { ActivityTimeline } from '@/components/activity-timeline';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { DispositionDialog } from '@/components/disposition-dialog';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -2000,6 +2001,7 @@ export function CandidateDetailSheet({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [disposeOpen, setDisposeOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
   const [rejectReason, setRejectReason] = useState('');
@@ -2766,7 +2768,7 @@ export function CandidateDetailSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="flex flex-col p-0 max-w-none! w-full sm:w-[60vw] min-w-95"
+          className="flex flex-col p-0 max-w-none! w-full sm:w-[62vw] min-w-95"
         >
           {/* Header */}
           <SheetHeader className="shrink-0 border-b pl-6 pr-14 py-5">
@@ -3881,6 +3883,17 @@ export function CandidateDetailSheet({
                   <BanIcon className="size-3.5" />
                   Reject
                 </Button>
+                {/* Disposition */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pipelineLoading || !activePipelineApp}
+                  className="h-8 gap-1.5"
+                  onClick={() => setDisposeOpen(true)}
+                >
+                  <XCircleIcon className="size-3.5" />
+                  Disposition
+                </Button>
                 {/* Email */}
                 <Button
                   size="sm"
@@ -4481,6 +4494,14 @@ export function CandidateDetailSheet({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pipeline: Disposition */}
+      <DispositionDialog
+        open={disposeOpen}
+        onOpenChange={setDisposeOpen}
+        applicationId={activePipelineApp?._id ?? ''}
+        currentStageName={activePipelineApp?.currentStage?.stageName}
+      />
 
       {/* Pipeline: Reassign to Job */}
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>

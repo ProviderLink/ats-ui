@@ -124,10 +124,11 @@ export function DispositionDialog({
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <div key={`dispose-form-${formKey}`}>
           <DialogHeader>
-            <DialogTitle>Dispose Candidate</DialogTitle>
+            <DialogTitle>Candidate Disposition</DialogTitle>
             <DialogDescription>
-              Close this application and move the candidate out of the active
-              pipeline. The candidate profile and history will be preserved.
+              Select a disposition reason to close this application and move the
+              candidate out of the active pipeline. The candidate profile and
+              history will be preserved.
             </DialogDescription>
           </DialogHeader>
 

@@ -43,15 +43,22 @@ import { toast } from 'sonner';
 
 export function PermanentlyIneligibleTable() {
   const navigate = useNavigate();
-  const { items, loading, fetch } = useCandidateStore();
+
+  // Reads from the dedicated store field (cached once per session), mirroring
+  // how the Candidates and Talent Pool pages read the boot-loaded `items`.
+  // The page never refetches on navigation — only after a restore / legal-hold.
+  const items = useCandidateStore(s => s.ineligibleItems);
+  const loading = useCandidateStore(s => s.ineligibleLoading);
+  const fetchIneligible = useCandidateStore(s => s.fetchIneligible);
 
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);
 
-  // Fetch permanently ineligible candidates
+  // Ensure the list is loaded once (no-op when already cached by boot or a
+  // prior visit, so navigating here never triggers a network refetch).
   useEffect(() => {
-    fetch({ includeIneligible: true, limit: 50 });
-  }, [fetch]);
+    void fetchIneligible();
+  }, [fetchIneligible]);
 
   // Client-side filter for permanently ineligible only
   const data = useMemo(
@@ -66,7 +73,7 @@ export function PermanentlyIneligibleTable() {
         eligibilityStatus: 'eligible',
       });
       toast.success(`${name} restored to eligible`);
-      fetch({ includeIneligible: true, limit: 50 });
+      await fetchIneligible(true);
     } catch (e) {
       toast.error((e as Error).message || 'Failed to restore eligibility');
     } finally {
@@ -81,7 +88,7 @@ export function PermanentlyIneligibleTable() {
         legalHold: !current,
       });
       toast.success(`Legal hold ${!current ? 'enabled' : 'disabled'}`);
-      fetch({ includeIneligible: true, limit: 50 });
+      await fetchIneligible(true);
     } catch (e) {
       toast.error((e as Error).message || 'Failed to toggle legal hold');
     } finally {

@@ -30,6 +30,7 @@ export async function bootAllData(): Promise<void> {
       useClientStore.getState().fetch({ limit: 9999 }),
       useJobStore.getState().fetch({ limit: 9999 }),
       useCandidateStore.getState().fetch({ limit: 9999 }),
+      useCandidateStore.getState().fetchIneligible(),
       useApplicationStore.getState().fetch({ limit: 9999 }),
       useInterviewStore.getState().fetch({ limit: 9999 }),
       useTagStore.getState().fetch(),

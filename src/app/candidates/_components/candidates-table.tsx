@@ -1108,9 +1108,9 @@ function PipelineActionsMenu({
               <BanIcon className="size-3.5 text-red-600 dark:text-red-400" />
             </span>
             <span className="flex flex-col">
-              <span className="text-sm">Dispose</span>
+              <span className="text-sm">Disposition</span>
               <span className="text-[11px] text-muted-foreground">
-                Close application &amp; move from pipeline
+                Set disposition &amp; close application
               </span>
             </span>
           </DropdownMenuItem>

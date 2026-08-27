@@ -28,6 +28,9 @@ interface CandidateState {
   error: string | null;
   pagination: Pagination | null;
   filters: CandidateFilters;
+  ineligibleItems: Candidate[];
+  ineligibleLoaded: boolean;
+  ineligibleLoading: boolean;
 }
 
 interface CandidateActions {
@@ -57,6 +60,7 @@ interface CandidateActions {
     approved: boolean;
   }>;
   setFilters: (f: Partial<CandidateFilters>) => void;
+  fetchIneligible: (force?: boolean) => Promise<void>;
   reset: () => void;
   _patch: (c: Candidate) => void;
   _remove: (id: string) => void;
@@ -71,6 +75,9 @@ const initialState: CandidateState = {
   error: null,
   pagination: null,
   filters: { page: 1, limit: 20 },
+  ineligibleItems: [],
+  ineligibleLoaded: false,
+  ineligibleLoading: false,
 };
 
 // Persist detail for instant display on revisit; items are NOT persisted
@@ -206,6 +213,34 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
         } catch (e) {
           set(s => {
             s.loading = false;
+            s.error = (e as Error).message;
+          });
+        }
+      },
+
+      // Loads the permanently-ineligible list once per session and caches it
+      // in the store, mirroring how the boot loader preloads the rest of the
+      // candidate data. `force` is used after restore / legal-hold mutations.
+      fetchIneligible: async (force = false) => {
+        if (!force && (get().ineligibleLoaded || get().ineligibleLoading))
+          return;
+        set(s => {
+          s.ineligibleLoading = true;
+          s.error = null;
+        });
+        try {
+          const res = await getJson<
+            Candidate[] | ({ data: Candidate[] } & Pagination)
+          >('/ats/candidates', { includeIneligible: true, limit: 50 });
+          const data = Array.isArray(res) ? res : (res.data ?? []);
+          set(s => {
+            s.ineligibleItems = data;
+            s.ineligibleLoaded = true;
+            s.ineligibleLoading = false;
+          });
+        } catch (e) {
+          set(s => {
+            s.ineligibleLoading = false;
             s.error = (e as Error).message;
           });
         }

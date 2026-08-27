@@ -20,7 +20,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { Trash2Icon } from 'lucide-react';
+import { XCircleIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -73,14 +73,15 @@ function CardContent({
       {onDelete && (
         <button
           type="button"
-          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10"
+          title="Set disposition"
+          aria-label="Set disposition for this candidate"
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10"
           onClick={e => {
             e.stopPropagation();
             onDelete(e);
           }}
-          tabIndex={-1}
         >
-          <Trash2Icon className="size-3 text-destructive/70" />
+          <XCircleIcon className="size-3.5 text-destructive/70" />
         </button>
       )}
       <div className="flex items-center gap-2 mb-2.5">
