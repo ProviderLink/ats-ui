@@ -15,6 +15,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -64,6 +69,7 @@ import {
   CalendarIcon,
   CheckCircle2Icon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
   ClockIcon,
   DownloadIcon,
@@ -752,6 +758,7 @@ function ScheduleInterviewDialog({
   const [meetingLink, setMeetingLink] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [typeSearch, setTypeSearch] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -773,6 +780,7 @@ function ScheduleInterviewDialog({
       setMeetingLink('');
       setPhoneNumber('');
       setAddress('');
+      setTypeSearch('');
     }
   }, [open, candidateName, job?.title, job?._id]);
 
@@ -783,11 +791,21 @@ function ScheduleInterviewDialog({
     return Array.from(map.entries()).map(([_id, title]) => ({ _id, title }));
   }, [jobs, job]);
 
+  const filteredTypes = useMemo(() => {
+    const q = typeSearch.trim().toLowerCase();
+    const entries = Object.entries(INTERVIEW_MEETING_TYPE_LABELS) as [
+      InterviewMeetingType,
+      string,
+    ][];
+    if (!q) return entries;
+    return entries.filter(([, label]) => label.toLowerCase().includes(q));
+  }, [typeSearch]);
+
   const scheduledAt = date && time ? `${date}T${time}:00` : '';
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Schedule Interview</DialogTitle>
           <DialogDescription>
@@ -808,27 +826,64 @@ function ScheduleInterviewDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Interview Type</Label>
-            <Select
-              value={interviewType}
-              onValueChange={v => setInterviewType(v as InterviewMeetingType)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(
-                  Object.keys(
-                    INTERVIEW_MEETING_TYPE_LABELS
-                  ) as InterviewMeetingType[]
-                ).map(t => (
-                  <SelectItem key={t} value={t}>
-                    {INTERVIEW_MEETING_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between font-normal text-sm"
+                >
+                  <span className="truncate">
+                    {INTERVIEW_MEETING_TYPE_LABELS[interviewType] ??
+                      interviewType}
+                  </span>
+                  <ChevronDownIcon className="size-4 opacity-50 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+              >
+                <div className="flex flex-col gap-0.5 p-1 max-h-60 overflow-y-auto">
+                  <Input
+                    placeholder="Search interview type…"
+                    value={typeSearch}
+                    onChange={e => setTypeSearch(e.target.value)}
+                    className="h-8 text-sm mb-1"
+                    autoFocus
+                  />
+                  <Separator />
+                  {filteredTypes.map(([t, label]) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setInterviewType(t);
+                        setTypeSearch('');
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left hover:bg-accent transition-colors',
+                        interviewType === t && 'bg-primary/10 text-primary'
+                      )}
+                    >
+                      {interviewType === t ? (
+                        <CheckIcon className="size-3.5 shrink-0" />
+                      ) : (
+                        <span className="size-3.5 shrink-0" />
+                      )}
+                      {label}
+                    </button>
+                  ))}
+                  {filteredTypes.length === 0 && (
+                    <p className="px-2 py-3 text-xs text-muted-foreground text-center">
+                      No matching interview type
+                    </p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="col-span-2 flex flex-col gap-1.5">
             <Label>Job</Label>
             <Select value={jobId} onValueChange={setJobId}>
               <SelectTrigger>
@@ -977,7 +1032,15 @@ function ScheduleInterviewDialog({
         )}
 
         <div className="flex flex-col gap-1.5 mt-3">
-          <Label>Interviewers</Label>
+          <Label>
+            Interviewers
+            {interviewerIds.length > 0 && (
+              <span className="text-muted-foreground font-normal">
+                {' '}
+                ({interviewerIds.length} selected)
+              </span>
+            )}
+          </Label>
           <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
             {users.length === 0 ? (
               <p className="px-3 py-4 text-xs text-muted-foreground text-center w-full">
@@ -988,10 +1051,11 @@ function ScheduleInterviewDialog({
                 <button
                   key={u._id}
                   type="button"
+                  aria-pressed={interviewerIds.includes(u._id)}
                   className={cn(
-                    'text-xs px-2 py-1 rounded border transition-colors',
+                    'inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors cursor-pointer',
                     interviewerIds.includes(u._id)
-                      ? 'bg-primary/10 border-primary/40 text-primary'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-muted/30 border-muted text-muted-foreground hover:border-foreground/20'
                   )}
                   onClick={() =>
@@ -1002,6 +1066,9 @@ function ScheduleInterviewDialog({
                     )
                   }
                 >
+                  {interviewerIds.includes(u._id) && (
+                    <CheckIcon className="size-3 shrink-0" />
+                  )}
                   {u.firstName} {u.lastName}
                 </button>
               ))
