@@ -1,5 +1,4 @@
 import { TablePagination } from '@/components/table-pagination';
-import { TagList } from '@/components/tag-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -62,7 +61,6 @@ import {
   PlusIcon,
   SearchIcon,
   ShieldCheckIcon,
-  TagIcon,
   Trash2Icon,
   UserIcon,
 } from 'lucide-react';
@@ -715,15 +713,6 @@ export function ClientsTable() {
             </div>
           );
         },
-      },
-      {
-        id: 'tags',
-        size: 180,
-        minSize: 150,
-        header: () => (
-          <ColHeader label="Tags" icon={<TagIcon className="size-3" />} />
-        ),
-        cell: ({ row }) => <TagList tags={row.original.tags} max={1} stacked />,
       },
       {
         id: 'actions',
