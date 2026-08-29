@@ -81,15 +81,15 @@ export function DashSnapshot() {
   const pending = applications.filter(
     (a: Application) => a.phase === 'pending'
   ).length;
-  const total = applications.length || 1;
+  const total = applications.length;
   const approved = applications.filter(
     (a: Application) => a.phase === 'approved' || a.phase === 'hired'
   ).length;
   const rejected = applications.filter(
     (a: Application) => a.phase === 'rejected'
   ).length;
-  const approvalRate = Math.round((approved / total) * 100);
-  const rejectionRate = Math.round((rejected / total) * 100);
+  const approvalRate = total > 0 ? Math.round((approved / total) * 100) : 0;
+  const rejectionRate = total > 0 ? Math.round((rejected / total) * 100) : 0;
 
   const activeJobs = jobs.filter(
     (j: Job) => j.status === 'open' || j.status === 'on_hold'
@@ -114,7 +114,7 @@ export function DashSnapshot() {
       icon: CheckCircle2Icon,
       label: 'Approval Rate',
       value: `${approvalRate}%`,
-      sub: `${approved} of ${total - 1} total approved`,
+      sub: `${approved} of ${total} total approved`,
     },
     {
       icon: XCircleIcon,

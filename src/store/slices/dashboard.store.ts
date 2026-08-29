@@ -14,23 +14,32 @@ import type {
 } from '../types';
 
 /**
- * Raw shape returned by GET /ats/dashboard. The endpoint documentation only
- * states "Returns aggregated stats" without listing fields, so every property
- * is optional — we use whatever the backend ships and fall back to values
- * derived from the list endpoints for anything missing.
+ * Raw shape returned by GET /ats/dashboard. The endpoint nests the aggregate
+ * stats under `overview` (alongside recentApplications / upcomingInterviews /
+ * jobStats). Every field is optional — we use whatever the backend ships and
+ * fall back to values derived from the list endpoints for anything missing.
  */
 export interface DashboardSnapshot {
-  totalCandidates?: number;
-  totalClients?: number;
-  totalJobs?: number;
-  openJobs?: number;
-  totalApplications?: number;
-  totalInterviews?: number;
-  scheduledInterviews?: number;
-  completedInterviews?: number;
-  hiredCount?: number;
-  activeCandidates?: number;
-  [key: string]: unknown;
+  overview?: {
+    totalCandidates?: number;
+    approvedCandidates?: number;
+    hiredCandidates?: number;
+    totalJobs?: number;
+    openJobs?: number;
+    totalClients?: number;
+    activeClients?: number;
+    totalApplications?: number;
+    pendingApplications?: number;
+    approvedApplications?: number;
+    hiredCount?: number;
+    activeCandidates?: number;
+    totalInterviews?: number;
+    scheduledInterviews?: number;
+    completedInterviews?: number;
+  };
+  recentApplications?: unknown[];
+  upcomingInterviews?: unknown[];
+  jobStats?: unknown[];
 }
 
 export interface KpiSummary {
@@ -103,6 +112,8 @@ interface DashboardState {
   isRefreshing: boolean;
   error: string | null;
   lastLoadedAt: number | null;
+  /** True while the dashboard page is mounted — gates socket-driven refetches. */
+  isActive: boolean;
 
   clients: Client[];
   jobs: Job[];
@@ -124,6 +135,7 @@ interface DashboardState {
 interface DashboardActions {
   fetch: () => Promise<void>;
   reset: () => void;
+  setActive: (active: boolean) => void;
 }
 
 const initialState: DashboardState = {
@@ -131,6 +143,7 @@ const initialState: DashboardState = {
   isRefreshing: false,
   error: null,
   lastLoadedAt: null,
+  isActive: false,
   clients: [],
   jobs: [],
   candidates: [],
@@ -484,6 +497,7 @@ function buildKpi(
   applications: Application[],
   interviews: Interview[]
 ): KpiSummary {
+  const ov = snap?.overview ?? null;
   const openJobs = jobs.filter(j => j.status === 'open').length;
   const scheduledInterviews = interviews.filter(
     i => i.status === 'scheduled'
@@ -498,22 +512,16 @@ function buildKpi(
   ).length;
 
   return {
-    totalClients: fromSnap(snap?.totalClients, clients.length),
-    totalJobs: fromSnap(snap?.totalJobs, jobs.length),
-    openJobs: fromSnap(snap?.openJobs, openJobs),
-    totalCandidates: fromSnap(snap?.totalCandidates, candidates.length),
-    totalApplications: fromSnap(snap?.totalApplications, applications.length),
-    totalInterviews: fromSnap(snap?.totalInterviews, interviews.length),
-    scheduledInterviews: fromSnap(
-      snap?.scheduledInterviews,
-      scheduledInterviews
-    ),
-    completedInterviews: fromSnap(
-      snap?.completedInterviews,
-      completedInterviews
-    ),
-    hiredCount: fromSnap(snap?.hiredCount, hiredCount),
-    activeCandidates: fromSnap(snap?.activeCandidates, activeCandidates),
+    totalClients: fromSnap(ov?.totalClients, clients.length),
+    totalJobs: fromSnap(ov?.totalJobs, jobs.length),
+    openJobs: fromSnap(ov?.openJobs, openJobs),
+    totalCandidates: fromSnap(ov?.totalCandidates, candidates.length),
+    totalApplications: fromSnap(ov?.totalApplications, applications.length),
+    totalInterviews: fromSnap(ov?.totalInterviews, interviews.length),
+    scheduledInterviews: fromSnap(ov?.scheduledInterviews, scheduledInterviews),
+    completedInterviews: fromSnap(ov?.completedInterviews, completedInterviews),
+    hiredCount: fromSnap(ov?.hiredCount, hiredCount),
+    activeCandidates: fromSnap(ov?.activeCandidates, activeCandidates),
   };
 }
 
@@ -529,16 +537,25 @@ async function fetchList<T>(
 export const useDashboardStore = create<DashboardState & DashboardActions>()(
   persist(
     immer((set, get) => {
-      // Register a socket invalidator so that any of the three domain events
-      // (candidate:statusChanged, application:phaseChanged, job:statusChanged)
-      // triggers an immediate background refresh of all dashboard data.
+      // Register a socket invalidator so any ATS entity change (created /
+      // updated / deleted for candidates, applications, jobs, clients,
+      // interviews, plus the domain status-change events) triggers an
+      // immediate background refresh of all dashboard data.
       socketManager.registerInvalidator(() => {
         const s = get();
-        if (!s.loading && !s.isRefreshing) s.fetch();
+        // Only refresh while the dashboard is actually on screen, and skip if
+        // a fetch is already in flight.
+        if (s.isActive && !s.loading && !s.isRefreshing) s.fetch();
       });
 
       return {
         ...initialState,
+
+        setActive: active => {
+          set(s => {
+            s.isActive = active;
+          });
+        },
 
         fetch: async () => {
           if (get().loading || get().isRefreshing) return;
@@ -624,13 +641,13 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
       // v3: removed pickLarger workaround — /ats/dashboard is now confirmed
       // to return live data. Old caches with inflated counts must be discarded.
       version: 3,
-      // Persist every derived field and the raw lists so revisits render
-      // instantly from cache. `loading`/`error` reset on rehydration so a
-      // stale loading=true never freezes the UI.
+      // Persist only the derived KPI summary and the last-load timestamp so
+      // revisits can render numbers instantly. Raw entity lists are NOT
+      // persisted — they are refetched on every mount and must never leak PII
+      // (or stale, cross-user data) through localStorage.
       partialize: state => ({
-        ...state,
-        loading: false,
-        error: null,
+        kpi: state.kpi,
+        lastLoadedAt: state.lastLoadedAt,
       }),
     }
   )

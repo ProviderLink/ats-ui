@@ -37,18 +37,34 @@ const STAGES = [
 ] as const;
 
 export function DashFunnel() {
-  const { loading, kpi, candidates } = useDashboardStore();
+  const { loading, kpi, candidates, applications } = useDashboardStore();
 
   const pendingCount = candidates.filter(
     (c: Candidate) => c.status === 'pending'
   ).length;
-  const approvedCount = candidates.filter(
-    (c: Candidate) => c.status === 'approved'
+
+  // "In Pipeline" mirrors the Candidates page: a candidate with at least one
+  // approved-phase application (not merely candidate.status === 'approved').
+  // Fall back to candidate status only if the application list is empty.
+  const approvedAppIds = new Set(
+    applications.filter(a => a.phase === 'approved').map(a => a.candidateId)
+  );
+  const approvedStatusIds = new Set(
+    candidates.filter(c => c.status === 'approved').map(c => c._id)
+  );
+  const pipelineIds =
+    approvedAppIds.size > 0
+      ? approvedAppIds
+      : approvedStatusIds.size > 0
+        ? approvedStatusIds
+        : approvedAppIds;
+  const approvedCount = candidates.filter(c => pipelineIds.has(c._id)).length;
+
+  // Keep this funnel candidate-based: "hired" is candidates with status
+  // 'hired' — kpi.hiredCount is application-based and would mix units.
+  const hiredCount = candidates.filter(
+    (c: Candidate) => c.status === 'hired'
   ).length;
-  const hiredCount =
-    candidates.filter((c: Candidate) => c.status === 'hired').length ||
-    kpi?.hiredCount ||
-    0;
   const talentPool = candidates.filter((c: Candidate) => c.inTalentPool).length;
 
   const counts: Record<string, number> = {
@@ -58,9 +74,8 @@ export function DashFunnel() {
     talentPool: talentPool,
   };
 
-  const total =
-    kpi?.totalCandidates ?? pendingCount + approvedCount + hiredCount;
-  const grandTotal = pendingCount + approvedCount + hiredCount || 1;
+  const total = kpi?.totalCandidates ?? candidates.length;
+  const denominator = total || 1;
   const hireRate =
     kpi && kpi.totalApplications > 0
       ? Math.round((kpi.hiredCount / kpi.totalApplications) * 100)
@@ -114,7 +129,7 @@ export function DashFunnel() {
               ))
             : STAGES.map((stage, i) => {
                 const count = counts[stage.key] ?? 0;
-                const barPct = Math.round((count / grandTotal) * 100);
+                const barPct = Math.round((count / denominator) * 100);
                 const prevKey = i > 0 ? STAGES[i - 1].key : null;
                 const prevCount = prevKey ? (counts[prevKey] ?? 0) : null;
                 const conversion =
@@ -176,7 +191,7 @@ export function DashFunnel() {
                     {/* pct of total */}
                     <span className="text-[11px] tabular-nums text-muted-foreground/60">
                       {stage.key !== 'talentPool'
-                        ? `${Math.round((count / grandTotal) * 100)}% of total candidates`
+                        ? `${Math.round((count / denominator) * 100)}% of total candidates`
                         : `${count} saved`}
                     </span>
                   </div>

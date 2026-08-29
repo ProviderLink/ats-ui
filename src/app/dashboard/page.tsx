@@ -13,14 +13,16 @@ import { DashHiringTrend } from './_components/dash-hiring-trend';
 import { DashMetricCards } from './_components/dash-metric-cards';
 
 function DashboardContent() {
-  const { fetch, error, lastLoadedAt } = useDashboardStore();
+  const { fetch, error, setActive } = useDashboardStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const STALE_MS = 60 * 1000; // 60s — /ats/dashboard is live, no server cache
-    const isStale = !lastLoadedAt || Date.now() - lastLoadedAt > STALE_MS;
-    if (isStale) fetch();
-  }, [fetch, lastLoadedAt]);
+    setActive(true);
+    // Raw lists are no longer persisted, so always refresh on mount to show
+    // current data. `fetch` no-ops if a fetch/refresh is already in flight.
+    fetch();
+    return () => setActive(false);
+  }, [fetch, setActive]);
 
   useEffect(() => {
     if (error) toast.error('Failed to load dashboard data');

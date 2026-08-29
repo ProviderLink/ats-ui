@@ -134,6 +134,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // Reset the boot state so next login triggers a fresh data load.
           // Dynamic import avoids a circular dependency with boot-data.ts.
           import('@/lib/boot-data').then(m => m.resetBoot()).catch(() => {});
+          // Clear the persisted dashboard store so the next user never sees
+          // the previous user's cached dashboard data.
+          import('@/store/slices/dashboard.store')
+            .then(m => m.useDashboardStore.getState().reset())
+            .catch(() => {});
         }
       },
 

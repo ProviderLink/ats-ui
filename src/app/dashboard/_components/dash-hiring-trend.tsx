@@ -27,7 +27,9 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function hiredDate(app: Application): string | undefined {
-  return app.hiredAt ?? app.updatedAt ?? app.appliedAt ?? undefined;
+  // Only trust the actual hire date — falling back to `updatedAt`/`appliedAt`
+  // would plot the hire in the wrong month when `hiredAt` is missing.
+  return app.hiredAt ?? undefined;
 }
 
 function buildMonthlyData(applications: Application[], months: number) {
@@ -63,7 +65,9 @@ export function DashHiringTrend() {
   );
 
   const totalHires = kpi?.hiredCount ?? data.reduce((s, d) => s + d.hires, 0);
-  const lastMonthHires = data[data.length - 1]?.hires ?? 0;
+  // `data` is oldest-first; the last bucket is the current (partial) month,
+  // so "last month" is the second-to-last bucket.
+  const lastMonthHires = data[data.length - 2]?.hires ?? 0;
 
   const tickFormatter = (value: string) =>
     new Date(value).toLocaleDateString('en-US', { month: 'short' });

@@ -52,7 +52,7 @@ export function DashBadges() {
     },
     {
       value: kpi.scheduledInterviews,
-      label: 'Interviews',
+      label: 'Scheduled Interviews',
       href: '/ats/calendar',
     },
     { value: teamItems.length, label: 'Team', href: '/ats/team' },

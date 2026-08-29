@@ -78,6 +78,15 @@ const DOMAIN_EVENTS: DomainEventType[] = [
   'job:statusChanged',
 ];
 
+/** Resources whose created/updated/deleted events should refresh the dashboard. */
+const DASHBOARD_RESOURCES = new Set([
+  'candidate',
+  'application',
+  'job',
+  'client',
+  'interview',
+]);
+
 const EVENTS: SocketEventType[] = [
   'candidate:created',
   'candidate:updated',
@@ -136,6 +145,10 @@ class SocketManager {
     return () => this.invalidators.delete(fn);
   }
 
+  private invalidate(): void {
+    for (const fn of this.invalidators) fn();
+  }
+
   connect(): void {
     if (this.destroyed || this.socket?.connected) return;
 
@@ -155,13 +168,16 @@ class SocketManager {
     for (const event of EVENTS) {
       this.socket.on(event, (data: unknown) => {
         this.dispatch({ type: event, data } as SocketMessage);
+        // Any change to an entity the dashboard aggregates should refresh it.
+        const resource = event.split(':')[0] as ResourceType;
+        if (DASHBOARD_RESOURCES.has(resource)) {
+          this.invalidate();
+        }
       });
     }
 
     for (const event of DOMAIN_EVENTS) {
-      this.socket.on(event, () => {
-        for (const fn of this.invalidators) fn();
-      });
+      this.socket.on(event, () => this.invalidate());
     }
 
     this.socket.on('connect_error', err => {

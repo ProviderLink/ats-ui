@@ -270,7 +270,11 @@ export function DashMetricCards() {
 
   const candidateDates = candidates.map((c: Candidate) => c.createdAt);
   const clientDates = clients.map((c: Client) => c.createdAt);
-  const jobDates = jobs.map((j: Job) => j.createdAt);
+  // "Open Jobs" is a point-in-time stock — its sparkline / % change should be
+  // driven by the same set of currently-open jobs, not all jobs ever created.
+  const openJobDates = jobs
+    .filter((j: Job) => j.status === 'open')
+    .map((j: Job) => j.createdAt);
 
   const cards = [
     {
@@ -294,8 +298,8 @@ export function DashMetricCards() {
     {
       title: 'Open Jobs',
       value: kpi.openJobs,
-      chartData: buildMonthly6m(jobDates),
-      change: pctChange3m(jobDates),
+      chartData: buildMonthly6m(openJobDates),
+      change: pctChange3m(openJobDates),
       color: '#10b981',
       gradientId: 'grad-jobs',
       chartType: 'line' as const,
