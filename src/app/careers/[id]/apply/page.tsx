@@ -67,7 +67,6 @@ type ReviewData = {
 };
 
 type ResumeUploadResult = {
-  resumeUrl: string;
   resumeOriginalName: string;
   resumeRawText: string;
   parsedData: CandidateParsedData | null;
@@ -1092,34 +1091,46 @@ export default function CareerApplyPage() {
   }
 
   async function handleSubmit() {
-    if (!resumeData || !inputValues || !id) return;
+    if (!resumeData || !inputValues || !id || !resumeFile) return;
     setStep('submitting');
 
     try {
-      await publicApi.post(`/ats/jobs/${id}/apply`, {
-        firstName: inputValues.firstName,
-        lastName: inputValues.lastName,
-        email: inputValues.email,
-        phone: inputValues.phone,
-        yearsOfExperience: inputValues.yearsOfExperience,
-        englishProficiency: inputValues.englishProficiency ?? null,
-        currentSalaryPHP: inputValues.currentSalaryPHP ?? null,
-        currentSalaryUSD: inputValues.currentSalaryUSD ?? null,
-        reasonForLeaving: inputValues.reasonForLeaving || null,
-        cityOfResidence: inputValues.cityOfResidence || null,
-        resumeUrl: resumeData.resumeUrl,
-        resumeOriginalName: resumeData.resumeOriginalName,
-        resumeRawText: resumeData.resumeRawText,
-        videoIntroUrl: inputValues.videoIntroUrl || undefined,
-        parsedData: {
+      const fd = new FormData();
+      fd.append('firstName', inputValues.firstName);
+      fd.append('lastName', inputValues.lastName);
+      fd.append('email', inputValues.email);
+      fd.append('phone', inputValues.phone);
+      fd.append('yearsOfExperience', String(inputValues.yearsOfExperience));
+      if (inputValues.englishProficiency)
+        fd.append('englishProficiency', inputValues.englishProficiency);
+      if (inputValues.currentSalaryPHP !== undefined)
+        fd.append('currentSalaryPHP', String(inputValues.currentSalaryPHP));
+      if (inputValues.currentSalaryUSD !== undefined)
+        fd.append('currentSalaryUSD', String(inputValues.currentSalaryUSD));
+      if (inputValues.reasonForLeaving)
+        fd.append('reasonForLeaving', inputValues.reasonForLeaving);
+      if (inputValues.cityOfResidence)
+        fd.append('cityOfResidence', inputValues.cityOfResidence);
+      if (inputValues.videoIntroUrl) {
+        fd.append('videoIntroUrl', inputValues.videoIntroUrl);
+        fd.append('videoIntroSource', 'external');
+      }
+      fd.append('resumeOriginalName', resumeData.resumeOriginalName);
+      fd.append('resumeRawText', resumeData.resumeRawText);
+      fd.append(
+        'parsedData',
+        JSON.stringify({
           summary: reviewData.summary,
           skills: reviewData.skills,
           languages: reviewData.languages,
           certifications: reviewData.certifications,
           experience: reviewData.experience,
           education: reviewData.education,
-        },
-      });
+        })
+      );
+      fd.append('file', resumeFile);
+
+      await publicApi.postForm(`/ats/jobs/${id}/apply`, fd);
       setStep('success');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Submission failed');
