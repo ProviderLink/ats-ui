@@ -2,6 +2,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarErrorBoundary } from '@/components/sidebar-error-boundary';
 import { SiteHeader } from '@/components/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { UnreadEmailsToast } from '@/components/unread-emails-toast';
 import * as React from 'react';
 import { Outlet } from 'react-router-dom';
 
@@ -13,6 +14,7 @@ export function Layout() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px]">
+      <UnreadEmailsToast />
       <SidebarProvider
         open={open}
         onOpenChange={setOpen}
