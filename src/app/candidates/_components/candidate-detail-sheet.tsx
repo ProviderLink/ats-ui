@@ -2018,6 +2018,7 @@ export function CandidateDetailSheet({
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
   const approveApp = useApplicationStore(s => s.approve);
+  const hireApp = useApplicationStore(s => s.hire);
   const rejectApp = useApplicationStore(s => s.reject);
 
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
@@ -2560,7 +2561,7 @@ export function CandidateDetailSheet({
     if (!activePipelineApp) return;
     setPipelineLoading(true);
     try {
-      await approveApp(activePipelineApp._id);
+      await hireApp(activePipelineApp._id);
       logOptimisticActivity(
         'application',
         activePipelineApp._id,
