@@ -1,8 +1,4 @@
-import {
-  avatarBg,
-  scoreTextColor,
-  statusConfig,
-} from '@/app/candidates/_utils/candidate-styles';
+import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
 import { DispositionDialog } from '@/components/disposition-dialog';
 import { getJson } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -20,7 +16,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { XCircleIcon } from 'lucide-react';
+import { BanIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -59,8 +55,15 @@ function CardContent({
   onClick?: () => void;
   onDelete?: (e: React.MouseEvent) => void;
 }) {
-  const { label: statusLabel, cls: statusCls } = statusConfig[candidate.status];
   const score = candidate.aiScore?.score ?? 0;
+  const yearsExp =
+    candidate.yearsOfExperience > 0
+      ? `${candidate.yearsOfExperience} yrs exp`
+      : '';
+  const salaryUsd =
+    candidate.currentSalaryUSD != null
+      ? `$${(candidate.currentSalaryUSD / 1000).toFixed(candidate.currentSalaryUSD % 1000 === 0 ? 0 : 1)}K/mo`
+      : '';
   return (
     <div
       role={onClick ? 'button' : undefined}
@@ -70,54 +73,57 @@ function CardContent({
         onClick && 'cursor-pointer hover:bg-muted/70 transition-colors'
       )}
     >
-      {onDelete && (
-        <button
-          type="button"
-          title="Set disposition"
-          aria-label="Set disposition for this candidate"
-          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10"
-          onClick={e => {
-            e.stopPropagation();
-            onDelete(e);
-          }}
-        >
-          <XCircleIcon className="size-3.5 text-destructive/70" />
-        </button>
-      )}
-      <div className="flex items-center gap-2 mb-2.5">
-        <div
-          className={cn(
-            'size-7 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 select-none',
-            avatarBg(candidate.firstName)
-          )}
-        >
-          {candidate.firstName[0]}
-          {candidate.lastName[0]}
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold leading-tight truncate">
-            {candidate.firstName} {candidate.lastName}
-          </p>
-          <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">
-            {candidate.email}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-1 pt-2 border-t">
-        <span className={cn('text-[10px] font-medium', statusCls)}>
-          {statusLabel}
-        </span>
+      {/* Header: score, name, email */}
+      <div className="flex items-start gap-2">
         {score > 0 && (
           <span
+            title={`AI fit score: ${score}/100`}
             className={cn(
-              'text-sm font-bold tabular-nums leading-none',
-              scoreTextColor(score)
+              'inline-flex items-center justify-center size-8 rounded-tl-md text-[11px] font-bold tabular-nums shrink-0',
+              score >= 80
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : score >= 60
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : score >= 40
+                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
             )}
           >
             {score}
           </span>
         )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold leading-tight truncate">
+            {candidate.firstName} {candidate.lastName}
+          </p>
+          <p className="text-[10px] text-muted-foreground wrap-break-word mt-0.5">
+            {candidate.email}
+          </p>
+        </div>
       </div>
+
+      {/* Footer: experience, salary, disposition */}
+      {(yearsExp || salaryUsd || onDelete) && (
+        <div className="flex items-center gap-1.5 pt-2 mt-2 border-t">
+          <span className="text-[11px] text-muted-foreground truncate flex-1 min-w-0">
+            {[yearsExp, salaryUsd].filter(Boolean).join(' · ')}
+          </span>
+          {onDelete && (
+            <button
+              type="button"
+              title="Set disposition"
+              aria-label="Set disposition for this candidate"
+              className="shrink-0 inline-flex items-center justify-center size-7 rounded-md border border-red-200 bg-red-50 text-red-500 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 hover:bg-red-100 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/40 dark:hover:text-red-300 focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+              onClick={e => {
+                e.stopPropagation();
+                onDelete(e);
+              }}
+            >
+              <BanIcon className="size-3.5" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -216,7 +222,7 @@ function DroppableColumn({
   const { setNodeRef, isOver } = useDroppable({ id: stageId });
 
   return (
-    <div className="flex flex-col w-52 shrink-0 h-full">
+    <div className="flex flex-col w-62.5 shrink-0 h-full">
       <div
         className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-lg border"
         style={{
@@ -499,7 +505,7 @@ export function JobPipelineBoard({ job }: { job: Job }) {
           })}
           {/* Rejected column — static, no drag */}
           {rejectedPairs.length > 0 && (
-            <div className="flex flex-col w-52 shrink-0 h-full">
+            <div className="flex flex-col w-62.5 shrink-0 h-full">
               <div
                 className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-lg border"
                 style={{
@@ -534,7 +540,7 @@ export function JobPipelineBoard({ job }: { job: Job }) {
         </div>
         <DragOverlay dropAnimation={null}>
           {activeItem && (
-            <div className="w-52 shadow-xl rotate-1 opacity-95">
+            <div className="w-62.5 shadow-xl rotate-1 opacity-95">
               <CardContent candidate={activeItem.candidate} />
             </div>
           )}

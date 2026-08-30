@@ -348,18 +348,27 @@ export function JobPanel({ job, clients }: Props) {
                 if (open) void fetchPipelines();
               }}
             >
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="inline-flex items-center gap-1.5 h-7 rounded-full border border-border bg-card pl-2 pr-1.5 text-sm hover:bg-accent hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={mutating}
-                  aria-label="Change pipeline"
-                >
-                  <LayersIcon className="size-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-[11px] text-muted-foreground hidden sm:inline max-w-40 truncate">
-                    {currentPipeline?.name ?? 'Pipeline'}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="inline-flex items-center gap-1.5 h-7 rounded-full border border-border bg-card pl-2 pr-1.5 text-sm hover:bg-accent hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={mutating}
+                        aria-label="Change pipeline"
+                      >
+                        <LayersIcon className="size-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-[11px] text-muted-foreground hidden sm:inline max-w-64 truncate">
+                          {currentPipeline?.name ?? 'Pipeline'}
+                        </span>
+                      </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Click to change pipeline
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <DropdownMenuContent align="start" className="w-72">
                 <DropdownMenuLabel className="text-xs">
                   Change Pipeline
