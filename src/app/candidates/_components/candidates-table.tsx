@@ -3,6 +3,7 @@ import { DispositionDialog } from '@/components/disposition-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -90,7 +91,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import type React from 'react';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { avatarBg, getFitConfig } from '../_utils/candidate-styles';
@@ -100,6 +101,35 @@ const HEADER_CLS =
   'text-xs font-medium uppercase tracking-wide text-muted-foreground';
 const SORT_BTN_CLS =
   '-ml-2 h-7 gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground';
+
+/**
+ * Run an array of async tasks with bounded concurrency, returning a
+ * PromiseSettledResult for each in the original order. Prevents a large
+ * bulk selection from firing hundreds of simultaneous requests.
+ */
+async function runAllWithConcurrency<T>(
+  tasks: (() => Promise<T>)[] = [],
+  limit = 8
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+  let next = 0;
+  async function worker() {
+    while (true) {
+      const i = next;
+      next += 1;
+      if (i >= tasks.length) break;
+      const task = tasks[i];
+      try {
+        results[i] = { status: 'fulfilled', value: await task() };
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason };
+      }
+    }
+  }
+  const workerCount = Math.min(limit, tasks.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
 
 export function ColHeader({ children }: { children: React.ReactNode }) {
   return <span className={HEADER_CLS}>{children}</span>;
@@ -1514,8 +1544,11 @@ export function CandidatesTable() {
   const mutating = useCandidateStore(s => s.mutating);
   const fetchCandidates = useCandidateStore(s => s.fetch);
   const remove = useCandidateStore(s => s.remove);
+  const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
 
   const allApps = useApplicationStore(s => s.items);
+  const moveStageApp = useApplicationStore(s => s.moveStage);
+  const rejectApp = useApplicationStore(s => s.reject);
 
   const allJobs = useJobStore(s => s.items);
   const allClients = useClientStore(s => s.items);
@@ -1539,6 +1572,14 @@ export function CandidatesTable() {
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStageOpen, setBulkStageOpen] = useState(false);
+  const [bulkStageId, setBulkStageId] = useState('');
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkActing, setBulkActing] = useState(false);
 
   // Subscribe to real-time candidate and application updates
   useSocketRoom('candidates');
@@ -1622,6 +1663,17 @@ export function CandidatesTable() {
     }
     return map;
   }, [allApps, allJobs]);
+
+  // candidateId → pending application id (for the In Review tab's reject action).
+  const pendingApplicationByCandidateId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of allApps) {
+      if (a.phase === 'pending' && !map.has(a.candidateId)) {
+        map.set(a.candidateId, a._id);
+      }
+    }
+    return map;
+  }, [allApps]);
 
   // candidateId → { jobTitle, clientName, hiredAt, hiredBy } for Hired tab.
   const hireInfoByCandidateId = useMemo(() => {
@@ -1883,6 +1935,121 @@ export function CandidatesTable() {
   const data = pagedData;
   const totalRows = filteredData.length;
 
+  // ── Bulk selection helpers ───────────────────────────────────────
+  const selectedCount = selectedIds.size;
+  const allFilteredSelected =
+    filteredData.length > 0 && filteredData.every(c => selectedIds.has(c._id));
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const allSelected =
+        filteredData.length > 0 && filteredData.every(c => prev.has(c._id));
+      if (allSelected) return new Set();
+      return new Set(filteredData.map(c => c._id));
+    });
+  }, [filteredData]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Clear selection whenever the effective filter changes so stale IDs from a
+  // previous tab/search/job can't be accidentally bulk-acted on.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [activeTab, jobIdFilter, query]);
+
+  // Stages offered by the bulk "Move to Stage" dialog (from the first
+  // selected candidate's job pipeline).
+  const bulkStageOptions = useMemo(() => {
+    const firstId = [...selectedIds][0];
+    const info = firstId ? stageInfoByCandidateId.get(firstId) : undefined;
+    return (info?.stages ?? []).filter(s => s.isActive !== false);
+  }, [selectedIds, stageInfoByCandidateId]);
+
+  // ── Bulk action handlers ─────────────────────────────────────────
+  async function handleBulkTalentPool() {
+    if (selectedCount === 0) return;
+    setBulkActing(true);
+    const ids = [...selectedIds];
+    const results = await runAllWithConcurrency(
+      ids.map(id => () => updateTalentPool(id, 'add'))
+    );
+    setBulkActing(false);
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    clearSelection();
+    if (ok === ids.length) {
+      toast.success(
+        `${ok} ${ok === 1 ? 'candidate' : 'candidates'} added to Talent Pool`
+      );
+    } else {
+      toast.error(`Added ${ok} of ${ids.length} — some candidates failed`);
+    }
+  }
+
+  async function handleBulkReject() {
+    if (selectedCount === 0) return;
+    setBulkActing(true);
+    const ids = [...selectedIds];
+    const reason = bulkRejectReason.trim() || undefined;
+    const results = await runAllWithConcurrency(
+      ids.map(id => () => {
+        const appId =
+          activeTab === 'approved'
+            ? stageInfoByCandidateId.get(id)?.applicationId
+            : pendingApplicationByCandidateId.get(id);
+        if (!appId) return Promise.reject(new Error('No application found'));
+        return rejectApp(appId, reason);
+      })
+    );
+    setBulkActing(false);
+    setBulkRejectOpen(false);
+    setBulkRejectReason('');
+    clearSelection();
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    if (ok === ids.length) {
+      toast.success(`${ok} ${ok === 1 ? 'candidate' : 'candidates'} rejected`);
+    } else {
+      toast.error(`Rejected ${ok} of ${ids.length} — some candidates failed`);
+    }
+  }
+
+  async function handleBulkMoveStage() {
+    if (selectedCount === 0 || !bulkStageId) return;
+    setBulkActing(true);
+    const ids = [...selectedIds];
+    const results = await runAllWithConcurrency(
+      ids.map(id => () => {
+        const info = stageInfoByCandidateId.get(id);
+        if (!info || !info.stages.some(s => s._id === bulkStageId)) {
+          return Promise.reject(new Error('Stage not available for candidate'));
+        }
+        return moveStageApp(info.applicationId, bulkStageId);
+      })
+    );
+    setBulkActing(false);
+    setBulkStageOpen(false);
+    setBulkStageId('');
+    clearSelection();
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    if (ok === ids.length) {
+      toast.success(
+        `${ok} ${ok === 1 ? 'candidate' : 'candidates'} moved to stage`
+      );
+    } else {
+      toast.error(`Moved ${ok} of ${ids.length} — some candidates failed`);
+    }
+  }
+
   const columns = useMemo<ColumnDef<Candidate>[]>(() => {
     const isPipeline = activeTab === 'approved';
     const isHired = activeTab === 'hired';
@@ -1943,6 +2110,33 @@ export function CandidatesTable() {
     };
 
     return [
+      {
+        id: 'select',
+        header: () => (
+          <Checkbox
+            checked={
+              allFilteredSelected
+                ? true
+                : selectedCount > 0
+                  ? 'indeterminate'
+                  : false
+            }
+            onCheckedChange={() => toggleSelectAll()}
+            aria-label="Select all candidates"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={e => e.stopPropagation()}>
+            <Checkbox
+              checked={selectedIds.has(row.original._id)}
+              onCheckedChange={() => toggleSelect(row.original._id)}
+              aria-label={`Select ${row.original.firstName} ${row.original.lastName}`}
+            />
+          </div>
+        ),
+        enableSorting: false,
+        size: 40,
+      },
       {
         id: 'candidate',
         accessorFn: row => `${row.firstName} ${row.lastName}`,
@@ -2175,6 +2369,11 @@ export function CandidatesTable() {
     allApps,
     allJobs,
     allClients,
+    selectedIds,
+    selectedCount,
+    allFilteredSelected,
+    toggleSelect,
+    toggleSelectAll,
   ]);
 
   const table = useReactTable({
@@ -2318,6 +2517,57 @@ export function CandidatesTable() {
               : `${totalRows} ${totalRows === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' total'}`}
         </p>
 
+        {/* Bulk selection bar */}
+        {selectedCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs shrink-0">
+            <Badge variant="secondary" className="text-xs">
+              {selectedCount} selected
+            </Badge>
+
+            {activeTab === 'approved' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setBulkStageOpen(true)}
+              >
+                <GitCommitHorizontalIcon className="size-4" />
+                Move to Stage
+              </Button>
+            )}
+
+            {activeTab !== 'hired' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setBulkRejectOpen(true)}
+              >
+                <BanIcon className="size-4" />
+                Reject
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkTalentPool}
+              disabled={bulkActing}
+            >
+              <StarIcon className="size-4" />
+              Add to Talent Pool
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto text-muted-foreground"
+              onClick={clearSelection}
+            >
+              <XIcon className="size-4" />
+              Clear
+            </Button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="relative rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
           <div
@@ -2395,6 +2645,88 @@ export function CandidatesTable() {
           </div>
         </div>
       </div>
+
+      {/* Bulk Move to Stage Dialog */}
+      <Dialog open={bulkStageOpen} onOpenChange={setBulkStageOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Move to Stage</DialogTitle>
+            <DialogDescription>
+              Move {selectedCount} selected{' '}
+              {selectedCount === 1 ? 'candidate' : 'candidates'} to a pipeline
+              stage.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Select Stage</Label>
+            <Select value={bulkStageId} onValueChange={setBulkStageId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a stage..." />
+              </SelectTrigger>
+              <SelectContent>
+                {bulkStageOptions.map(s => (
+                  <SelectItem key={s._id} value={s._id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: s.color }}
+                      />
+                      {s.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkStageOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkMoveStage}
+              disabled={!bulkStageId || bulkActing}
+            >
+              {bulkActing ? 'Moving…' : 'Move Stage'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Reject Dialog */}
+      <Dialog open={bulkRejectOpen} onOpenChange={setBulkRejectOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reject Candidates</DialogTitle>
+            <DialogDescription>
+              Reject {selectedCount} selected{' '}
+              {selectedCount === 1 ? 'candidate' : 'candidates'}?
+              {activeTab === 'approved'
+                ? ' They will be removed from the pipeline.'
+                : ' Their pending application will be rejected.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Reason (optional)</Label>
+            <Input
+              value={bulkRejectReason}
+              onChange={e => setBulkRejectReason(e.target.value)}
+              placeholder="e.g. Not a fit"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkRejectOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkReject}
+              disabled={bulkActing}
+            >
+              {bulkActing ? 'Rejecting…' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CandidateDetailSheet
         candidate={selected}
