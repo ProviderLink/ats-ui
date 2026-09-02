@@ -1,3 +1,4 @@
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { TagsSelector } from '@/components/tags-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getTagIds } from '@/lib/tags';
 import { cn } from '@/lib/utils';
@@ -683,12 +683,7 @@ export function NewJobSheet({
           </div>
 
           <FormField label="Description" required>
-            <Textarea
-              rows={4}
-              placeholder="Job description..."
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
+            <RichTextEditor value={description} onChange={setDescription} />
           </FormField>
 
           <FormField label="Requirements">

@@ -1,4 +1,5 @@
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { RichText } from '@/components/rich-text';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { logOptimisticActivity } from '@/lib/activity';
+import { splitBullets } from '@/lib/job-format';
 import { useResolvedTags } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import type { Client, Job, JobPriority, JobStatus, SalaryRange } from '@/store';
@@ -639,12 +641,7 @@ function Section({
 function normalizeBullets(items: string[] | undefined): string[] {
   if (!items?.length) return [];
   return items
-    .flatMap(item =>
-      item
-        .split('•')
-        .map(s => s.trim())
-        .filter(Boolean)
-    )
+    .flatMap(item => splitBullets(item))
     .filter(s => s.length > 1 || Number.isNaN(Number(s)));
 }
 
@@ -741,9 +738,7 @@ function JobDetails({ job, clientName }: { job: Job; clientName: string }) {
       </Section>
 
       <Section title="Description">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {job.description}
-        </p>
+        <RichText html={job.description} />
       </Section>
 
       {requirements.length > 0 && (

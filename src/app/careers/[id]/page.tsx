@@ -1,3 +1,4 @@
+import { RichText } from '@/components/rich-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import {
   formatSalary,
   jobTypeLabel,
   locationTypeLabel,
+  toBullets,
   toChips,
 } from '@/lib/job-format';
 import { publicApi } from '@/lib/public-api';
@@ -79,9 +81,9 @@ export default function CareerJobDetailPage() {
     ? formatDeadline(job.applicationDeadline)
     : null;
   const skills = toChips(job.skills);
-  const requirements = toChips(job.requirements);
-  const responsibilities = toChips(job.responsibilities);
-  const benefits = toChips(job.benefits);
+  const requirements = toBullets(job.requirements);
+  const responsibilities = toBullets(job.responsibilities);
+  const benefits = toBullets(job.benefits);
   const expired = deadline?.destructive ?? false;
 
   return (
@@ -158,9 +160,10 @@ export default function CareerJobDetailPage() {
             <h2 className="font-heading text-lg font-semibold text-foreground">
               About the role
             </h2>
-            <p className="text-base leading-relaxed text-foreground whitespace-pre-line">
-              {job.description}
-            </p>
+            <RichText
+              html={job.description}
+              className="text-base leading-relaxed text-foreground"
+            />
           </section>
 
           {skills.length > 0 && (

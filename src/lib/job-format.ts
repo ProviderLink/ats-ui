@@ -1,11 +1,11 @@
 import type {
-    ExperienceLevel,
-    JobPriority,
-    JobStatus,
-    JobType,
-    LocationType,
-    SalaryPeriod,
-    SalaryRange,
+  ExperienceLevel,
+  JobPriority,
+  JobStatus,
+  JobType,
+  LocationType,
+  SalaryPeriod,
+  SalaryRange,
 } from '@/store';
 
 export const jobTypeLabel: Record<JobType, string> = {
@@ -88,20 +88,60 @@ export function formatDeadline(deadline: string): {
  * often remain after splitting a malformed backend payload). */
 export function toChips(items: string[] | string | undefined): string[] {
   function clean(raw: string[]): string[] {
-    return [...new Set(
-      raw
-        .map(s => s.trim())
-        .filter(s => s.length > 1 || Number.isNaN(Number(s)))
-    )];
+    return [
+      ...new Set(
+        raw
+          .map(s => s.trim())
+          .filter(s => s.length > 1 || Number.isNaN(Number(s)))
+      ),
+    ];
   }
   if (!items) return [];
   if (typeof items === 'string') {
     return clean(items.split(/[,•·|;\n]/).filter(Boolean));
   }
   if (!items.length) return [];
-  return clean(
-    items.flatMap(item =>
-      item.split(/[,•·|;\n]/).filter(Boolean)
-    )
+  return clean(items.flatMap(item => item.split(/[,•·|;\n]/).filter(Boolean)));
+}
+
+/** Split a single string into bullet items. Handles legacy data where a whole
+ * list was pasted into one field, using dashes (" - "), bullets, or newlines
+ * as separators. Deliberately does NOT split on commas (those belong inside
+ * sentences like "invoices, vendor bills, and deposits"). */
+export function splitBullets(text: string): string[] {
+  return (
+    text
+      .split(/\n|\r|•|·|;|\||\s+[-–—]\s+/)
+      .map(s =>
+        s
+          .trim()
+          .replace(/^[-•·–—]\s*/, '')
+          // Strip redundant list numbers ("1.", "2)", "(3)") — the bullet UI
+          // already provides the list structure.
+          .replace(/^(?:\(\d+\)|\d+[.)])\s*/, '')
+          .trim()
+      )
+      // Drop empty entries and pure-separator lines (e.g. "______", "-----",
+      // "***") that are artifacts of pasting from documents.
+      .filter(s => s !== '' && /[\p{L}\p{N}]/u.test(s))
   );
+}
+
+/** Split an array/string into bullets (mirrors toChips but without commas). */
+export function toBullets(items: string[] | string | undefined): string[] {
+  function clean(raw: string[]): string[] {
+    return [
+      ...new Set(
+        raw
+          .map(s => s.trim())
+          .filter(s => s.length > 1 || Number.isNaN(Number(s)))
+      ),
+    ];
+  }
+  if (!items) return [];
+  if (typeof items === 'string') {
+    return clean(splitBullets(items));
+  }
+  if (!items.length) return [];
+  return clean(items.flatMap(item => splitBullets(item)));
 }
