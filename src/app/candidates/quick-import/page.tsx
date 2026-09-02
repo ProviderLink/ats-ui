@@ -78,7 +78,11 @@ const inputSchema = z.object({
   phone: z.string().min(1, 'Required'),
   yearsOfExperience: z.number().min(0, 'Must be 0 or more'),
   jobId: z.string().min(1, 'Job assignment is required'),
-  videoIntroUrl: z.string().min(1, 'Required').url('Must be a valid URL'),
+  videoIntroUrl: z
+    .string()
+    .url('Must be a valid URL')
+    .optional()
+    .or(z.literal('')),
   englishProficiency: z.enum([
     'basic',
     'conversational',
@@ -639,7 +643,12 @@ function InputStep({
                     type="number"
                     placeholder="0"
                     min={0}
-                    {...register('currentSalaryPHP', { valueAsNumber: true })}
+                    {...register('currentSalaryPHP', {
+                      setValueAs: v =>
+                        v === '' || v === null || v === undefined
+                          ? undefined
+                          : Number(v),
+                    })}
                   />
                 </Field>
                 <Field
@@ -650,7 +659,12 @@ function InputStep({
                     type="number"
                     placeholder="0"
                     min={0}
-                    {...register('currentSalaryUSD', { valueAsNumber: true })}
+                    {...register('currentSalaryUSD', {
+                      setValueAs: v =>
+                        v === '' || v === null || v === undefined
+                          ? undefined
+                          : Number(v),
+                    })}
                   />
                 </Field>
               </div>
@@ -747,20 +761,6 @@ function InputStep({
                     text-based PDF.
                   </p>
                 </div>
-              </Field>
-
-              <Field
-                label="Personal Intro Video URL"
-                required
-                error={errors.videoIntroUrl?.message}
-              >
-                <Input
-                  placeholder="https://drive.google.com/..."
-                  {...register('videoIntroUrl')}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Accepts Google Drive, Loom, YouTube, Vimeo, etc.
-                </p>
               </Field>
             </CardContent>
           </Card>

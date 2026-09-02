@@ -556,7 +556,12 @@ function InputStep({
                     type="number"
                     placeholder="0"
                     min={0}
-                    {...register('currentSalaryPHP', { valueAsNumber: true })}
+                    {...register('currentSalaryPHP', {
+                      setValueAs: v =>
+                        v === '' || v === null || v === undefined
+                          ? undefined
+                          : Number(v),
+                    })}
                   />
                 </Field>
                 <Field
@@ -567,7 +572,12 @@ function InputStep({
                     type="number"
                     placeholder="0"
                     min={0}
-                    {...register('currentSalaryUSD', { valueAsNumber: true })}
+                    {...register('currentSalaryUSD', {
+                      setValueAs: v =>
+                        v === '' || v === null || v === undefined
+                          ? undefined
+                          : Number(v),
+                    })}
                   />
                 </Field>
               </div>
