@@ -47,7 +47,6 @@ import {
   MapPinIcon,
   PencilIcon,
   Trash2Icon,
-  UserPlusIcon,
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
@@ -285,7 +284,7 @@ export function JobPanel({ job, clients }: Props) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="inline-flex items-center gap-1.5 h-7 rounded-full border border-border bg-card pl-2 pr-1.5 text-sm hover:bg-accent hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group inline-flex items-center gap-1.5 h-7 rounded-full border border-border/70 bg-muted/40 pl-2 pr-1.5 text-sm shadow-xs transition-all duration-200 hover:bg-muted/70 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={mutating}
                   aria-label={`Change status (current: ${statusLabel[fullJob.status]})`}
                 >
@@ -298,7 +297,7 @@ export function JobPanel({ job, clients }: Props) {
                   >
                     {statusLabel[fullJob.status]}
                   </Badge>
-                  <ChevronDownIcon className="size-3.5 text-muted-foreground" />
+                  <ChevronDownIcon className="size-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-44">
@@ -332,7 +331,7 @@ export function JobPanel({ job, clients }: Props) {
             <Badge
               variant={priorityVariant[fullJob.priority]}
               className={cn(
-                'text-[10px] h-5 px-1.5 gap-1 rounded-full border',
+                'text-[11px] h-6 px-2 gap-1.5 rounded-full border shadow-xs',
                 priorityCls[fullJob.priority]
               )}
               title={`Priority: ${priorityLabel[fullJob.priority]}`}
@@ -355,7 +354,7 @@ export function JobPanel({ job, clients }: Props) {
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <button
-                        className="inline-flex items-center gap-1.5 h-7 rounded-full border border-border bg-card pl-2 pr-1.5 text-sm hover:bg-accent hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="group inline-flex items-center gap-1.5 h-7 rounded-full border border-border/70 bg-muted/40 pl-2 pr-1.5 text-sm shadow-xs transition-all duration-200 hover:bg-muted/70 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={mutating}
                         aria-label="Change pipeline"
                       >
@@ -363,6 +362,7 @@ export function JobPanel({ job, clients }: Props) {
                         <span className="text-[11px] text-muted-foreground hidden sm:inline max-w-64 truncate">
                           {currentPipeline?.name ?? 'Pipeline'}
                         </span>
+                        <ChevronDownIcon className="size-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                       </button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
@@ -414,7 +414,7 @@ export function JobPanel({ job, clients }: Props) {
           <p className="text-xl font-bold leading-snug truncate">
             {fullJob.title}
           </p>
-          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <BriefcaseIcon className="size-3 shrink-0" />
               {clientName}
@@ -434,6 +434,7 @@ export function JobPanel({ job, clients }: Props) {
                 <Button
                   variant="outline"
                   size="icon-sm"
+                  className="hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   onClick={() => setDeleteOpen(true)}
                 >
                   <Trash2Icon />
@@ -446,6 +447,7 @@ export function JobPanel({ job, clients }: Props) {
                 <Button
                   variant="outline"
                   size="icon-sm"
+                  className="hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
                   onClick={() => setEditOpen(true)}
                 >
                   <PencilIcon />
@@ -460,6 +462,7 @@ export function JobPanel({ job, clients }: Props) {
                 <Button
                   variant="outline"
                   size="icon-sm"
+                  className="hover:border-green-500/40 hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400"
                   onClick={handleCopyLink}
                 >
                   {linkCopied ? (
@@ -474,15 +477,6 @@ export function JobPanel({ job, clients }: Props) {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Button
-            size="sm"
-            onClick={() =>
-              navigate(`/ats/candidates/quick-import?jobId=${fullJob._id}`)
-            }
-          >
-            <UserPlusIcon />
-            Add Candidate
-          </Button>
         </div>
       </div>
 

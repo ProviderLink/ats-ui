@@ -5,6 +5,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { htmlToPlainText, summarizeText } from '@/lib/html';
 import { cn, timeAgo } from '@/lib/utils';
 import { useActivityLogStore } from '@/store/slices/activity-logs.store';
 import {
@@ -37,7 +38,7 @@ import {
   VideoIcon,
   XCircleIcon,
 } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 /** Map an activity `action` token to a presentation icon + tint. */
 const TYPE_PRESETS: Record<
@@ -709,7 +710,7 @@ function ActivityItem({
   return (
     <li
       className={cn(
-        'relative flex items-start gap-3',
+        'relative flex items-start gap-3 -mx-2 rounded-lg px-2 transition-colors hover:bg-muted/40',
         compact ? 'py-2' : 'py-3'
       )}
     >
@@ -734,7 +735,7 @@ function ActivityItem({
       </TooltipProvider>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-snug break-words">{text}</p>
+        <ActivityText text={text} />
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
           {who && <span className="truncate">{who}</span>}
           {who && when && <span aria-hidden>·</span>}
@@ -760,17 +761,70 @@ function ActivityItem({
         )}
         {Array.isArray(log.metadata?.changes) &&
           (log.metadata.changes as string[]).length > 0 && (
-            <ul className="mt-1.5 flex flex-col gap-0.5 text-xs text-muted-foreground">
+            <ul className="mt-2 flex flex-wrap gap-1.5">
               {(log.metadata.changes as string[]).map((change, i) => (
-                <li key={i} className="flex items-start gap-1">
-                  <span className="mt-0.5 shrink-0 text-[10px]">•</span>
-                  <span>{change}</span>
+                <li key={i}>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[11px] leading-none text-muted-foreground">
+                    <span
+                      aria-hidden
+                      className="size-1 rounded-full bg-primary/50"
+                    />
+                    {summarizeChange(change)}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
       </div>
     </li>
+  );
+}
+
+/**
+ * Reduce a change description to just its field label, dropping the
+ * before/after values (which can contain long HTML like full job
+ * descriptions). `Description changed from "<h1>…" to "<h1>…"` becomes
+ * `Description changed`.
+ */
+function summarizeChange(change: string): string {
+  const bare = change.replace(/\s+from\s+.*$/s, '').trim();
+  return htmlToPlainText(bare);
+}
+
+/**
+ * Renders an activity description as clean plain text. Strips any HTML,
+ * shows a concise summary (with expand/collapse) when the content is long,
+ * and preserves list/indent structure via pre-line whitespace.
+ */
+function ActivityText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const plain = htmlToPlainText(text);
+  const { summary, truncated } = summarizeText(plain);
+  const [expanded, setExpanded] = useState(false);
+
+  const cls =
+    className ?? 'text-sm leading-snug break-words whitespace-pre-line';
+
+  if (!truncated) {
+    return <p className={cls}>{plain}</p>;
+  }
+
+  return (
+    <div>
+      <p className={cls}>{expanded ? plain : `${summary}…`}</p>
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        className="mt-0.5 text-xs font-medium text-primary hover:underline"
+      >
+        {expanded ? 'Show less' : 'Show more'}
+      </button>
+    </div>
   );
 }
 
@@ -829,7 +883,7 @@ function MetadataChips({ metadata }: { metadata: Record<string, unknown> }) {
           className="inline-flex min-h-5 items-start gap-1 rounded-md border border-border bg-card px-1.5 py-px text-[11px] text-foreground/80"
         >
           <span className="shrink-0 text-muted-foreground">{k}:</span>
-          <span className="break-all">{String(v)}</span>
+          <span className="break-all">{htmlToPlainText(String(v))}</span>
         </span>
       ))}
     </div>
