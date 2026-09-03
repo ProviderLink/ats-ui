@@ -50,7 +50,6 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { JobCandidates } from './job-candidates';
 import { JobPipelineBoard } from './job-pipeline-board';
 import { NewJobSheet } from './new-job-sheet';
@@ -165,7 +164,6 @@ export function JobPanel({ job, clients }: Props) {
   const jobAppCount = useApplicationStore(
     s => s.items.filter(a => a.jobId === job?._id).length
   );
-  const navigate = useNavigate();
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
