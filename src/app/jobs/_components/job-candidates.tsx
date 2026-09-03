@@ -24,6 +24,7 @@ import {
   Loader2Icon,
   UploadIcon,
   UserIcon,
+  UserPlusIcon,
   UsersIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -237,9 +238,19 @@ export function JobCandidates({ job }: { job: Job }) {
 
   if (allPairs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
         <UsersIcon className="size-8 opacity-40" />
         <p className="text-sm">No candidates assigned to this job yet</p>
+        <button
+          type="button"
+          onClick={() =>
+            navigate(`/ats/candidates/quick-import?jobId=${job._id}`)
+          }
+          className="inline-flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <UserPlusIcon className="size-4" />
+          Add Candidate to This Job
+        </button>
       </div>
     );
   }
@@ -293,14 +304,26 @@ export function JobCandidates({ job }: { job: Job }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate(`/ats/candidates?jobId=${job._id}`)}
-          className="inline-flex items-center gap-1.5 h-7 rounded-md border bg-card px-2.5 text-xs hover:bg-accent transition-colors"
-        >
-          <ExternalLinkIcon className="size-3" />
-          View in Candidates
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              navigate(`/ats/candidates/quick-import?jobId=${job._id}`)
+            }
+            className="inline-flex items-center gap-1.5 h-7 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <UserPlusIcon className="size-3" />
+            Add Candidate to This Job
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(`/ats/candidates?jobId=${job._id}`)}
+            className="inline-flex items-center gap-1.5 h-7 rounded-md border bg-card px-2.5 text-xs hover:bg-accent transition-colors"
+          >
+            <ExternalLinkIcon className="size-3" />
+            View in Candidates
+          </button>
+        </div>
       </div>
 
       {/* Phase filter chips with live counts. */}
