@@ -75,6 +75,28 @@ export interface CreateJobDto {
 
 export type UpdateJobDto = Partial<Omit<CreateJobDto, 'clientId'>>;
 
+/**
+ * Free-form brief sent to the AI draft generator. Purely a generation input —
+ * it is never persisted on a job.
+ */
+export interface GenerateJobDraftDto {
+  notes: string;
+}
+
+/**
+ * Structured result of the AI draft generator. Only fields that exist on the
+ * job form are returned, and enums are intentionally excluded so a guessed
+ * value can never reach the form unnoticed.
+ */
+export interface GeneratedJobDraft {
+  title: string;
+  description: string;
+  requirements: string[];
+  responsibilities: string[];
+  skills: string[];
+  benefits: string[];
+}
+
 export interface JobFilters {
   clientId?: string;
   status?: JobStatus;

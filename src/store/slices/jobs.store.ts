@@ -5,6 +5,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type {
   CreateJobDto,
+  GenerateJobDraftDto,
+  GeneratedJobDraft,
   Job,
   JobFilters,
   JobStatus,
@@ -30,6 +32,12 @@ interface JobActions {
   fetchOne: (id: string) => Promise<void>;
   create: (data: CreateJobDto) => Promise<Job>;
   update: (id: string, data: UpdateJobDto) => Promise<void>;
+  /**
+   * Turn a free-form brief into a structured draft. Stateless — nothing is
+   * persisted and no job state is touched, so failed calls can never leave
+   * the store inconsistent.
+   */
+  generateDraft: (data: GenerateJobDraftDto) => Promise<GeneratedJobDraft>;
   remove: (id: string) => Promise<void>;
   setStatus: (id: string, status: JobStatus) => Promise<void>;
   setPipeline: (
@@ -253,6 +261,10 @@ export const useJobStore = create<JobState & JobActions>()(
           toast.error((e as Error).message);
           throw e;
         }
+      },
+
+      generateDraft: async data => {
+        return postJson<GeneratedJobDraft>('/ats/jobs/generate-draft', data);
       },
 
       setFilters: f =>

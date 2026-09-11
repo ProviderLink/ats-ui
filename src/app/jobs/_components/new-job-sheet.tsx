@@ -1,5 +1,6 @@
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { TagsSelector } from '@/components/tags-selector';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
+import { descriptionToHtml } from '@/lib/markdown';
 import { getTagIds } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import type {
@@ -36,8 +39,11 @@ import {
 import {
   CheckIcon,
   ChevronDownIcon,
+  Loader2Icon,
   PlusIcon,
   SearchIcon,
+  SparklesIcon,
+  TriangleAlertIcon,
   XIcon,
 } from 'lucide-react';
 import type React from 'react';
@@ -179,13 +185,35 @@ function ClientCombobox({
   );
 }
 
+/**
+ * The unsubmitted AI brief is kept outside React state so it survives the
+ * sheet unmounting (Radix removes sheet content when closed). It is cleared
+ * only after a job is successfully created, or on a full page reload.
+ */
+let aiNotesCache = '';
+
+/** Subtle marker showing a field was populated by AI and is still untouched. */
+function AiBadge() {
+  return (
+    <Badge
+      variant="secondary"
+      className="gap-0.5 bg-primary/10 px-1.5 py-0 text-[10px] font-medium text-primary"
+    >
+      <SparklesIcon className="size-2.5" />
+      AI
+    </Badge>
+  );
+}
+
 function FormField({
   label,
   required,
+  badge,
   children,
 }: {
   label: string;
   required?: boolean;
+  badge?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -195,6 +223,7 @@ function FormField({
         {required && (
           <span className="text-destructive text-xs leading-none">*</span>
         )}
+        {badge}
       </Label>
       {children}
     </div>
@@ -331,7 +360,7 @@ export function NewJobSheet({
 }: Props) {
   const isEdit = !!job;
 
-  const { create, update, mutating } = useJobStore();
+  const { create, update, mutating, generateDraft } = useJobStore();
   const { items: storeClients, fetch: fetchClients } = useClientStore();
   const { items: tags, fetch: fetchTags } = useTagStore();
   const { items: pipelineTemplates, fetch: fetchPipelines } =
@@ -393,12 +422,116 @@ export function NewJobSheet({
   const [tagIds, setTagIds] = useState<string[]>(getTagIds(job?.tags));
   const [benefits, setBenefits] = useState<string[]>(job?.benefits ?? []);
 
+  // --- AI draft (creation only) ---
+  // Seeded from the module cache so an accidental close doesn't lose the
+  // brief. Never applies to edit mode — the feature is create-only.
+  const [aiNotes, setAiNotes] = useState(() => (job ? '' : aiNotesCache));
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiExpanded, setAiExpanded] = useState(true);
+  const [aiFilled, setAiFilled] = useState<Record<string, boolean>>({});
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  const aiCanGenerate = aiNotes.trim().length >= 10;
+  const aiFilledCount = Object.values(aiFilled).filter(Boolean).length;
+  /** Fields that already hold content and would be replaced by Generate. */
+  const aiOverwriteCount =
+    (title.trim() ? 1 : 0) +
+    (description.trim() ? 1 : 0) +
+    (requirements.some(Boolean) ? 1 : 0) +
+    (responsibilities.some(Boolean) ? 1 : 0) +
+    (skills.length > 0 ? 1 : 0) +
+    (benefits.some(Boolean) ? 1 : 0);
+
+  function updateAiNotes(value: string) {
+    aiNotesCache = value;
+    setAiNotes(value);
+  }
+
+  /** Drop the "AI" marker for a field as soon as the user touches it. */
+  function clearAiFilled(key: string) {
+    setAiFilled(prev => (prev[key] ? { ...prev, [key]: false } : prev));
+  }
+
+  async function applyAiDraft() {
+    const result = await generateDraft({ notes: aiNotes.trim() });
+
+    if (result.title) setTitle(result.title);
+    if (result.description) {
+      setDescription(descriptionToHtml(result.description));
+    }
+    if (result.requirements.length) setRequirements(result.requirements);
+    if (result.responsibilities.length) {
+      setResponsibilities(result.responsibilities);
+    }
+    if (result.skills.length) setSkills(result.skills);
+    if (result.benefits.length) setBenefits(result.benefits);
+
+    setAiFilled({
+      title: Boolean(result.title),
+      description: Boolean(result.description),
+      requirements: result.requirements.length > 0,
+      responsibilities: result.responsibilities.length > 0,
+      skills: result.skills.length > 0,
+      benefits: result.benefits.length > 0,
+    });
+    setAiExpanded(false);
+  }
+
+  function handleGenerateClick() {
+    if (!aiCanGenerate || aiGenerating) return;
+    if (aiOverwriteCount > 0 && !confirmOverwrite) {
+      setConfirmOverwrite(true);
+      return;
+    }
+    void runAiGenerate();
+  }
+
+  async function runAiGenerate() {
+    setConfirmOverwrite(false);
+    setAiGenerating(true);
+    try {
+      await applyAiDraft();
+      toast.success('Draft applied — review and edit below');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to generate job draft');
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
     if (!pipelineId && defaultPipelineId) setPipelineId(defaultPipelineId);
   }, [open, defaultPipelineId]);
 
   const selectedPipeline = activePipelines.find(p => p._id === pipelineId);
+
+  /**
+   * Creation only: warn before throwing away an in-progress brief or a
+   * generated draft. Edit mode keeps its existing close behaviour.
+   */
+  const hasUnsavedDraft =
+    !isEdit &&
+    (aiNotes.trim() !== '' ||
+      title.trim() !== '' ||
+      description.trim() !== '' ||
+      requirements.some(Boolean) ||
+      responsibilities.some(Boolean) ||
+      skills.length > 0 ||
+      benefits.some(Boolean));
+
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      onOpenChange(true);
+      return;
+    }
+    if (hasUnsavedDraft && !mutating) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onOpenChange(false);
+  }
 
   async function handleSubmit() {
     const salaryRange =
@@ -454,6 +587,7 @@ export function NewJobSheet({
           `Job "${dto.title}" created`
         );
         toast.success('Job created');
+        aiNotesCache = '';
       }
       onOpenChange(false);
     } catch (e) {
@@ -465,20 +599,137 @@ export function NewJobSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:sm:max-w-xl"
+        className={cn(
+          'flex flex-col gap-0 p-0',
+          isEdit
+            ? 'data-[side=right]:sm:max-w-xl'
+            : 'data-[side=right]:sm:max-w-2xl'
+        )}
       >
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle>{isEdit ? 'Edit Job' : 'New Job'}</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-          <FormField label="Job Title" required>
+          {!isEdit && (
+            // shrink-0 is required: this card is 'overflow-hidden', which makes
+            // its automatic minimum size 0. As a child of the column flex
+            // scroll area it would otherwise absorb all the shrink and collapse
+            // to a thin bordered line instead of showing its contents.
+            <div className="shrink-0 overflow-hidden rounded-lg border bg-muted/30 dark:bg-white/2">
+              <button
+                type="button"
+                onClick={() => setAiExpanded(v => !v)}
+                aria-expanded={aiExpanded}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/30"
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <SparklesIcon className="size-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    Start with AI
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {aiFilledCount > 0
+                      ? `${aiFilledCount} section${
+                          aiFilledCount === 1 ? '' : 's'
+                        } filled — edit anything below`
+                      : 'Write your rough notes and let AI structure the posting'}
+                  </span>
+                </span>
+                <ChevronDownIcon
+                  className={cn(
+                    'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                    aiExpanded && 'rotate-180'
+                  )}
+                />
+              </button>
+
+              {aiExpanded && (
+                <div className="flex flex-col gap-2 border-t px-4 pb-4 pt-3">
+                  <Textarea
+                    value={aiNotes}
+                    onChange={e => updateAiNotes(e.target.value)}
+                    rows={6}
+                    placeholder="Dump everything about this job — role, duties, must-haves, nice-to-haves, tools, location, pay. AI structures it without adding anything you did not mention."
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleGenerateClick}
+                    disabled={
+                      aiGenerating || confirmOverwrite || !aiCanGenerate
+                    }
+                    className="w-full gap-1.5 hover:bg-pine-teal-700 dark:hover:bg-pine-teal-700"
+                  >
+                    {aiGenerating ? (
+                      <>
+                        <Loader2Icon className="size-3.5 animate-spin" />
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="size-3.5" />
+                        {aiFilledCount > 0 ? 'Regenerate' : 'Generate'}
+                      </>
+                    )}
+                  </Button>
+                  {confirmOverwrite ? (
+                    <div className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 p-3">
+                      <p className="text-xs text-foreground">
+                        {aiOverwriteCount} field
+                        {aiOverwriteCount === 1
+                          ? ' already has'
+                          : 's already have'}{' '}
+                        content. Generating will replace{' '}
+                        {aiOverwriteCount === 1 ? 'it' : 'them'}.
+                      </p>
+                      <div className="flex flex-row gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setConfirmOverwrite(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="flex-1 hover:bg-pine-teal-700 dark:hover:bg-pine-teal-700"
+                          onClick={() => void runAiGenerate()}
+                        >
+                          Replace &amp; generate
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Fills the title, description, requirements,
+                      responsibilities, skills and benefits. Everything stays
+                      editable and nothing is saved until you press Add Job.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <FormField
+            label="Job Title"
+            required
+            badge={aiFilled.title ? <AiBadge /> : undefined}
+          >
             <Input
               placeholder="e.g. Senior Frontend Engineer"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={e => {
+                setTitle(e.target.value);
+                clearAiFilled('title');
+              }}
             />
           </FormField>
 
@@ -682,28 +933,59 @@ export function NewJobSheet({
             </FormField>
           </div>
 
-          <FormField label="Description" required>
-            <RichTextEditor value={description} onChange={setDescription} />
+          <FormField
+            label="Description"
+            required
+            badge={aiFilled.description ? <AiBadge /> : undefined}
+          >
+            <RichTextEditor
+              value={description}
+              onChange={html => {
+                setDescription(html);
+                clearAiFilled('description');
+              }}
+            />
           </FormField>
 
-          <FormField label="Requirements">
+          <FormField
+            label="Requirements"
+            badge={aiFilled.requirements ? <AiBadge /> : undefined}
+          >
             <DynamicList
               items={requirements}
-              onChange={setRequirements}
+              onChange={items => {
+                setRequirements(items);
+                clearAiFilled('requirements');
+              }}
               placeholder="e.g. 3+ years of React experience"
             />
           </FormField>
 
-          <FormField label="Responsibilities">
+          <FormField
+            label="Responsibilities"
+            badge={aiFilled.responsibilities ? <AiBadge /> : undefined}
+          >
             <DynamicList
               items={responsibilities}
-              onChange={setResponsibilities}
+              onChange={items => {
+                setResponsibilities(items);
+                clearAiFilled('responsibilities');
+              }}
               placeholder="e.g. Lead frontend architecture decisions"
             />
           </FormField>
 
-          <FormField label="Skills">
-            <SkillsInput skills={skills} onChange={setSkills} />
+          <FormField
+            label="Skills"
+            badge={aiFilled.skills ? <AiBadge /> : undefined}
+          >
+            <SkillsInput
+              skills={skills}
+              onChange={items => {
+                setSkills(items);
+                clearAiFilled('skills');
+              }}
+            />
           </FormField>
 
           <FormField label="Tags">
@@ -714,39 +996,78 @@ export function NewJobSheet({
             />
           </FormField>
 
-          <FormField label="Benefits">
+          <FormField
+            label="Benefits"
+            badge={aiFilled.benefits ? <AiBadge /> : undefined}
+          >
             <DynamicList
               items={benefits}
-              onChange={setBenefits}
+              onChange={items => {
+                setBenefits(items);
+                clearAiFilled('benefits');
+              }}
               placeholder="e.g. Health insurance, 401k matching"
             />
           </FormField>
         </div>
 
+        {confirmDiscard && (
+          <div className="flex items-start gap-2 border-t border-warning/40 bg-warning/10 px-6 py-3">
+            <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0 text-warning" />
+            <p className="text-xs text-foreground">
+              You have unsaved job details. Close and discard them?
+            </p>
+          </div>
+        )}
+
         <SheetFooter className="border-t px-6 py-4 gap-2">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-            disabled={mutating}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="flex-1 hover:bg-pine-teal-700 dark:hover:bg-pine-teal-700"
-            onClick={() => void handleSubmit()}
-            disabled={
-              mutating ||
-              !title.trim() ||
-              !clientId ||
-              !jobType ||
-              !locationType ||
-              !experienceLevel ||
-              !description.trim()
-            }
-          >
-            {isEdit ? 'Save Changes' : 'Add Job'}
-          </Button>
+          {confirmDiscard ? (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConfirmDiscard(false)}
+              >
+                Keep editing
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  setConfirmDiscard(false);
+                  onOpenChange(false);
+                }}
+              >
+                Discard
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => handleOpenChange(false)}
+                disabled={mutating}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 hover:bg-pine-teal-700 dark:hover:bg-pine-teal-700"
+                onClick={() => void handleSubmit()}
+                disabled={
+                  mutating ||
+                  !title.trim() ||
+                  !clientId ||
+                  !jobType ||
+                  !locationType ||
+                  !experienceLevel ||
+                  !description.trim()
+                }
+              >
+                {isEdit ? 'Save Changes' : 'Add Job'}
+              </Button>
+            </>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
