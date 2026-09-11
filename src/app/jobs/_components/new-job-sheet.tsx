@@ -41,6 +41,7 @@ import {
   ChevronDownIcon,
   Loader2Icon,
   PlusIcon,
+  RotateCcwIcon,
   SearchIcon,
   SparklesIcon,
   TriangleAlertIcon,
@@ -360,7 +361,8 @@ export function NewJobSheet({
 }: Props) {
   const isEdit = !!job;
 
-  const { create, update, mutating, generateDraft } = useJobStore();
+  const { create, update, mutating, generateDraft, standardizeContent } =
+    useJobStore();
   const { items: storeClients, fetch: fetchClients } = useClientStore();
   const { items: tags, fetch: fetchTags } = useTagStore();
   const { items: pipelineTemplates, fetch: fetchPipelines } =
@@ -431,6 +433,16 @@ export function NewJobSheet({
   const [aiFilled, setAiFilled] = useState<Record<string, boolean>>({});
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  /**
+   * Edit mode only: the list values as they were before the last standardize
+   * run, so the user can undo an AI rewrite in one click.
+   */
+  const [aiOriginal, setAiOriginal] = useState<{
+    requirements: string[];
+    responsibilities: string[];
+    skills: string[];
+    benefits: string[];
+  } | null>(null);
 
   const aiCanGenerate = aiNotes.trim().length >= 10;
   const aiFilledCount = Object.values(aiFilled).filter(Boolean).length;
@@ -442,6 +454,13 @@ export function NewJobSheet({
     (responsibilities.some(Boolean) ? 1 : 0) +
     (skills.length > 0 ? 1 : 0) +
     (benefits.some(Boolean) ? 1 : 0);
+
+  /** Edit mode: nothing to tidy when every list is still empty. */
+  const aiHasListContent =
+    requirements.some(Boolean) ||
+    responsibilities.some(Boolean) ||
+    skills.length > 0 ||
+    benefits.some(Boolean);
 
   function updateAiNotes(value: string) {
     aiNotesCache = value;
@@ -498,6 +517,61 @@ export function NewJobSheet({
     } finally {
       setAiGenerating(false);
     }
+  }
+
+  /**
+   * Edit mode: send the list fields currently in the form to be tidied. The
+   * job's title, description, enums, dates, salary, tags and client are never
+   * sent and never change — only these four lists come back rewritten.
+   */
+  async function runStandardize() {
+    setAiGenerating(true);
+    try {
+      const snapshot = {
+        requirements: requirements.filter(Boolean),
+        responsibilities: responsibilities.filter(Boolean),
+        skills: [...skills],
+        benefits: benefits.filter(Boolean),
+      };
+
+      const result = await standardizeContent(snapshot);
+
+      setAiOriginal(snapshot);
+      setRequirements(result.requirements.length ? result.requirements : ['']);
+      setResponsibilities(
+        result.responsibilities.length ? result.responsibilities : ['']
+      );
+      setSkills(result.skills);
+      setBenefits(result.benefits.length ? result.benefits : ['']);
+      setAiFilled({
+        requirements: result.requirements.length > 0,
+        responsibilities: result.responsibilities.length > 0,
+        skills: result.skills.length > 0,
+        benefits: result.benefits.length > 0,
+      });
+
+      toast.success('Content tidied — review below, nothing is saved yet');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to improve job content');
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
+  /** Undo the last standardize run and restore the pre-AI list values. */
+  function revertStandardize() {
+    if (!aiOriginal) return;
+    setRequirements(
+      aiOriginal.requirements.length ? aiOriginal.requirements : ['']
+    );
+    setResponsibilities(
+      aiOriginal.responsibilities.length ? aiOriginal.responsibilities : ['']
+    );
+    setSkills(aiOriginal.skills);
+    setBenefits(aiOriginal.benefits.length ? aiOriginal.benefits : ['']);
+    setAiFilled({});
+    setAiOriginal(null);
+    toast.success('Reverted to the original content');
   }
 
   useEffect(() => {
@@ -713,6 +787,87 @@ export function NewJobSheet({
                       editable and nothing is saved until you press Add Job.
                     </p>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {isEdit && (
+            // Same shrink-0 / overflow-hidden reasoning as the creation card.
+            <div className="shrink-0 overflow-hidden rounded-lg border bg-muted/30 dark:bg-white/2">
+              <button
+                type="button"
+                onClick={() => setAiExpanded(v => !v)}
+                aria-expanded={aiExpanded}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/30"
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <SparklesIcon className="size-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    Improve with AI
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {aiFilledCount > 0
+                      ? `${aiFilledCount} section${
+                          aiFilledCount === 1 ? '' : 's'
+                        } tidied — check below`
+                      : 'Tidy up the requirements, responsibilities, skills and benefits'}
+                  </span>
+                </span>
+                <ChevronDownIcon
+                  className={cn(
+                    'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                    aiExpanded && 'rotate-180'
+                  )}
+                />
+              </button>
+
+              {aiExpanded && (
+                <div className="flex flex-col gap-2 border-t px-4 pb-4 pt-3">
+                  <Button
+                    type="button"
+                    onClick={() => void runStandardize()}
+                    disabled={aiGenerating || !aiHasListContent}
+                    className="w-full gap-1.5 hover:bg-pine-teal-700 dark:hover:bg-pine-teal-700"
+                  >
+                    {aiGenerating ? (
+                      <>
+                        <Loader2Icon className="size-3.5 animate-spin" />
+                        Improving…
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="size-3.5" />
+                        {aiFilledCount > 0
+                          ? 'Improve again'
+                          : 'Improve content'}
+                      </>
+                    )}
+                  </Button>
+
+                  {aiOriginal && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={revertStandardize}
+                      disabled={aiGenerating}
+                      className="w-full gap-1.5"
+                    >
+                      <RotateCcwIcon className="size-3.5" />
+                      Revert to original
+                    </Button>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    Reads the lists already on this job, merges duplicates and
+                    fixes wording, formatting and misplaced points. It never
+                    invents a new point and never drops an existing one. Only
+                    these four lists change — nothing is saved until you press
+                    Save Changes.
+                  </p>
                 </div>
               )}
             </div>

@@ -11,6 +11,8 @@ import type {
   JobFilters,
   JobStatus,
   Pagination,
+  StandardizeJobContentDto,
+  StandardizedJobContent,
   UpdateJobDto,
 } from '../types';
 import { useApplicationStore } from './applications.store';
@@ -38,6 +40,13 @@ interface JobActions {
    * the store inconsistent.
    */
   generateDraft: (data: GenerateJobDraftDto) => Promise<GeneratedJobDraft>;
+  /**
+   * Tidy and standardize the list fields of an existing job. Also stateless —
+   * it returns cleaned copies of what was sent and persists nothing.
+   */
+  standardizeContent: (
+    data: StandardizeJobContentDto
+  ) => Promise<StandardizedJobContent>;
   remove: (id: string) => Promise<void>;
   setStatus: (id: string, status: JobStatus) => Promise<void>;
   setPipeline: (
@@ -265,6 +274,10 @@ export const useJobStore = create<JobState & JobActions>()(
 
       generateDraft: async data => {
         return postJson<GeneratedJobDraft>('/ats/jobs/generate-draft', data);
+      },
+
+      standardizeContent: async data => {
+        return postJson<StandardizedJobContent>('/ats/jobs/standardize', data);
       },
 
       setFilters: f =>

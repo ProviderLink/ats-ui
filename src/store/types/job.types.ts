@@ -97,6 +97,20 @@ export interface GeneratedJobDraft {
   benefits: string[];
 }
 
+/**
+ * Existing list content from the job form, sent for tidying. Only the list
+ * fields are ever sent — enums, dates, salary and client stay untouched.
+ */
+export interface StandardizeJobContentDto {
+  requirements: string[];
+  responsibilities: string[];
+  skills: string[];
+  benefits: string[];
+}
+
+/** Tidied copies of the submitted lists. Never persisted by the API call. */
+export type StandardizedJobContent = StandardizeJobContentDto;
+
 export interface JobFilters {
   clientId?: string;
   status?: JobStatus;
