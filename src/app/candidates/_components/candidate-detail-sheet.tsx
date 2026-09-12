@@ -3,6 +3,7 @@ import { ActivityTimeline } from '@/components/activity-timeline';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DispositionDialog } from '@/components/disposition-dialog';
 import { TagsSelector } from '@/components/tags-selector';
+import { TimezoneSelect } from '@/components/timezone-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +36,7 @@ import { logOptimisticActivity } from '@/lib/activity';
 import { getAuthToken, getJson } from '@/lib/api-client';
 import { downloadFileWithAuth } from '@/lib/download';
 import { getTagIds } from '@/lib/tags';
+import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
@@ -131,16 +133,6 @@ function defaultSubject(
       return '';
   }
 }
-
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern (ET)' },
-  { value: 'America/Chicago', label: 'Central (CT)' },
-  { value: 'America/Denver', label: 'Mountain (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
-  { value: 'UTC', label: 'UTC' },
-  { value: 'Europe/London', label: 'London (GMT/BST)' },
-  { value: 'Europe/Paris', label: 'Central European (CET)' },
-] as const;
 
 function TalentPoolNotesEditor({
   notes,
@@ -753,7 +745,7 @@ function ScheduleInterviewDialog({
   const [time, setTime] = useState('10:00');
   const [duration, setDuration] = useState(45);
   const defaultTz =
-    useSettingsStore.getState().settings?.companyTimezone || 'America/New_York';
+    useSettingsStore.getState().settings?.companyTimezone || DEFAULT_TIMEZONE;
   const [timezone, setTimezone] = useState(defaultTz);
   const [interviewerIds, setInterviewerIds] = useState<string[]>([]);
   const [meetingLink, setMeetingLink] = useState('');
@@ -951,18 +943,7 @@ function ScheduleInterviewDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Timezone</Label>
-            <Select value={timezone} onValueChange={setTimezone}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEZONES.map(tz => (
-                  <SelectItem key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TimezoneSelect value={timezone} onValueChange={setTimezone} />
           </div>
         </div>
 

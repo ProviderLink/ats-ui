@@ -1,4 +1,5 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { TimezoneSelect } from '@/components/timezone-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,6 +52,7 @@ import {
   XIcon,
 } from 'lucide-react';
 
+import { getTimezoneOffsetLabel } from '@/lib/timezones';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { EmailTemplateSheet } from '../_components/email-template-sheet';
@@ -65,16 +67,6 @@ import {
 const TYPE_MAP = Object.fromEntries(
   EMAIL_TEMPLATE_TYPES.map(t => [t.value, t.label])
 ) as Record<string, string>;
-
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern (ET)' },
-  { value: 'America/Chicago', label: 'Central (CT)' },
-  { value: 'America/Denver', label: 'Mountain (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
-  { value: 'UTC', label: 'UTC' },
-  { value: 'Europe/London', label: 'London (GMT/BST)' },
-  { value: 'Europe/Paris', label: 'Central European (CET)' },
-];
 
 // ─── Workspace Card ──────────────────────────────────────────────────────────
 
@@ -118,23 +110,21 @@ function WorkspaceCard() {
         <form onSubmit={handleSave} className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="ws-tz">Timezone</Label>
-              <Select
+              <Label htmlFor="ws-tz">Company timezone</Label>
+              <TimezoneSelect
+                id="ws-tz"
                 value={timezone}
                 onValueChange={setTimezone}
                 disabled={loading}
-              >
-                <SelectTrigger id="ws-tz">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map(tz => (
-                    <SelectItem key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for scheduled emails, reminders, background jobs and
+                exports. This is a workspace-wide setting — it applies to
+                everyone, not just you.
+                {getTimezoneOffsetLabel(timezone)
+                  ? ` Current offset: ${getTimezoneOffsetLabel(timezone)}.`
+                  : ''}
+              </p>
             </div>
           </div>
           <div className="flex justify-end">

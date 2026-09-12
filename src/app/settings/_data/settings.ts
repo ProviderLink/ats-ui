@@ -4,7 +4,7 @@ export const workspaceSettings = {
   website: 'https://arista.com',
   description:
     'Leading healthcare staffing agency specialising in nursing and allied health.',
-  timezone: 'America/New_York',
+  timezone: 'America/Chicago',
   currency: 'USD',
   // API settings: PATCH /api/v1/shared/settings
   emailSettings: {

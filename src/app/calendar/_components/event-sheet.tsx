@@ -1,3 +1,4 @@
+import { TimezoneSelect } from '@/components/timezone-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
+import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -467,7 +469,7 @@ function EditForm({
     timezone:
       event.timezone ||
       useSettingsStore.getState().settings?.companyTimezone ||
-      'America/New_York',
+      DEFAULT_TIMEZONE,
     meetingLink: m?.link ?? '',
     phoneNumber: m?.phoneNumber ?? '',
     address: m?.address ?? '',
@@ -600,10 +602,10 @@ function EditForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="ed-tz">Timezone</Label>
-        <Input
+        <TimezoneSelect
           id="ed-tz"
           value={form.timezone}
-          onChange={e => set('timezone', e.target.value)}
+          onValueChange={v => set('timezone', v)}
         />
       </div>
 
@@ -699,8 +701,7 @@ function CreateForm({
     scheduledTime: '10:00',
     duration: '60',
     timezone:
-      useSettingsStore.getState().settings?.companyTimezone ||
-      'America/New_York',
+      useSettingsStore.getState().settings?.companyTimezone || DEFAULT_TIMEZONE,
     meetingLink: '',
     phoneNumber: '',
     address: '',
@@ -1132,11 +1133,10 @@ function CreateForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="ev-tz">Timezone</Label>
-        <Input
+        <TimezoneSelect
           id="ev-tz"
-          placeholder="e.g. America/New_York"
           value={form.timezone}
-          onChange={e => set('timezone', e.target.value)}
+          onValueChange={v => set('timezone', v)}
         />
       </div>
 
