@@ -1469,7 +1469,12 @@ function ActivityTab({ clientId }: { clientId: string }) {
         Audit trail of every change made to this client — contacts, CRM profile,
         status changes, and more.
       </p>
-      <ActivityTimeline resourceType="client" resourceId={clientId} compact />
+      <ActivityTimeline
+        resourceType="client"
+        resourceId={clientId}
+        scope="entity"
+        compact
+      />
     </div>
   );
 }

@@ -1,32 +1,36 @@
-import { getJson } from '@/lib/api-client';
-import { isValidObjectId } from '@/lib/utils';
+import {
+  fetchEntityActivity,
+  type ActivityPage,
+} from '@/components/activity-timeline/api';
+import type { ActivityEntry } from '@/components/activity-timeline/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type {
-  ActivityLog,
-  ActivityLogListResponse,
-  ActivityResourceType,
-  Pagination,
-} from '../types';
+import type { ActivityResourceType } from '../types';
 
 /** Compound key (resourceType|resourceId) so per-entity feeds cache independently. */
 export function feedKey(resourceType: string, resourceId: string): string {
   return `${resourceType}|${resourceId}`;
 }
 
+/**
+ * Per-entity cache of normalised activity entries.
+ *
+ * The store owns caching, loading/error flags and the pagination cursor. It
+ * deliberately does NOT build HTTP requests or interpret payloads — that is
+ * `components/activity-timeline/api.ts`, so legacy-token mapping and the
+ * metadata allowlist cannot be bypassed by calling the store directly.
+ */
+
 interface ActivityLogState {
-  /** Per-entity activity feeds keyed by `${resourceType}|${resourceId}`. */
-  feeds: Record<string, ActivityLog[]>;
-  /** Per-feed loading flags, keyed the same way as `feeds` so a fetch for one
-   * entity never shows skeletons in an unrelated timeline. */
+  /** Normalised entries, keyed by `${resourceType}|${resourceId}`. */
+  feeds: Record<string, ActivityEntry[]>;
+  /** Per-feed loading flags, so one entity's fetch never skeletons another. */
   loading: Record<string, boolean>;
-  /** Per-feed error message, keyed the same way as `feeds`. `null` means the
-   * last fetch for that entity succeeded. */
+  /** Per-feed error message; `null` means the last fetch succeeded. */
   errors: Record<string, string | null>;
-  /** Per-feed pagination cursor, so the UI can load older entries beyond the
-   * first page instead of silently truncating the history. */
-  pagination: Record<string, Pagination | null>;
+  /** Per-feed pagination cursor, so older entries can be loaded on demand. */
+  pagination: Record<string, ActivityPage | null>;
 }
 
 interface ActivityLogActions {
@@ -49,7 +53,7 @@ interface ActivityLogActions {
   _prepend: (
     resourceType: string,
     resourceId: string,
-    log: ActivityLog
+    entry: ActivityEntry
   ) => void;
 }
 
@@ -67,29 +71,15 @@ const initialState: ActivityLogState = {
  * list endpoints, so pagination arrives **flattened onto the response**, not
  * nested under a `pagination` key. Both shapes are accepted here.
  */
-function normalise(res: ActivityLog[] | ActivityLogListResponse): {
-  logs: ActivityLog[];
-  pagination: Pagination | null;
-} {
-  if (Array.isArray(res)) return { logs: res, pagination: null };
-
-  const flat = res as ActivityLogListResponse & Partial<Pagination>;
-  const pagination =
-    res.pagination ??
-    (typeof flat.totalPages === 'number' && typeof flat.page === 'number'
-      ? {
-          total: flat.total ?? 0,
-          page: flat.page,
-          limit: flat.limit ?? 50,
-          totalPages: flat.totalPages,
-        }
-      : null);
-
-  return { logs: res.data ?? [], pagination };
-}
-
 /** Default page size for the first fetch and each subsequent page. */
 const PAGE_SIZE = 50;
+
+/** Newest first, with entries sharing a timestamp left in arrival order. */
+function sortNewestFirst(entries: ActivityEntry[]): ActivityEntry[] {
+  return [...entries].sort(
+    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+  );
+}
 
 export const useActivityLogStore = create<
   ActivityLogState & ActivityLogActions
@@ -100,33 +90,25 @@ export const useActivityLogStore = create<
 
       fetchForEntity: async (resourceType, resourceId, opts) => {
         const key = feedKey(resourceType, resourceId);
-        if (!isValidObjectId(resourceId)) {
-          // Avoid hitting the API for placeholder ids (mocks/new records).
-          set(s => {
-            s.feeds[key] = [];
-          });
-          return;
-        }
-        // Skip refetch when we already have cached entries for this entity
-        // and the caller didn't force a refresh — reduces redundant calls
-        // when sheets remount.
-        if (!opts?.force && useActivityLogStore.getState().feeds[key]) {
-          return;
-        }
+        // Skip refetch when we already hold this entity's feed and the caller
+        // did not force a refresh — avoids redundant calls on sheet remounts.
+        if (!opts?.force && useActivityLogStore.getState().feeds[key]) return;
+
         set(s => {
           s.loading[key] = true;
           s.errors[key] = null;
         });
         try {
-          const res = await getJson<ActivityLog[] | ActivityLogListResponse>(
-            `/shared/activity-logs/${resourceType}/${resourceId}`,
-            { page: opts?.page ?? 1, limit: opts?.limit ?? PAGE_SIZE }
+          const page = await fetchEntityActivity(
+            resourceType,
+            resourceId,
+            opts?.page ?? 1,
+            opts?.limit ?? PAGE_SIZE
           );
-          const { logs, pagination } = normalise(res);
           set(s => {
-            s.feeds[key] = logs;
+            s.feeds[key] = page.entries;
             s.loading[key] = false;
-            s.pagination[key] = pagination;
+            s.pagination[key] = page;
           });
         } catch (e) {
           set(s => {
@@ -139,7 +121,6 @@ export const useActivityLogStore = create<
       fetchMore: async (resourceType, resourceId) => {
         const key = feedKey(resourceType, resourceId);
         const state = useActivityLogStore.getState();
-        if (!isValidObjectId(resourceId)) return;
         // Guard against duplicate in-flight requests and end-of-list.
         if (state.loading[key]) return;
         const pager = state.pagination[key];
@@ -152,24 +133,22 @@ export const useActivityLogStore = create<
           s.errors[key] = null;
         });
         try {
-          const res = await getJson<ActivityLog[] | ActivityLogListResponse>(
-            `/shared/activity-logs/${resourceType}/${resourceId}`,
-            { page: pager.page + 1, limit: pager.limit || PAGE_SIZE }
+          const next = await fetchEntityActivity(
+            resourceType,
+            resourceId,
+            pager.page + 1,
+            pager.limit || PAGE_SIZE
           );
-          const { logs, pagination } = normalise(res);
           set(s => {
-            // De-duplicate by _id — an optimistic entry or a concurrently
+            // De-duplicate by id — an optimistic entry or a concurrently
             // recorded event can shift page boundaries between requests.
-            const seen = new Set((s.feeds[key] ?? []).map(l => l._id));
-            s.feeds[key] = [
+            const seen = new Set((s.feeds[key] ?? []).map(entry => entry.id));
+            s.feeds[key] = sortNewestFirst([
               ...(s.feeds[key] ?? []),
-              ...logs.filter(l => !seen.has(l._id)),
-            ];
+              ...next.entries.filter(entry => !seen.has(entry.id)),
+            ]);
             s.loading[key] = false;
-            s.pagination[key] = pagination ?? {
-              ...pager,
-              page: pager.page + 1,
-            };
+            s.pagination[key] = next;
           });
         } catch (e) {
           set(s => {
@@ -189,11 +168,10 @@ export const useActivityLogStore = create<
           pagination: {},
         })),
 
-      _prepend: (resourceType, resourceId, log) => {
+      _prepend: (resourceType, resourceId, entry) => {
         set(s => {
           const key = feedKey(resourceType, resourceId);
-          const existing = s.feeds[key] ?? [];
-          s.feeds[key] = [log, ...existing];
+          s.feeds[key] = sortNewestFirst([entry, ...(s.feeds[key] ?? [])]);
           // The event was recorded locally, so any prior fetch error is stale.
           s.errors[key] = null;
         });
@@ -202,7 +180,13 @@ export const useActivityLogStore = create<
     {
       name: 'ats-activity-logs',
       storage: createJSONStorage(() => localStorage),
-      // Only persist the per-entity feed cache, not loading flags.
+      // Bump whenever `ActivityEntry` changes shape. Version 1 stored raw
+      // server documents (keyed by `_id`, with `updatedAt` and unresolved
+      // legacy `type` tokens); rendering those would produce broken rows until
+      // the forced refetch landed, so they are dropped instead.
+      version: 2,
+      migrate: () => ({ feeds: {}, loading: {}, errors: {}, pagination: {} }),
+      // Only persist the per-entity feed cache, not loading flags or cursors.
       partialize: s => ({ feeds: s.feeds }),
     }
   )

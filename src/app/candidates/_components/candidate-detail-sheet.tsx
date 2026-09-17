@@ -39,7 +39,10 @@ import { downloadFileWithAuth } from '@/lib/download';
 import { getTagIds } from '@/lib/tags';
 import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
-import { useActivityLogStore, feedKey } from '@/store/slices/activity-logs.store';
+import {
+  feedKey,
+  useActivityLogStore,
+} from '@/store/slices/activity-logs.store';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -1657,6 +1660,7 @@ function ApplicationCard({
             <ActivityTimeline
               resourceType="application"
               resourceId={app._id}
+              scope="entity"
               compact
             />
           </div>
@@ -1859,8 +1863,8 @@ function CandidateCrmButton({
 function DispositionHistory({ candidateId }: { candidateId: string }) {
   // Reuse the candidate feed that `ActivityTimeline` already fetched rather
   // than issuing a second identical request to the same endpoint.
-  const items = useActivityLogStore(s =>
-    s.feeds[feedKey('candidate', candidateId)]
+  const items = useActivityLogStore(
+    s => s.feeds[feedKey('candidate', candidateId)]
   );
 
   const dispositions = useMemo(
@@ -1892,7 +1896,7 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
             const performedBy = entry.performerName;
             return (
               <div
-                key={entry._id ?? i}
+                key={entry.id ?? i}
                 className="rounded-md border bg-muted/20 px-3 py-2 text-sm"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -3762,6 +3766,7 @@ export function CandidateDetailSheet({
                     <ActivityTimeline
                       resourceType="candidate"
                       resourceId={c._id}
+                      scope="entity"
                       compact
                     />
                   </div>

@@ -365,6 +365,7 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
               <ActivityTimeline
                 resourceType="user"
                 resourceId={member._id}
+                scope="entity"
                 compact
               />
             </div>

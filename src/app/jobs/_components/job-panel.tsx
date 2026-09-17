@@ -526,7 +526,11 @@ export function JobPanel({ job, clients }: Props) {
               ) : tab === 'candidates' ? (
                 <JobCandidates key={fullJob._id} job={fullJob} />
               ) : canViewActivity ? (
-                <ActivityTimeline resourceType="job" resourceId={fullJob._id} />
+                <ActivityTimeline
+                  resourceType="job"
+                  resourceId={fullJob._id}
+                  scope="entity"
+                />
               ) : null}
             </TabsContent>
           )

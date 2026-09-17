@@ -99,6 +99,19 @@
   --text-secondary: var(--color-ash-grey-700);
   --text-muted: var(--color-ash-grey-600);
 
+  /* Activity timeline — actor avatar, action dot, spine. Exactly four dot
+   * states; every action that is not positive/negative/automated resolves to
+   * neutral, so ~80% of a feed is one colour on purpose. */
+  --activity-neutral: var(--color-ash-grey-500);
+  --activity-neutral-soft: var(--color-silver-300);
+  --activity-positive: oklch(62% 0.13 155);
+  --activity-negative: oklch(58% 0.19 25);
+  --activity-automated: oklch(60% 0.12 205);
+  --activity-spine: var(--border);
+  --activity-row-hover: oklch(0% 0 0 / 0.028);
+  --activity-avatar-bg: var(--color-silver-100);
+  --activity-avatar-fg: var(--color-pine-teal-900);
+
   /* Charts */
   --chart-1: var(--color-pine-teal-700);
   --chart-2: var(--color-pine-teal-300);
@@ -160,6 +173,17 @@
   --ring: var(--color-pine-teal-400);
 
   --destructive: oklch(0.704 0.191 22.216);
+
+  /* Activity timeline — same four dot states, lifted for dark surfaces. */
+  --activity-neutral: var(--color-ash-grey-400);
+  --activity-neutral-soft: rgba(255, 255, 255, 0.16);
+  --activity-positive: oklch(76% 0.14 155);
+  --activity-negative: oklch(72% 0.16 25);
+  --activity-automated: oklch(76% 0.11 205);
+  --activity-spine: rgba(255, 255, 255, 0.08);
+  --activity-row-hover: rgba(255, 255, 255, 0.04);
+  --activity-avatar-bg: var(--color-pine-teal-800);
+  --activity-avatar-fg: var(--color-parchment-50);
 
   --chart-1: var(--color-pine-teal-400);
   --chart-2: var(--color-pine-teal-200);
@@ -355,4 +379,66 @@ body {
 .tp-duration {
   font-style: italic !important;
   font-synthesis: style !important;
+}
+
+/* ─── Activity Timeline ─────────────────────────────────────
+ * The component never names a colour: these classes are the only place the
+ * four dot states and the spine resolve, so light/dark come from one token
+ * set. See the --activity-* block above. */
+.ats-activity-dot {
+  background-color: var(--activity-neutral);
+}
+.ats-activity-dot--positive {
+  background-color: var(--activity-positive);
+}
+.ats-activity-dot--negative {
+  background-color: var(--activity-negative);
+}
+.ats-activity-dot--automated {
+  background-color: var(--activity-automated);
+}
+.ats-activity-dot--neutral {
+  background-color: var(--activity-neutral);
+}
+
+/* The avatar carries the identity; a soft neutral fill keeps a feed of
+ * ordinary events quiet. Tinted per state at 12% so the state reads without
+ * shouting. */
+.ats-activity-avatar {
+  background-color: var(--activity-avatar-bg);
+  color: var(--activity-avatar-fg);
+}
+.ats-activity-avatar--positive {
+  background-color: color-mix(
+    in oklab,
+    var(--activity-positive) 14%,
+    var(--activity-avatar-bg)
+  );
+}
+.ats-activity-avatar--negative {
+  background-color: color-mix(
+    in oklab,
+    var(--activity-negative) 14%,
+    var(--activity-avatar-bg)
+  );
+}
+.ats-activity-avatar--automated {
+  background-color: color-mix(
+    in oklab,
+    var(--activity-automated) 16%,
+    var(--activity-avatar-bg)
+  );
+}
+.ats-activity-avatar--neutral {
+  background-color: var(--activity-avatar-bg);
+}
+
+.ats-activity-spine {
+  background-color: var(--activity-spine);
+}
+.ats-activity-hover:hover {
+  background-color: var(--activity-row-hover);
+}
+.ats-activity-expanded {
+  background-color: var(--activity-row-hover);
 }

@@ -984,6 +984,7 @@ export function TalentPoolDetailSheet({
                 <ActivityTimeline
                   resourceType="candidate"
                   resourceId={c._id}
+                  scope="entity"
                   compact
                 />
               </div>
