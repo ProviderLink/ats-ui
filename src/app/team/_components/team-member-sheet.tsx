@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePermission } from '@/hooks/use-permission';
 import { cn, formatDate } from '@/lib/utils';
 import type { User, UserPermissionResource } from '@/store/types/user.types';
 import {
@@ -110,6 +111,10 @@ type Props = {
 };
 
 export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
+  const { hasPermission } = usePermission();
+  const canViewActivity = hasPermission('activityLogs', 'read');
+
+  // Hooks must run before this early return.
   if (!member) return null;
 
   const first = member.firstName ?? '';
@@ -354,14 +359,16 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
 
           <Separator />
 
-          <div className="flex flex-col gap-3">
-            <SectionTitle>Activity Log</SectionTitle>
-            <ActivityTimeline
-              resourceType="user"
-              resourceId={member._id}
-              compact
-            />
-          </div>
+          {canViewActivity && (
+            <div className="flex flex-col gap-3">
+              <SectionTitle>Activity Log</SectionTitle>
+              <ActivityTimeline
+                resourceType="user"
+                resourceId={member._id}
+                compact
+              />
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

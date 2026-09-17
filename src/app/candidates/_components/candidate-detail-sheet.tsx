@@ -32,12 +32,14 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { usePermission } from '@/hooks/use-permission';
 import { logOptimisticActivity } from '@/lib/activity';
-import { getAuthToken, getJson } from '@/lib/api-client';
+import { getAuthToken } from '@/lib/api-client';
 import { downloadFileWithAuth } from '@/lib/download';
 import { getTagIds } from '@/lib/tags';
 import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
+import { useActivityLogStore, feedKey } from '@/store/slices/activity-logs.store';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -1855,35 +1857,18 @@ function CandidateCrmButton({
 }
 
 function DispositionHistory({ candidateId }: { candidateId: string }) {
-  interface DispositionEntry {
-    _id: string;
-    action: string;
-    createdAt: string;
-    performedBy?: string | null;
-    metadata?: Record<string, unknown>;
-  }
-  const [items, setItems] = useState<DispositionEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Reuse the candidate feed that `ActivityTimeline` already fetched rather
+  // than issuing a second identical request to the same endpoint.
+  const items = useActivityLogStore(s =>
+    s.feeds[feedKey('candidate', candidateId)]
+  );
 
-  useEffect(() => {
-    setLoading(true);
-    getJson<DispositionEntry[]>(
-      `/shared/activity-logs/candidate/${candidateId}`
-    )
-      .then(all => {
-        const dispositions = (all ?? []).filter(
-          entry => entry.action === 'disposition'
-        );
-        setItems(dispositions);
-      })
-      .catch(() => {
-        // silently fail — activity timeline already shows full history
-      })
-      .finally(() => setLoading(false));
-  }, [candidateId]);
+  const dispositions = useMemo(
+    () => (items ?? []).filter(entry => entry.action === 'disposition'),
+    [items]
+  );
 
-  if (loading) return null;
-  if (items.length === 0) return null;
+  if (dispositions.length === 0) return null;
 
   return (
     <>
@@ -1893,7 +1878,7 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
           Disposition History
         </p>
         <div className="flex flex-col gap-2">
-          {items.map((entry, i) => {
+          {dispositions.map((entry, i) => {
             const m = (entry.metadata ?? {}) as Record<
               string,
               string | undefined
@@ -1902,7 +1887,9 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
             const reasonLabel = m.reasonLabel;
             const lastStage = m.lastStage;
             const notes = m.internalNotes;
-            const performedBy = entry.performedBy;
+            // `performerName` is only present when the API populates it; the
+            // activity feed deliberately shows the name and never the id.
+            const performedBy = entry.performerName;
             return (
               <div
                 key={entry._id ?? i}
@@ -2001,6 +1988,9 @@ export function CandidateDetailSheet({
   const approveApp = useApplicationStore(s => s.approve);
   const hireApp = useApplicationStore(s => s.hire);
   const rejectApp = useApplicationStore(s => s.reject);
+
+  const { hasPermission } = usePermission();
+  const canViewActivity = hasPermission('activityLogs', 'read');
 
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
@@ -3765,18 +3755,22 @@ export function CandidateDetailSheet({
                   assignments). Per-job events live inside each
                   ApplicationCard above. Shown last so it summarises the
                   full candidate history. */}
-              <div className="flex flex-col gap-3">
-                <SectionLabel>Candidate Activity</SectionLabel>
-                <ActivityTimeline
-                  resourceType="candidate"
-                  resourceId={c._id}
-                  compact
-                />
-              </div>
+              {canViewActivity && (
+                <>
+                  <div className="flex flex-col gap-3">
+                    <SectionLabel>Candidate Activity</SectionLabel>
+                    <ActivityTimeline
+                      resourceType="candidate"
+                      resourceId={c._id}
+                      compact
+                    />
+                  </div>
 
-              {/* Disposition history — filtered from the same ActivityLog,
-                  shown as a compact summary when disposition events exist */}
-              <DispositionHistory candidateId={c._id} />
+                  {/* Disposition history — filtered from the same ActivityLog,
+                      shown as a compact summary when disposition events exist */}
+                  <DispositionHistory candidateId={c._id} />
+                </>
+              )}
             </div>
           </div>
 

@@ -1,13 +1,18 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePermission } from '@/hooks/use-permission';
 import { htmlToPlainText, summarizeText } from '@/lib/html';
 import { cn, timeAgo } from '@/lib/utils';
-import { useActivityLogStore } from '@/store/slices/activity-logs.store';
+import {
+  feedKey,
+  useActivityLogStore,
+} from '@/store/slices/activity-logs.store';
 import {
   ActivityResourceType,
   type ActivityLog,
@@ -330,8 +335,16 @@ const RESOURCE_ICON: Record<ActivityResourceTypeValue | string, ReactNode> = {
     <BriefcaseBusinessIcon className="size-4" />
   ),
   [ActivityResourceType.tag]: <TagIcon className="size-4" />,
+  [ActivityResourceType.eod]: <ClipboardListIcon className="size-4" />,
+  [ActivityResourceType.performance_review]: (
+    <FileTextIcon className="size-4" />
+  ),
+  [ActivityResourceType.survey]: <MailIcon className="size-4" />,
   work_entry: <ClipboardListIcon className="size-4" />,
   settings: <ActivityIcon className="size-4" />,
+  scorecards: <ClipboardListIcon className="size-4" />,
+  vaProfile: <UserIcon className="size-4" />,
+  client_account: <Building2Icon className="size-4" />,
 };
 
 function resolvePreset(log: ActivityLog): {
@@ -568,6 +581,10 @@ function humanizeActivity(log: ActivityLog): string {
   return capitalizeWords(base) || 'Activity';
 }
 
+/** Extra entries revealed per "Show more" click once the local render window
+ * (`maxItems`) is exceeded. Mirrors the store's server page size. */
+const MAX_ITEMS_STEP = 50;
+
 export interface ActivityTimelineProps {
   /** The kind of entity this feed belongs to. Required for self-fetch mode. */
   resourceType: ActivityResourceTypeValue | string;
@@ -590,6 +607,9 @@ export interface ActivityTimelineProps {
   logs?: ActivityLog[];
   /** External loading flag — only used together with `logs`. */
   loading?: boolean;
+  /** Render even when the current user lacks `activityLogs:read`. Only set
+   * this for contexts that already gate access themselves. */
+  bypassPermissionCheck?: boolean;
 }
 
 /**
@@ -615,29 +635,73 @@ export function ActivityTimeline({
   className,
   logs: controlledLogs,
   loading: controlledLoading,
+  bypassPermissionCheck = false,
 }: ActivityTimelineProps) {
-  const feeds = useActivityLogStore(s => s.feeds);
-  const storeLoading = useActivityLogStore(s => s.loading);
-  const fetchForEntity = useActivityLogStore(s => s.fetchForEntity);
+  const { hasPermission } = usePermission();
+  const canRead = hasPermission('activityLogs', 'read');
 
-  const key = `${resourceType}|${resourceId}`;
+  const feeds = useActivityLogStore(s => s.feeds);
+  const feedLoading = useActivityLogStore(s => s.loading);
+  const feedErrors = useActivityLogStore(s => s.errors);
+  const feedPagination = useActivityLogStore(s => s.pagination);
+  const fetchForEntity = useActivityLogStore(s => s.fetchForEntity);
+  const fetchMore = useActivityLogStore(s => s.fetchMore);
+
+  // Local render window — grows when the user reveals already-fetched entries
+  // that exceeded `maxItems`, independently of server-side paging.
+  const [renderLimit, setRenderLimit] = useState(maxItems);
+
+  const key = feedKey(resourceType, resourceId);
   const isControlled = controlledLogs !== undefined;
   const logs: ActivityLog[] = isControlled
     ? controlledLogs!
     : (feeds[key] ?? []);
-  const loading = isControlled ? !!controlledLoading : storeLoading;
+  const loading = isControlled ? !!controlledLoading : !!feedLoading[key];
+  const error = isControlled ? null : (feedErrors[key] ?? null);
+  const pagination = isControlled ? null : (feedPagination[key] ?? null);
 
-  // Self-fetch mode: trigger a fetch on mount and whenever the entity changes.
+  // Self-fetch mode: fetch on mount and whenever the entity changes.
+  // Always forces a refresh: any cached entries render immediately (so there
+  // is no blank flash), while the request revalidates them in the background.
+  // Otherwise a feed persisted from an earlier session would never update.
   const lastIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (isControlled) return;
+    if (!canRead) return;
     if (lastIdRef.current === resourceId) return;
     lastIdRef.current = resourceId;
-    void fetchForEntity(resourceType, resourceId);
-  }, [isControlled, resourceType, resourceId, fetchForEntity]);
+    // Reset the render window so a previously expanded feed does not leak into
+    // the next entity rendered by this same component instance.
+    setRenderLimit(maxItems);
+    void fetchForEntity(resourceType, resourceId, { force: true });
+  }, [
+    isControlled,
+    canRead,
+    resourceType,
+    resourceId,
+    maxItems,
+    fetchForEntity,
+  ]);
 
-  const shown = logs.slice(0, maxItems);
+  // Roles without `activityLogs:read` would otherwise see an empty feed, which
+  // is indistinguishable from a genuinely empty history. Render nothing.
+  if (!bypassPermissionCheck && !canRead) return null;
+
+  const shown = logs.slice(0, renderLimit);
   const isLoading = loading && logs.length === 0;
+  // `hasMore` means the server holds entries we have not fetched yet (another
+  // page), while `isTruncated` is the local render cap. Both need a control.
+  const hasMore = !!pagination && pagination.page < pagination.totalPages;
+  const isTruncated = shown.length < logs.length;
+  const canShowMore = !isControlled && (hasMore || isTruncated);
+
+  const handleShowMore = () => {
+    if (isTruncated && !hasMore) {
+      setRenderLimit(prev => prev + MAX_ITEMS_STEP);
+      return;
+    }
+    void fetchMore(resourceType, resourceId);
+  };
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
@@ -646,7 +710,9 @@ export function ActivityTimeline({
           <h4 className="text-sm font-medium">{heading}</h4>
           {logs.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
+              {pagination && pagination.total > logs.length
+                ? `${logs.length} of ${pagination.total} entries`
+                : `${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`}
             </span>
           )}
         </div>
@@ -663,6 +729,28 @@ export function ActivityTimeline({
               </div>
             </div>
           ))}
+        </div>
+      ) : error && logs.length === 0 ? (
+        // A failed fetch previously rendered as "No activity yet.", which hid
+        // permission and network errors behind a misleading empty state.
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-destructive/40 py-8 text-center">
+          <AlertCircleIcon className="size-5 text-destructive/60" />
+          <p className="text-xs text-muted-foreground">
+            Could not load activity.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            disabled={loading}
+            onClick={() => {
+              lastIdRef.current = resourceId;
+              void fetchForEntity(resourceType, resourceId, { force: true });
+            }}
+          >
+            {loading ? 'Retrying…' : 'Retry'}
+          </Button>
         </div>
       ) : shown.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-8 text-center">
@@ -685,6 +773,25 @@ export function ActivityTimeline({
             />
           ))}
         </ol>
+      )}
+
+      {canShowMore && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 w-fit self-center px-3 text-xs"
+          disabled={loading}
+          onClick={handleShowMore}
+        >
+          {loading
+            ? 'Loading…'
+            : `Load older activity${
+                pagination && hasMore
+                  ? ` (${pagination.total - logs.length} more)`
+                  : ''
+              }`}
+        </Button>
       )}
     </div>
   );

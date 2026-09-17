@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePermission } from '@/hooks/use-permission';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getTagIds } from '@/lib/tags';
 import { cn } from '@/lib/utils';
@@ -34,7 +35,6 @@ import {
   useTagStore,
   useUserStore,
 } from '@/store';
-import { useActivityLogStore } from '@/store/slices/activity-logs.store';
 import type {
   Client,
   ClientContact,
@@ -1441,13 +1441,28 @@ function NoteForm({
   );
 }
 
+/** Renders the Activity tab trigger only for users allowed to read the audit
+ * trail (`activityLogs:read`). Kept as its own component so the permission
+ * hook is called unconditionally at the top level of a component. */
+function ActivityTabTrigger() {
+  const { hasPermission } = usePermission();
+  if (!hasPermission('activityLogs', 'read')) return null;
+  return <TabsTrigger value="activity">Activity</TabsTrigger>;
+}
+
+/** Mirrors `ActivityTabTrigger` for the panel body. */
+function ActivityTabContent({ clientId }: { clientId: string }) {
+  const { hasPermission } = usePermission();
+  if (!hasPermission('activityLogs', 'read')) return null;
+  return (
+    <TabsContent value="activity" className="mt-0 px-6">
+      <ActivityTab clientId={clientId} />
+    </TabsContent>
+  );
+}
+
 function ActivityTab({ clientId }: { clientId: string }) {
-  const fetchForEntity = useActivityLogStore(s => s.fetchForEntity);
-
-  useEffect(() => {
-    void fetchForEntity('client', clientId, { force: true });
-  }, [clientId, fetchForEntity]);
-
+  // The timeline fetches (and force-revalidates) this feed itself.
   return (
     <div className="py-5">
       <p className="mb-3 text-xs text-muted-foreground">
@@ -1869,7 +1884,7 @@ export function ClientDetailSheet({
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="jobs">Jobs</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <ActivityTabTrigger />
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 {client.crmProfile && (
                   <TabsTrigger value="crm">CRM</TabsTrigger>
@@ -1889,9 +1904,7 @@ export function ClientDetailSheet({
               <JobsTab clientId={client._id} />
             </TabsContent>
 
-            <TabsContent value="activity" className="mt-0 px-6">
-              <ActivityTab clientId={client._id} />
-            </TabsContent>
+            <ActivityTabContent clientId={client._id} />
 
             <TabsContent value="notes" className="mt-0 px-6">
               <NotesTab clientId={client._id} />
