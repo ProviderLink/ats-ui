@@ -22,7 +22,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
-import { usePermission } from '@/hooks/use-permission';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getAuthToken } from '@/lib/api-client';
 import { downloadFileWithAuth } from '@/lib/download';
@@ -553,9 +552,6 @@ export function TalentPoolDetailSheet({
   const [assignJobOpen, setAssignJobOpen] = useState(false);
   const [removePoolConfirmOpen, setRemovePoolConfirmOpen] = useState(false);
 
-  const { hasPermission } = usePermission();
-  const canViewActivity = hasPermission('activityLogs', 'read');
-
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const updateCandidate = useCandidateStore(s => s.update);
   const allTags = useTagStore(s => s.items);
@@ -978,17 +974,14 @@ export function TalentPoolDetailSheet({
             <Separator className="my-8" />
 
             {/* Activity Log */}
-            {canViewActivity && (
-              <div className="flex flex-col gap-3">
-                <SectionLabel>Activity Log</SectionLabel>
-                <ActivityTimeline
-                  resourceType="candidate"
-                  resourceId={c._id}
-                  scope="entity"
-                  compact
-                />
-              </div>
-            )}
+            <div className="flex flex-col gap-3">
+              <SectionLabel>Activity Log</SectionLabel>
+              <ActivityTimeline
+                resourceType="candidate"
+                resourceId={c._id}
+                compact
+              />
+            </div>
           </div>
 
           {/* Footer */}

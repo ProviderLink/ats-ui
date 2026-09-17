@@ -19,14 +19,39 @@ export const ActivityResourceType = {
 export type ActivityResourceType =
   (typeof ActivityResourceType)[keyof typeof ActivityResourceType];
 
-/**
- * Activity entries, re-exported so `@/store/types` remains the single import
- * for store-shaped data. The canonical definition is `ActivityEntry` in
- * `@/components/activity-timeline/types` — the normalised shape the timeline
- * renders.
- *
- * Two server fields are deliberately absent from it:
- *   - `updatedAt` — migration-polluted, stripped at the API boundary
- *   - the legacy `type` token — folded into `action` at the same boundary
- */
-export type { ActivityEntry } from '@/components/activity-timeline/types';
+/** A single activity log entry. */
+export interface ActivityLog {
+  _id: string;
+  resourceType: ActivityResourceType | string;
+  resourceId: string;
+  action?: string | null;
+  description?: string | null;
+  summary?: string | null;
+  performedBy?: string | null;
+  performerName?: string | null;
+  performerAvatar?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/** Filters accepted by `GET /shared/activity-logs`. */
+export interface ActivityLogFilters {
+  resourceType?: ActivityResourceType | string;
+  resourceId?: string;
+  action?: string;
+  performedBy?: string;
+  page?: number;
+  limit?: number;
+}
+
+/** Response envelope for the activity-logs endpoints. The API may return a
+ * bare array or `{ data, pagination }`; we normalise both in the store. */
+export interface ActivityLogListResponse {
+  data?: ActivityLog[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

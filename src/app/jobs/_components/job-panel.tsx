@@ -26,7 +26,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { usePermission } from '@/hooks/use-permission';
 import { logOptimisticActivity } from '@/lib/activity';
 import { splitBullets } from '@/lib/job-format';
 import { useResolvedTags } from '@/lib/tags';
@@ -165,9 +164,6 @@ export function JobPanel({ job, clients }: Props) {
   const jobAppCount = useApplicationStore(
     s => s.items.filter(a => a.jobId === job?._id).length
   );
-
-  const { hasPermission } = usePermission();
-  const canViewActivity = hasPermission('activityLogs', 'read');
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -504,9 +500,7 @@ export function JobPanel({ job, clients }: Props) {
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="candidates">Candidates</TabsTrigger>
-            {canViewActivity && (
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-            )}
+            <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
         </div>
         {(['details', 'pipeline', 'candidates', 'activity'] as const).map(
@@ -525,13 +519,9 @@ export function JobPanel({ job, clients }: Props) {
                 <JobPipelineBoard key={fullJob._id} job={fullJob} />
               ) : tab === 'candidates' ? (
                 <JobCandidates key={fullJob._id} job={fullJob} />
-              ) : canViewActivity ? (
-                <ActivityTimeline
-                  resourceType="job"
-                  resourceId={fullJob._id}
-                  scope="entity"
-                />
-              ) : null}
+              ) : (
+                <ActivityTimeline resourceType="job" resourceId={fullJob._id} />
+              )}
             </TabsContent>
           )
         )}

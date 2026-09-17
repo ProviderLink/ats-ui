@@ -13,7 +13,6 @@ import { immer } from 'zustand/middleware/immer';
 import { socketManager } from '../realtime/socket';
 import type { User, UserPermissions } from '../types';
 import type { AppAccess, UserRole } from '../types/enums';
-import { useActivityLogStore } from './activity-logs.store';
 
 interface AuthState {
   user: Pick<
@@ -132,7 +131,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             Object.assign(s, initialState);
             s.isInitialized = true;
           });
-          resetSessionScopedStores();
+          // Reset the boot state so next login triggers a fresh data load.
+          // Dynamic import avoids a circular dependency with boot-data.ts.
+          import('@/lib/boot-data').then(m => m.resetBoot()).catch(() => {});
+          // Clear the persisted dashboard store so the next user never sees
+          // the previous user's cached dashboard data.
+          import('@/store/slices/dashboard.store')
+            .then(m => m.useDashboardStore.getState().reset())
+            .catch(() => {});
         }
       },
 
@@ -169,7 +175,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           Object.assign(s, initialState);
           s.isInitialized = true;
         });
-        resetSessionScopedStores();
       },
     })),
     {
@@ -185,23 +190,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 onUnauthorized(() => {
   if (!getAuthToken()) useAuthStore.getState().reset();
 });
-
-/** Clear the per-user persisted caches that survive a session so the next user
- * to log in on the same browser never rehydrates the previous user's data.
- * Dynamic imports avoid circular dependencies — the slices below import the
- * auth store, so importing them statically here would be a cycle. */
-function resetSessionScopedStores(): void {
-  // Per-entity activity feeds. Imported statically — the slice does not depend
-  // on the auth store, so there is no cycle to avoid here.
-  useActivityLogStore.getState().reset();
-  // Boot state, so the next login triggers a fresh data load. Dynamic import
-  // avoids a circular dependency with boot-data.ts, which imports the slices.
-  import('@/lib/boot-data').then(m => m.resetBoot()).catch(() => {});
-  // Dashboard KPIs. Dynamically imported for the same reason.
-  import('@/store/slices/dashboard.store')
-    .then(m => m.useDashboardStore.getState().reset())
-    .catch(() => {});
-}
 
 // Initialize auth after Zustand persist hydration completes (Zustand v5 compatible)
 async function runAuthInit() {
