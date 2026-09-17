@@ -1,5 +1,5 @@
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
@@ -504,6 +504,34 @@ function humanizeActivity(log: ActivityLog): string {
   const metadata = log.metadata ?? {};
   const resType = capitalizeFirst(log.resourceType || '');
 
+  // ── Automated events get a specific title. The generic labels ("AI
+  //     Validation Completed") repeat verbatim across consecutive rows and
+  //     never say _what_ was validated, so name the artefact instead. A
+  //     numeric score rides along in the title because it is the one detail
+  //     worth reading at a glance. ──────────────────────────────────────
+  const score = metadata['score'] ?? metadata['aiScore'];
+  const scoreText =
+    typeof score === 'number' || typeof score === 'string'
+      ? ` — ${score}/100`
+      : '';
+  if (upper === 'AI_VALIDATION_UPDATED') {
+    return metadata['isValid'] === false
+      ? `Resume failed validation${scoreText}`
+      : `Resume validated${scoreText}`;
+  }
+  if (upper === 'AI_SCORE_UPDATED') return `AI fit score updated${scoreText}`;
+  if (upper === 'PARSED_DATA_UPDATED' || upper === 'RESUME_PARSING_COMPLETED') {
+    return 'Resume parsed';
+  }
+
+  // ── A bare "Updated" says nothing. Name the thing that changed so the row
+  //     reads as a sentence on its own ("Candidate updated" + `Email`). ──
+  if (upper === 'UPDATED' && log.resourceType) {
+    const subject =
+      log.resourceType === 'candidate' ? 'Candidate profile' : resType;
+    return `${subject} updated`;
+  }
+
   // ── Full-token match: if the entire token is a known key (e.g.
   //     INTERVIEW_SCHEDULED, FEEDBACK_SUBMITTED), use it directly
   //     instead of peeling off suffixes that would produce a misleading
@@ -758,21 +786,36 @@ export function ActivityTimeline({
           <p className="text-xs text-muted-foreground">No activity yet.</p>
         </div>
       ) : (
-        <ol className="relative flex flex-col">
+        <div className="relative flex flex-col">
           {/* vertical spine */}
           <span
             aria-hidden
-            className="pointer-events-none absolute left-[11px] top-2 bottom-2 w-px bg-border"
+            className="pointer-events-none absolute left-[11px] top-3 bottom-3 w-px bg-border"
           />
-          {shown.map((log, idx) => (
-            <ActivityItem
-              key={log._id ?? idx}
-              log={log}
-              showResourceIcon={showResourceIcon}
-              compact={compact}
-            />
+          {groupByDay(shown).map(group => (
+            <section key={group.label} className="flex flex-col">
+              {/* Date separator. Rows below no longer repeat a relative
+                  timestamp, so this is the single place a date appears and the
+                  eye can jump straight to the day it wants. */}
+              <div className="relative z-10 flex items-center gap-2 pb-1.5 pt-3 first:pt-0">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {group.label}
+                </span>
+                <span aria-hidden className="h-px flex-1 bg-border" />
+              </div>
+              <div role="list" className="flex flex-col">
+                {group.items.map((log, idx) => (
+                  <ActivityItem
+                    key={log._id ?? idx}
+                    log={log}
+                    showResourceIcon={showResourceIcon}
+                    compact={compact}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
-        </ol>
+        </div>
       )}
 
       {canShowMore && (
@@ -808,17 +851,16 @@ function ActivityItem({
 }) {
   const { icon, iconColor, bgClass } = resolvePreset(log);
   const text = humanizeActivity(log);
-  const ID_RE = /^[a-f\d]{24}$/i;
-  const rawWho = log.performerName ?? log.performedBy;
-  const who = rawWho && !ID_RE.test(rawWho) ? rawWho : null;
+  const who = resolvePerformer(log);
   const when = timeAgo(log.createdAt);
   const fullDate = new Date(log.createdAt).toLocaleString();
+  const details = describeMetadata(log);
 
   return (
     <li
       className={cn(
-        'relative flex items-start gap-3 -mx-2 rounded-lg px-2 transition-colors hover:bg-muted/40',
-        compact ? 'py-2' : 'py-3'
+        'group relative flex items-start gap-3 -mx-2 rounded-lg px-2 transition-colors hover:bg-muted/40',
+        compact ? 'py-1.5' : 'py-2.5'
       )}
     >
       <TooltipProvider>
@@ -826,7 +868,7 @@ function ActivityItem({
           <TooltipTrigger asChild>
             <span
               className={cn(
-                'relative z-10 grid size-6 shrink-0 place-items-center rounded-full border shadow-xs',
+                'relative z-10 mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border shadow-xs',
                 iconColor,
                 bgClass
               )}
@@ -843,59 +885,310 @@ function ActivityItem({
 
       <div className="min-w-0 flex-1">
         <ActivityText text={text} />
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-          {who && <span className="truncate">{who}</span>}
+
+        {/* Attribute line: who + when, kept visually quiet so the action
+            sentence stays the primary signal. */}
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+          {who && <span className="max-w-45 truncate font-medium">{who}</span>}
           {who && when && <span aria-hidden>·</span>}
-          {when && <span>{when}</span>}
+          {when && <span title={fullDate}>{when}</span>}
           {showResourceIcon && log.resourceType && (
             <>
               <span aria-hidden>·</span>
-              <span className="capitalize">
-                {RESOURCE_ICON[log.resourceType] ? (
-                  <span className="inline-flex items-center gap-1">
-                    {RESOURCE_ICON[log.resourceType]}
-                    {log.resourceType}
-                  </span>
-                ) : (
-                  log.resourceType
-                )}
+              <span className="inline-flex items-center gap-1 capitalize">
+                {RESOURCE_ICON[log.resourceType] ?? null}
+                {log.resourceType}
               </span>
             </>
           )}
         </div>
-        {log.metadata && Object.keys(log.metadata).length > 0 && (
-          <MetadataChips metadata={log.metadata} />
-        )}
-        {Array.isArray(log.metadata?.changes) &&
-          (log.metadata.changes as string[]).length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {(log.metadata.changes as string[]).map((change, i) => (
-                <li key={i}>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[11px] leading-none text-muted-foreground">
-                    <span
-                      aria-hidden
-                      className="size-1 rounded-full bg-primary/50"
-                    />
-                    {summarizeChange(change)}
+
+        {details.length > 0 && (
+          <ul className="mt-1.5 flex flex-wrap items-center gap-1">
+            {details.map((d, i) => (
+              <li
+                key={i}
+                className="inline-flex max-w-full items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[11px] leading-tight"
+              >
+                {d.label && (
+                  <span className="shrink-0 text-muted-foreground/70">
+                    {d.label}
                   </span>
-                </li>
-              ))}
-            </ul>
-          )}
+                )}
+                <span className="truncate text-foreground/80">{d.value}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </li>
   );
 }
 
 /**
- * Reduce a change description to just its field label, dropping the
- * before/after values (which can contain long HTML like full job
- * descriptions). `Description changed from "<h1>…" to "<h1>…"` becomes
- * `Description changed`.
+ * Resolve the human performer name, or `null` when there is nobody to show.
+ * A bare ObjectId means the user record is gone — we show no name rather than
+ * a hex string, since an id is meaningless to a reader.
  */
-function summarizeChange(change: string): string {
-  const bare = change.replace(/\s+from\s+.*$/s, '').trim();
-  return htmlToPlainText(bare);
+function resolvePerformer(log: ActivityLog): string | null {
+  const raw = log.performerName ?? log.performedBy;
+  if (!raw) return null;
+  if (/^[a-f\d]{24}$/i.test(raw)) return null;
+  return raw;
+}
+
+/** A single detail token rendered under an activity row. */
+interface DetailToken {
+  label: string;
+  value?: string;
+}
+
+/**
+ * Metadata keys that ARE worth showing, mapped to a human label.
+ *
+ * This is deliberately an ALLOWLIST. The previous implementation used a
+ * skip-list, so every machine field the backend happened to add (`provider:
+ * openai`, `skillsCount: 25`, `sections: [...]`, `status: pending`) leaked
+ * into the UI as noise. Anything not named here is now simply never shown, so
+ * a new backend field can never clutter the feed again.
+ */
+const METADATA_LABELS: Record<string, string> = {
+  // Stage / status transitions (rendered as an arrow, not as a field chip).
+  from: 'from',
+  fromStage: 'from',
+  fromStageName: 'from',
+  stageName: 'from',
+  oldStatus: 'from',
+  to: 'to',
+  toStage: 'to',
+  toStageName: 'to',
+  newStatus: 'to',
+  destination: 'to',
+  // Genuinely useful context.
+  reasonLabel: 'Reason',
+  interviewType: 'Interview',
+  scheduledAt: 'Scheduled for',
+  rating: 'Rating',
+  companyName: 'Company',
+  industry: 'Industry',
+  weekStart: 'Week of',
+  generated: 'Generated',
+};
+
+/**
+ * Keys whose ONLY sane rendering is as a before → after arrow. Rendering them
+ * as separate `From:` / `To:` chips duplicates the verb in the sentence above
+ * ("Candidate Status Changed" + "From: pending" + "To: approved").
+ */
+const TRANSITION_KEYS = [
+  ['from', 'to'],
+  ['fromStage', 'toStage'],
+  ['fromStageName', 'toStageName'],
+  ['oldStatus', 'newStatus'],
+  ['stageName', 'toStageName'],
+] as const;
+
+/** Machine bookkeeping — never meaningful to a reader. */
+const INTERNAL_KEYS = new Set([
+  'provider',
+  'sections',
+  'skillsCount',
+  'experienceCount',
+  'educationCount',
+  'isValid',
+  'changes',
+  'reason', // AI prose, routinely 200+ characters — shown via description instead
+  'notes',
+  'internalNotes',
+  'status',
+  'phase',
+  'appliedJobId',
+  'jobId',
+  'candidateId',
+  'resourceId',
+  'resourceType',
+  'stageId',
+  'type',
+  'score', // only meaningful alongside an AI event; the title carries it
+]);
+
+/** How a candidate/job/client arrived, phrased as plain language. */
+const SOURCE_PHRASES: Record<string, string> = {
+  applied: 'Applied directly',
+  direct_apply: 'Applied directly',
+  assigned: 'Assigned by staff',
+  internal_upload: 'Uploaded by staff',
+  manual: 'Added manually',
+};
+
+/** Values that are just snake_case tokens → readable words. */
+function humanizeValue(value: unknown): string {
+  const s = htmlToPlainText(String(value));
+  return s.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** `good_fit` → `Good fit`; used for enum-ish values. */
+function humanizeEnum(value: unknown): string {
+  const s = humanizeValue(value);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Format an ISO timestamp as a short local date/time; pass through anything
+ * that is not a date so enum-ish values are unaffected. */
+function humanizeDetailValue(value: unknown): string {
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    }
+  }
+  return humanizeEnum(value);
+}
+
+/**
+ * Reduce a `changes` entry to just the field it touched.
+ *
+ * The raw values carry before/after payloads that can include entire HTML job
+ * descriptions, so only the field name is kept: `Description changed from
+ * "<h1>…" to "<h1>…"` becomes `Description`. The row title already says
+ * "updated", so repeating "changed" on every chip is pure noise.
+ */
+function changeFieldLabel(change: string): string {
+  const raw = htmlToPlainText(String(change)).replace(/\s+/g, ' ').trim();
+  return humanizeEnum(
+    raw.replace(/\s+(changed|updated|set|removed|added)\b.*$/i, '').trim()
+  );
+}
+
+/**
+ * Build the detail tokens for a row.
+ *
+ * Guarantees, in order of importance for readability:
+ *   - `changes` diffs (the most informative thing on an update) are shown
+ *     first, but long before/after payloads are trimmed to the field name.
+ *   - before → after pairs collapse into ONE token instead of two.
+ *   - `source` is phrased in plain language.
+ *   - long prose (`reason`) and machine fields are never shown.
+ *
+ * Returns an empty array when nothing is worth showing, so a row can be a
+ * single clean sentence.
+ */
+function describeMetadata(log: ActivityLog): DetailToken[] {
+  const metadata = log.metadata ?? {};
+  const tokens: DetailToken[] = [];
+  const consumed = new Set<string>();
+
+  // ── 1. before → after transitions ────────────────────────────────
+  for (const [fromKey, toKey] of TRANSITION_KEYS) {
+    const from = metadata[fromKey];
+    const to = metadata[toKey];
+    if (to === undefined || to === null || to === '') continue;
+    if (typeof to === 'object') continue;
+    if (consumed.has(toKey) || consumed.has(fromKey)) continue;
+
+    consumed.add(toKey);
+    if (from !== undefined && from !== null && from !== '')
+      consumed.add(fromKey);
+
+    const toText = humanizeEnum(to);
+    const fromText =
+      from !== undefined && from !== null && from !== ''
+        ? humanizeEnum(from)
+        : null;
+
+    // Only show the arrow when there is a genuine before AND after.
+    tokens.push({
+      label: '',
+      value:
+        fromText && fromText !== toText ? `${fromText} → ${toText}` : toText,
+    });
+  }
+
+  // ── 2. Source, phrased ───────────────────────────────────────────
+  const source = metadata['source'];
+  if (typeof source === 'string' && source) {
+    const phrase = SOURCE_PHRASES[source] ?? humanizeEnum(source);
+    tokens.push({ label: '', value: phrase });
+  }
+
+  // ── 3. Field-level diffs from an update ──────────────────────────
+  //    A change like `Description changed from "<h1>…" to "<h1>…"` carries the
+  //    whole payload in its text, so only the affected field name is kept —
+  //    that is what a reader wants ("what was touched"), and it stays short
+  //    no matter how large the before/after value was.
+  const changes = metadata['changes'];
+  if (Array.isArray(changes)) {
+    for (const c of changes.slice(0, 5)) {
+      const field = changeFieldLabel(String(c));
+      if (!field) continue;
+      tokens.push({ label: '', value: field });
+    }
+  }
+
+  // ── 4. Remaining allowlisted values ──────────────────────────────
+  for (const [key, raw] of Object.entries(metadata)) {
+    if (tokens.length >= 6) break;
+    if (consumed.has(key) || INTERNAL_KEYS.has(key)) continue;
+    const label = METADATA_LABELS[key];
+    if (!label) continue;
+    if (raw === null || raw === undefined || raw === '') continue;
+    if (typeof raw === 'object') continue;
+    if (/^[a-f\d]{24}$/i.test(String(raw))) continue;
+
+    const text = humanizeDetailValue(raw);
+    if (!text) continue;
+    tokens.push({ label: `${label}:`, value: text });
+  }
+
+  return tokens;
+}
+
+/**
+ * Group entries into day buckets, newest first.
+ *
+ * Returned in input order, which the API already sorts newest-first, so the
+ * caller does not need to re-sort.
+ */
+function groupByDay(
+  logs: ActivityLog[]
+): { label: string; items: ActivityLog[] }[] {
+  const groups: { label: string; items: ActivityLog[] }[] = [];
+  let current: { label: string; items: ActivityLog[] } | null = null;
+
+  for (const log of logs) {
+    const label = dayLabel(log.createdAt);
+    if (!current || current.label !== label) {
+      current = { label, items: [] };
+      groups.push(current);
+    }
+    current.items.push(log);
+  }
+  return groups;
+}
+
+/** `Today` / `Yesterday` / `12 Sep 2026` for a timestamp. */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Unknown date';
+
+  const midnight = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((midnight(new Date()) - midnight(d)) / 86_400_000);
+
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 /**
@@ -931,68 +1224,6 @@ function ActivityText({
       >
         {expanded ? 'Show less' : 'Show more'}
       </button>
-    </div>
-  );
-}
-
-function MetadataChips({ metadata }: { metadata: Record<string, unknown> }) {
-  const SKIP_KEYS = new Set([
-    '_id',
-    'id',
-    'resourceId',
-    'resourceType',
-    'clientId',
-    'jobId',
-    'candidateId',
-    'applicationId',
-    'userId',
-    'assigneeId',
-    'assignedTo',
-    'assignedBy',
-    'createdBy',
-    'updatedBy',
-    'tagId',
-    'contactId',
-    'performerName',
-    'performedBy',
-    'ownerId',
-    'creatorId',
-    'emailId',
-    'noteId',
-    'templateId',
-    'pipelineId',
-    'stageId',
-    // shown inline in the main event text
-    'from',
-    'to',
-    'stageName',
-    // already shown elsewhere in the UI
-    'reason',
-    // rendered as a bullet list in ActivityItem
-    'changes',
-  ]);
-  const ID_RE = /^[a-f\d]{24}$/i;
-
-  const entries = Object.entries(metadata).filter(
-    ([k, v]) =>
-      !SKIP_KEYS.has(k) &&
-      v !== null &&
-      v !== undefined &&
-      v !== '' &&
-      !ID_RE.test(String(v))
-  );
-  if (entries.length === 0) return null;
-  return (
-    <div className="mt-1.5 flex flex-wrap gap-1">
-      {entries.slice(0, 4).map(([k, v]) => (
-        <span
-          key={k}
-          className="inline-flex min-h-5 items-start gap-1 rounded-md border border-border bg-card px-1.5 py-px text-[11px] text-foreground/80"
-        >
-          <span className="shrink-0 text-muted-foreground">{k}:</span>
-          <span className="break-all">{htmlToPlainText(String(v))}</span>
-        </span>
-      ))}
     </div>
   );
 }
