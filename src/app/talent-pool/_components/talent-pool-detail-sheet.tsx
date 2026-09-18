@@ -1,4 +1,5 @@
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { ResumeViewer } from '@/components/resume-viewer';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,8 +24,6 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
-import { getAuthToken } from '@/lib/api-client';
-import { downloadFileWithAuth } from '@/lib/download';
 import { getTagIds } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -40,14 +39,9 @@ import {
   AlertTriangleIcon,
   BriefcaseIcon,
   CheckIcon,
-  DownloadIcon,
   ExternalLinkIcon,
-  FileTextIcon,
   GraduationCapIcon,
-  Loader2Icon,
   MailIcon,
-  Maximize2Icon,
-  Minimize2Icon,
   PencilIcon,
   PhoneIcon,
   PlayIcon,
@@ -56,7 +50,7 @@ import {
   VideoIcon,
   XIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { avatarBg } from '../../candidates/_utils/candidate-styles';
 
@@ -135,154 +129,6 @@ function TalentPoolNotesEditor({
       >
         <PencilIcon className="size-3.5" />
       </Button>
-    </div>
-  );
-}
-
-function ResumeViewer({ url, filename }: { url: string; filename: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const blobUrlRef = useRef<string | null>(null);
-  const cancelledRef = useRef(false);
-
-  const handleDownload = useCallback(async () => {
-    setDownloading(true);
-    try {
-      await downloadFileWithAuth(url, filename);
-    } catch {
-      toast.error('Failed to download the resume');
-    } finally {
-      setDownloading(false);
-    }
-  }, [url, filename]);
-
-  const loadPdf = useCallback(async () => {
-    const isPdf = filename?.toLowerCase().endsWith('.pdf');
-
-    if (!url || url === '#' || !isPdf) {
-      setLoading(false);
-      setError(true);
-      return;
-    }
-
-    cancelledRef.current = false;
-
-    try {
-      setLoading(true);
-      setError(false);
-      setBlobUrl(null);
-
-      const headers: Record<string, string> = {};
-      const token = getAuthToken();
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error(`Failed: ${res.status}`);
-
-      const rawBlob = await res.blob();
-      if (cancelledRef.current) return;
-
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-
-      const blob = new Blob([rawBlob], { type: 'application/pdf' });
-      const newBlobUrl = URL.createObjectURL(blob);
-      blobUrlRef.current = newBlobUrl;
-      setBlobUrl(newBlobUrl);
-      setLoading(false);
-    } catch {
-      if (cancelledRef.current) return;
-      setBlobUrl(null);
-      setLoading(false);
-      setError(true);
-    }
-  }, [url, filename]);
-
-  useEffect(() => {
-    loadPdf();
-    return () => {
-      cancelledRef.current = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
-  }, [loadPdf]);
-
-  return (
-    <div
-      className={cn(
-        'flex flex-col gap-2',
-        expanded ? 'fixed inset-0 z-50 bg-background p-4 flex-1' : 'h-96'
-      )}
-    >
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <FileTextIcon className="size-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground truncate">
-            {filename}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 px-2 text-xs"
-            onClick={handleDownload}
-            disabled={downloading}
-          >
-            {downloading ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
-            ) : (
-              <DownloadIcon className="size-3.5" />
-            )}
-            Download
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 px-2 text-xs"
-            onClick={() => setExpanded(v => !v)}
-          >
-            {expanded ? (
-              <>
-                <Minimize2Icon className="size-3.5" />
-                Exit
-              </>
-            ) : (
-              <>
-                <Maximize2Icon className="size-3.5" />
-                Full view
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-      <div className="flex-1 rounded-lg border bg-muted/20 overflow-hidden relative">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/20 z-10">
-            <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
-        {error && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 z-10">
-            <AlertCircleIcon className="size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground text-center">
-              Unable to preview this resume inline. You can still download it
-              using the button above.
-            </p>
-          </div>
-        )}
-        {!error && blobUrl && (
-          <iframe
-            src={`${blobUrl}#toolbar=0`}
-            title={filename}
-            className="size-full"
-          />
-        )}
-      </div>
     </div>
   );
 }

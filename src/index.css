@@ -356,3 +356,17 @@ body {
   font-style: italic !important;
   font-synthesis: style !important;
 }
+/* ─── DOCX Resume Preview (docx-preview) ──────────────── */
+/* docx-preview injects a <style> tag for its `.docx-preview-canvas-wrapper`
+   element. Nothing else in the app uses that class, so both overrides below
+   are fully scoped to the rendered resume. */
+.docx-preview-canvas-wrapper {
+  /* Its default backdrop is a hardcoded `gray`; follow the app theme instead. */
+  background: var(--muted) !important;
+  /* Default is `center`, which makes the page's LEFT edge unreachable whenever
+     the rendered page is wider than the preview pane — the browser cannot
+     scroll into negative overflow, so content is silently cut off. `safe
+     center` behaves identically while there is room, then falls back to
+     start-alignment once the page overflows. */
+  align-items: safe center !important;
+}
