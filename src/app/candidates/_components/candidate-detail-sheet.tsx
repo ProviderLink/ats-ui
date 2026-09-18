@@ -1864,6 +1864,8 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
   }
   const [items, setItems] = useState<DispositionEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  // Resolves the raw `performedBy` ObjectId into a display name/avatar.
+  const allUsers = useUserStore(s => s.items);
 
   useEffect(() => {
     setLoading(true);
@@ -1881,6 +1883,16 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
       })
       .finally(() => setLoading(false));
   }, [candidateId]);
+
+  const performerName = useCallback(
+    (performedBy: string | null | undefined) => {
+      if (!performedBy) return null;
+      const user = allUsers.find(u => u._id === performedBy);
+      if (!user) return null;
+      return `${user.firstName} ${user.lastName}`.trim() || null;
+    },
+    [allUsers]
+  );
 
   if (loading) return null;
   if (items.length === 0) return null;
@@ -1902,7 +1914,7 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
             const reasonLabel = m.reasonLabel;
             const lastStage = m.lastStage;
             const notes = m.internalNotes;
-            const performedBy = entry.performedBy;
+            const by = performerName(entry.performedBy);
             return (
               <div
                 key={entry._id ?? i}
@@ -1938,9 +1950,9 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
                     {notes}
                   </p>
                 )}
-                {performedBy && (
+                {by && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    By: {performedBy}
+                    By: {by}
                   </p>
                 )}
               </div>
@@ -2438,7 +2450,8 @@ export function CandidateDetailSheet({
         'application',
         pendingApplication._id,
         'rejected',
-        'Application rejected'
+        'Application rejected',
+        { reason: reason || null }
       );
       toast.success('Application rejected');
       setRejectOpen(false);
@@ -2462,7 +2475,8 @@ export function CandidateDetailSheet({
         'application',
         pendingApplication._id,
         'rejected',
-        'Application rejected'
+        'Application rejected',
+        { reason: reason || null }
       );
       toast.success('Application rejected');
       setRejectEmailOpen(false);
@@ -2522,12 +2536,19 @@ export function CandidateDetailSheet({
     if (!activePipelineApp || !selectedStageId) return;
     setPipelineLoading(true);
     try {
+      const targetStage = pipelineJob?.pipeline?.stages?.find(
+        s => s._id === selectedStageId
+      );
       await moveStage(activePipelineApp._id, selectedStageId);
       logOptimisticActivity(
         'application',
         activePipelineApp._id,
         'stage_changed',
-        `${fullName} moved to new stage`
+        `${fullName} moved to new stage`,
+        {
+          from: activePipelineApp.currentStage?.stageName ?? null,
+          to: targetStage?.name ?? null,
+        }
       );
       toast.success(`${fullName} moved to stage`);
       setStageOpen(false);
@@ -2567,7 +2588,8 @@ export function CandidateDetailSheet({
         'application',
         activePipelineApp._id,
         'rejected',
-        `${fullName} rejected from ${pipelineJob?.title ?? 'job'}`
+        `${fullName} rejected from ${pipelineJob?.title ?? 'job'}`,
+        { reason: rejectReason || null }
       );
       toast.success(
         `${fullName} rejected from ${pipelineJob?.title ?? 'this job'}`

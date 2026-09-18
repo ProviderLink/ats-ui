@@ -24,6 +24,10 @@ export interface ActivityLog {
   _id: string;
   resourceType: ActivityResourceType | string;
   resourceId: string;
+  /** Secondary entity the event also concerns, e.g. a scorecard logged against
+   * a candidate (`relatedType: 'interview_scorecard'`). */
+  relatedType?: string | null;
+  relatedId?: string | null;
   action?: string | null;
   description?: string | null;
   summary?: string | null;

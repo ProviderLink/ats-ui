@@ -1,3 +1,4 @@
+import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
@@ -5,8 +6,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { htmlToPlainText, summarizeText } from '@/lib/html';
-import { cn, timeAgo } from '@/lib/utils';
+import { useActivityActors } from '@/hooks/use-activity-actors';
+import {
+  buildActivitySentence,
+  formatActivityTime,
+  type ActivityActor,
+  type ActivityIconName,
+  type ActivitySentence,
+  type ActivityTone,
+} from '@/lib/activity-sentence';
+import { cn } from '@/lib/utils';
 import { useActivityLogStore } from '@/store/slices/activity-logs.store';
 import {
   ActivityResourceType,
@@ -15,558 +24,246 @@ import {
 } from '@/store/types';
 import {
   ActivityIcon,
-  AlertCircleIcon,
+  ArrowLeftRightIcon,
   ArrowRightIcon,
+  BadgeCheckIcon,
   BanIcon,
   BriefcaseBusinessIcon,
   Building2Icon,
-  CalendarIcon,
+  CalendarCheckIcon,
+  CalendarClockIcon,
+  CalendarPlusIcon,
+  CalendarXIcon,
+  CheckCheckIcon,
   CheckCircle2Icon,
-  ClipboardListIcon,
-  ClockIcon,
+  CircleHelpIcon,
+  CirclePauseIcon,
+  CirclePlayIcon,
+  ClipboardCheckIcon,
+  ContactIcon,
+  FilePlusIcon,
+  FileSearchIcon,
   FileTextIcon,
+  GaugeIcon,
+  GitBranchIcon,
+  HandshakeIcon,
+  LockIcon,
   MailIcon,
-  MessageSquareIcon,
+  MessageSquarePlusIcon,
+  NotebookPenIcon,
+  PenLineIcon,
   PencilIcon,
-  PlusCircleIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SettingsIcon,
+  ShieldCheckIcon,
+  ShieldXIcon,
+  SparklesIcon,
   StarIcon,
+  StarOffIcon,
   TagIcon,
   Trash2Icon,
+  TriangleAlertIcon,
+  UnlockIcon,
+  UserCheckIcon,
+  UserCogIcon,
   UserIcon,
+  UserMinusIcon,
   UserPlusIcon,
   UserRoundCheckIcon,
-  VideoIcon,
+  WalletIcon,
   XCircleIcon,
+  type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 
-/** Map an activity `action` token to a presentation icon + tint. */
-const TYPE_PRESETS: Record<
-  string,
-  { icon: ReactNode; iconColor: string; bgClass: string }
-> = {
-  // ── CRUD core ────────────────────────────────────────────────────────
-  CREATED: {
-    icon: <PlusCircleIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+/**
+ * Accent styling per semantic tone.
+ *
+ * Only the small badge on the avatar and the "recent" timestamp carry colour —
+ * the sentence itself stays in foreground ink so a long list of events reads as
+ * prose rather than as a wall of coloured labels.
+ *
+ * The badge tints are tuned so the glyph keeps ≥3:1 contrast against its own
+ * background (the WCAG minimum for a non-text graphic). Measured, light mode:
+ * emerald 3.65, red 4.77, violet 5.89, teal 7.41, grey 12.2. Amber is the
+ * exception — even `amber-700` only reached 2.1:1 against a white glyph, so the
+ * warning badge drops the solid fill for an amber tint with dark ink.
+ */
+const TONE_STYLES: Record<ActivityTone, { badge: string; accent: string }> = {
+  success: {
+    badge:
+      'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950',
+    accent: 'text-emerald-700 dark:text-emerald-400',
   },
-  APPLIED: {
-    icon: <PlusCircleIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+  danger: {
+    badge: 'bg-red-600 text-white dark:bg-red-500 dark:text-red-950',
+    accent: 'text-red-700 dark:text-red-400',
   },
-  UPDATED: {
-    icon: <PencilIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
+  warning: {
+    // Tinted, not solid — see the contrast note above.
+    badge:
+      'bg-amber-400 text-amber-950 ring-amber-200/70 dark:bg-amber-500 dark:text-amber-950 dark:ring-amber-900/50',
+    accent: 'text-amber-700 dark:text-amber-400',
   },
-  DELETED: {
-    icon: <Trash2Icon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
+  info: {
+    badge:
+      'bg-pine-teal-700 text-white dark:bg-pine-teal-500 dark:text-pine-teal-950',
+    accent: 'text-pine-teal-700 dark:text-pine-teal-300',
   },
-  // ── Lifecycle ────────────────────────────────────────────────────────
-  APPROVED: {
-    icon: <CheckCircle2Icon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+  ai: {
+    badge: 'bg-violet-600 text-white dark:bg-violet-500 dark:text-violet-950',
+    accent: 'text-violet-700 dark:text-violet-400',
   },
-  REJECTED: {
-    icon: <XCircleIcon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  HIRED: {
-    icon: <UserRoundCheckIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  CANCELLED: {
-    icon: <BanIcon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  DEACTIVATED: {
-    icon: <BanIcon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  // ── Pipeline / stage ─────────────────────────────────────────────────
-  STAGE_MOVED: {
-    icon: <ArrowRightIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  STAGE_CHANGED: {
-    icon: <ArrowRightIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  PIPELINE_ASSIGNED: {
-    icon: <ClipboardListIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  PIPELINE_CHANGED: {
-    icon: <ClipboardListIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  STATUS_CHANGED: {
-    icon: <TagIcon className="size-3" />,
-    iconColor: 'text-orange-600 dark:text-orange-400',
-    bgClass: 'bg-orange-50 dark:bg-orange-950/60',
-  },
-  // ── Interviews ───────────────────────────────────────────────────────
-  INTERVIEW_SCHEDULED: {
-    icon: <VideoIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  INTERVIEW_CANCELLED: {
-    icon: <XCircleIcon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  INTERVIEW_UPDATED: {
-    icon: <ClockIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  INTERVIEW_NO_SHOW: {
-    icon: <BanIcon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  INTERVIEW_COMPLETED: {
-    icon: <CheckCircle2Icon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  INTERVIEW_RESCHEDULED: {
-    icon: <ClockIcon />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  FEEDBACK_SUBMITTED: {
-    icon: <MessageSquareIcon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  INTERVIEW_FEEDBACK_SUBMITTED: {
-    icon: <MessageSquareIcon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  // ── Emails / survey ──────────────────────────────────────────────────
-  // (email resource type removed; mail icon kept for survey/eod below)
-  // ── Contacts ─────────────────────────────────────────────────────────
-  CONTACT_ADDED: {
-    icon: <UserPlusIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  CONTACT_UPDATED: {
-    icon: <PencilIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  CONTACT_REMOVED: {
-    icon: <Trash2Icon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  // ── Notes ────────────────────────────────────────────────────────────
-  NOTE_ADDED: {
-    icon: <MessageSquareIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  NOTE_UPDATED: {
-    icon: <PencilIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  NOTE_DELETED: {
-    icon: <Trash2Icon className="size-3" />,
-    iconColor: 'text-red-500 dark:text-red-400',
-    bgClass: 'bg-red-50 dark:bg-red-950/60',
-  },
-  // ── CRM ──────────────────────────────────────────────────────────────
-  CRM_PROFILE_UPDATED: {
-    icon: <Building2Icon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  // ── Talent pool ──────────────────────────────────────────────────────
-  TALENT_POOL_ADDED: {
-    icon: <StarIcon className="size-3" />,
-    iconColor: 'text-yellow-600 dark:text-yellow-400',
-    bgClass: 'bg-yellow-50 dark:bg-yellow-950/60',
-  },
-  TALENT_POOL_REMOVED: {
-    icon: <StarIcon className="size-3" />,
-    iconColor: 'text-slate-500 dark:text-slate-400',
-    bgClass: 'bg-slate-50 dark:bg-slate-950/60',
-  },
-  // ── Permissions / provisioning ───────────────────────────────────────
-  PERMISSIONS_UPDATED: {
-    icon: <ActivityIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  PROVISIONED_VA: {
-    icon: <UserRoundCheckIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  PROVISIONED_CLIENT: {
-    icon: <UserRoundCheckIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  // ── AI / parsing ─────────────────────────────────────────────────────
-  AI_SCORE_UPDATED: {
-    icon: <ActivityIcon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  AI_VALIDATION_UPDATED: {
-    icon: <CheckCircle2Icon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  PARSED_DATA_UPDATED: {
-    icon: <FileTextIcon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  RESUME_PARSING_COMPLETED: {
-    icon: <FileTextIcon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  RESUME_VALIDATION_COMPLETED: {
-    icon: <CheckCircle2Icon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  CANDIDATE_SCORING_COMPLETED: {
-    icon: <ActivityIcon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  CANDIDACY_VALIDATION_COMPLETED: {
-    icon: <CheckCircle2Icon className="size-3" />,
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/60',
-  },
-  // ── Assignment ───────────────────────────────────────────────────────
-  ASSIGNMENT_CREATED: {
-    icon: <BriefcaseBusinessIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  ASSIGNMENT_UPDATED: {
-    icon: <PencilIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  ASSIGNMENT_STATUS_CHANGED: {
-    icon: <TagIcon className="size-3" />,
-    iconColor: 'text-orange-600 dark:text-orange-400',
-    bgClass: 'bg-orange-50 dark:bg-orange-950/60',
-  },
-  ASSIGNMENT_ENDED: {
-    icon: <BanIcon className="size-3" />,
-    iconColor: 'text-slate-500 dark:text-slate-400',
-    bgClass: 'bg-slate-50 dark:bg-slate-950/60',
-  },
-  // ── EOD ─────────────────────────────────────────────────────────────
-  EOD_SUBMITTED: {
-    icon: <ClipboardListIcon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  EOD_REMINDER_SENT: {
-    icon: <MailIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  // ── Performance review ───────────────────────────────────────────────
-  PERFORMANCE_REVIEW_GENERATED: {
-    icon: <FileTextIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
-  },
-  PERFORMANCE_REVIEW_COMPLETED: {
-    icon: <CheckCircle2Icon className="size-3" />,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-  },
-  // ── Survey ───────────────────────────────────────────────────────────
-  SURVEY_REMINDER_SENT: {
-    icon: <MailIcon className="size-3" />,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/60',
-  },
-  // ── Settings ─────────────────────────────────────────────────────────
-  SETTINGS_UPDATED: {
-    icon: <ActivityIcon className="size-3" />,
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/60',
+  neutral: {
+    badge: 'bg-muted-foreground text-background',
+    accent: 'text-muted-foreground',
   },
 };
+
+/**
+ * Badge geometry.
+ *
+ * A 13px badge forces lucide's 24-unit artwork down to ~9px, where the default
+ * 2-unit stroke renders as a ~0.7px hairline that muddies complex glyphs. 15px
+ * with a 2.4 stroke keeps the outline ~1.1px so each icon stays legible.
+ */
+const BADGE_SIZE = 15;
+const BADGE_ICON_SIZE = 10;
+const BADGE_STROKE = 2.4;
+
+/**
+ * Glyph for the badge on the actor avatar.
+ *
+ * The icon communicates the KIND of event (created, moved, cancelled, scored…)
+ * and the badge colour communicates its meaning (success, danger, AI…), so the
+ * two are resolved independently — a pass/fail AI verdict, for instance, reuses
+ * the check/shield glyphs rather than a generic sparkle.
+ *
+ * Sizing and stroke are applied once in `ActivityBadge` rather than repeated
+ * on every entry, so adding an icon here cannot introduce an inconsistent size.
+ */
+const ACTIVITY_ICON: Record<ActivityIconName, LucideIcon> = {
+  // lifecycle
+  plus: PlusIcon,
+  check: CheckCircle2Icon,
+  'check-double': CheckCheckIcon,
+  x: XCircleIcon,
+  ban: BanIcon,
+  trash: Trash2Icon,
+  'file-plus': FilePlusIcon,
+  // change
+  pencil: PencilIcon,
+  swap: ArrowLeftRightIcon,
+  refresh: RefreshCwIcon,
+  // pipeline
+  'arrow-right': ArrowRightIcon,
+  branch: GitBranchIcon,
+  // interview
+  'calendar-plus': CalendarPlusIcon,
+  'calendar-x': CalendarXIcon,
+  'calendar-check': CalendarCheckIcon,
+  'calendar-clock': CalendarClockIcon,
+  'clipboard-check': ClipboardCheckIcon,
+  'message-plus': MessageSquarePlusIcon,
+  // AI
+  sparkles: SparklesIcon,
+  scan: FileSearchIcon,
+  'badge-check': BadgeCheckIcon,
+  'shield-x': ShieldXIcon,
+  // people / client
+  'user-plus': UserPlusIcon,
+  'user-check': UserCheckIcon,
+  'user-minus': UserMinusIcon,
+  'user-gear': UserCogIcon,
+  contact: ContactIcon,
+  building: Building2Icon,
+  handshake: HandshakeIcon,
+  // work
+  star: StarIcon,
+  'star-off': StarOffIcon,
+  briefcase: BriefcaseBusinessIcon,
+  'circle-play': CirclePlayIcon,
+  'circle-pause': CirclePauseIcon,
+  'timer-off': CirclePauseIcon,
+  gauge: GaugeIcon,
+  wallet: WalletIcon,
+  notes: NotebookPenIcon,
+  'pen-line': PenLineIcon,
+  mail: MailIcon,
+  settings: SettingsIcon,
+  lock: LockIcon,
+  unlock: UnlockIcon,
+  'shield-check': ShieldCheckIcon,
+  alert: TriangleAlertIcon,
+  activity: ActivityIcon,
+};
+
+/**
+ * Neutral grey badge for an entry whose event kind could not be determined,
+ * so a legacy row reads as unknown rather than being disguised as a known event.
+ */
+const LEGACY_BADGE =
+  'bg-muted-foreground/60 text-background dark:bg-muted-foreground/50';
+
+/**
+ * The badge that sits on the lower-right of the actor avatar.
+ *
+ * Renders a distinct glyph per event kind, tinted by tone. Legacy rows (whose
+ * event kind could not be determined) get a neutral grey badge with a question
+ * mark so they are never mistaken for a known event.
+ */
+function ActivityBadge({
+  icon,
+  tone,
+  isLegacy,
+}: {
+  icon: ActivityIconName;
+  tone: ActivityTone;
+  isLegacy: boolean;
+}) {
+  const Icon = ACTIVITY_ICON[icon];
+
+  return (
+    <span
+      aria-hidden
+      style={{ width: BADGE_SIZE, height: BADGE_SIZE }}
+      className={cn(
+        'absolute -right-1 -bottom-1 grid place-items-center rounded-full ring-2 ring-card',
+        isLegacy ? LEGACY_BADGE : TONE_STYLES[tone].badge
+      )}
+    >
+      {isLegacy ? (
+        <CircleHelpIcon size={BADGE_ICON_SIZE} strokeWidth={BADGE_STROKE} />
+      ) : (
+        // Size + stroke applied once here, so every entry of the map above is
+        // guaranteed to render identically.
+        <Icon size={BADGE_ICON_SIZE} strokeWidth={BADGE_STROKE} />
+      )}
+    </span>
+  );
+}
 
 const RESOURCE_ICON: Record<ActivityResourceTypeValue | string, ReactNode> = {
-  [ActivityResourceType.candidate]: <UserIcon className="size-4" />,
-  [ActivityResourceType.client]: <Building2Icon className="size-4" />,
-  [ActivityResourceType.job]: <BriefcaseBusinessIcon className="size-4" />,
-  [ActivityResourceType.application]: <ClipboardListIcon className="size-4" />,
-  [ActivityResourceType.interview]: <CalendarIcon className="size-4" />,
-  [ActivityResourceType.user]: <UserIcon className="size-4" />,
+  [ActivityResourceType.candidate]: <UserIcon className="size-3" />,
+  [ActivityResourceType.client]: <Building2Icon className="size-3" />,
+  [ActivityResourceType.job]: <BriefcaseBusinessIcon className="size-3" />,
+  [ActivityResourceType.application]: <FileTextIcon className="size-3" />,
+  [ActivityResourceType.interview]: <CalendarClockIcon className="size-3" />,
+  [ActivityResourceType.user]: <UserRoundCheckIcon className="size-3" />,
   [ActivityResourceType.assignment]: (
-    <BriefcaseBusinessIcon className="size-4" />
+    <BriefcaseBusinessIcon className="size-3" />
   ),
-  [ActivityResourceType.tag]: <TagIcon className="size-4" />,
-  work_entry: <ClipboardListIcon className="size-4" />,
-  settings: <ActivityIcon className="size-4" />,
+  [ActivityResourceType.tag]: <TagIcon className="size-3" />,
+  [ActivityResourceType.eod]: <NotebookPenIcon className="size-3" />,
+  [ActivityResourceType.performance_review]: <GaugeIcon className="size-3" />,
+  [ActivityResourceType.survey]: <MailIcon className="size-3" />,
+  [ActivityResourceType.work_entry]: <NotebookPenIcon className="size-3" />,
+  [ActivityResourceType.settings]: <SettingsIcon className="size-3" />,
 };
 
-function resolvePreset(log: ActivityLog): {
-  icon: ReactNode;
-  iconColor: string;
-  bgClass: string;
-} {
-  const FALLBACK = {
-    icon: <AlertCircleIcon className="size-3" />,
-    iconColor: 'text-slate-500 dark:text-slate-400',
-    bgClass: 'bg-slate-50 dark:bg-slate-950/60',
-  };
-
-  const token = String(log.action ?? '').toUpperCase();
-  if (!token) {
-    const res = RESOURCE_ICON[log.resourceType];
-    if (res)
-      return {
-        icon: res,
-        iconColor: 'text-slate-500 dark:text-slate-400',
-        bgClass: 'bg-slate-50 dark:bg-slate-950/60',
-      };
-    return FALLBACK;
-  }
-
-  // 1) Exact match
-  if (TYPE_PRESETS[token]) return TYPE_PRESETS[token];
-
-  // 2) Suffix match: `CANDIDATE_CREATED` → strip `CANDIDATE_` → `CREATED`
-  const parts = token.split('_');
-  for (let i = 1; i < parts.length; i++) {
-    const suffix = parts.slice(i).join('_');
-    if (TYPE_PRESETS[suffix]) return TYPE_PRESETS[suffix];
-  }
-
-  // 3) Resource-type icon fallback
-  const res = RESOURCE_ICON[log.resourceType];
-  if (res)
-    return {
-      icon: res,
-      iconColor: 'text-slate-500 dark:text-slate-400',
-      bgClass: 'bg-slate-50 dark:bg-slate-950/60',
-    };
-
-  return FALLBACK;
-}
-
-// ── Human-readable labels for machine tokens ──────────────────────────────
-
-const TYPE_HUMAN_LABELS: Record<string, string> = {
-  CREATED: 'created',
-  APPLIED: 'applied',
-  UPDATED: 'updated',
-  DELETED: 'deleted',
-  APPROVED: 'approved',
-  REJECTED: 'rejected',
-  HIRED: 'hired',
-  DEACTIVATED: 'deactivated',
-  CANCELLED: 'cancelled',
-  COMPLETED: 'completed',
-  SCHEDULED: 'scheduled',
-  STAGE_MOVED: 'stage changed',
-  STAGE_CHANGED: 'stage changed',
-  PIPELINE_ASSIGNED: 'pipeline assigned',
-  PIPELINE_CHANGED: 'pipeline changed',
-  STATUS_CHANGED: 'changed status',
-  INTERVIEW_SCHEDULED: 'interview scheduled',
-  INTERVIEW_CANCELLED: 'interview cancelled',
-  INTERVIEW_UPDATED: 'interview updated',
-  INTERVIEW_NO_SHOW: 'interview no-show',
-  INTERVIEW_COMPLETED: 'interview completed',
-  INTERVIEW_RESCHEDULED: 'interview rescheduled',
-  FEEDBACK_SUBMITTED: 'submitted feedback',
-  INTERVIEW_FEEDBACK_SUBMITTED: 'submitted feedback',
-  NOTE_ADDED: 'added a note',
-  NOTE_UPDATED: 'updated a note',
-  NOTE_DELETED: 'deleted a note',
-  CONTACT_ADDED: 'added a contact',
-  CONTACT_UPDATED: 'updated a contact',
-  CONTACT_REMOVED: 'removed a contact',
-  CRM_PROFILE_UPDATED: 'updated CRM profile',
-  PERMISSIONS_UPDATED: 'updated permissions',
-  PROVISIONED_VA: 'provisioned VA user',
-  PROVISIONED_CLIENT: 'provisioned client user',
-  AI_SCORE_UPDATED: 'AI score updated',
-  AI_VALIDATION_UPDATED: 'AI validation completed',
-  PARSED_DATA_UPDATED: 'resume parsed',
-  RESUME_PARSING_COMPLETED: 'resume parsing completed',
-  RESUME_VALIDATION_COMPLETED: 'resume validation completed',
-  CANDIDATE_SCORING_COMPLETED: 'candidate scoring completed',
-  CANDIDACY_VALIDATION_COMPLETED: 'candidacy validation completed',
-  TALENT_POOL_ADDED: 'added to talent pool',
-  TALENT_POOL_REMOVED: 'removed from talent pool',
-  ASSIGNMENT_CREATED: 'assignment created',
-  ASSIGNMENT_UPDATED: 'assignment updated',
-  ASSIGNMENT_STATUS_CHANGED: 'assignment status changed',
-  ASSIGNMENT_ENDED: 'assignment ended',
-  EOD_SUBMITTED: 'EOD submitted',
-  EOD_REMINDER_SENT: 'EOD reminder sent',
-  PERFORMANCE_REVIEW_GENERATED: 'review generated',
-  PERFORMANCE_REVIEW_COMPLETED: 'review completed',
-  SURVEY_REMINDER_SENT: 'survey reminder sent',
-  SETTINGS_UPDATED: 'settings updated',
-};
-
-function capitalizeFirst(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function capitalizeWords(s: string) {
-  return s
-    .split(' ')
-    .map(w => capitalizeFirst(w))
-    .join(' ');
-}
-
-/** Types whose primary meaning is a direct state mutation on the parent
- * resource — they should be rendered as `{ResourceType} {Action}`.
- * Everything else is self-describing and just gets its label capitalised. */
-const RESOURCE_PREFIX_TYPES = new Set([
-  'CREATED',
-  'APPLIED',
-  'UPDATED',
-  'DELETED',
-  'APPROVED',
-  'REJECTED',
-  'HIRED',
-  'DEACTIVATED',
-  'SCHEDULED',
-  'CANCELLED',
-  'COMPLETED',
-  'SUBMITTED',
-  'REVIEWED',
-  'ARCHIVED',
-  'RESTORED',
-  'WITHDREW',
-  'FEEDBACK_ADDED',
-  'FEEDBACK_SUBMITTED',
-  'ASSIGNED',
-  'UNASSIGNED',
-]);
-
-/** Build a natural-language sentence from a raw activity log entry.
- *
- * Backend tokens use full `resourceType_action` names like
- * `candidate_created`, `application_stage_moved`, `client_contact_added`.
- * We extract the action suffix and use metadata for extra context. */
-function humanizeActivity(log: ActivityLog): string {
-  // Prefer a human-written description when it differs from the raw action token.
-  if (log.description && log.description !== log.action)
-    return capitalizeFirst(log.description);
-  if (log.summary && log.summary !== log.action)
-    return capitalizeFirst(log.summary);
-
-  const token = String(log.action ?? '');
-  const upper = token.toUpperCase();
-  const metadata = log.metadata ?? {};
-  const resType = capitalizeFirst(log.resourceType || '');
-
-  // ── Full-token match: if the entire token is a known key (e.g.
-  //     INTERVIEW_SCHEDULED, FEEDBACK_SUBMITTED), use it directly
-  //     instead of peeling off suffixes that would produce a misleading
-  //     label like "Application Scheduled". ────────────────────────────
-  if (TYPE_HUMAN_LABELS[upper]) {
-    return capitalizeWords(TYPE_HUMAN_LABELS[upper]);
-  }
-
-  // ── Extract the action suffix from full backend tokens ──────────────
-  // `CANDIDATE_CREATED` → `CREATED`, `APPLICATION_STAGE_MOVED` → `STAGE_MOVED`
-  const parts = upper.split('_');
-  let actionSuffix = upper; // default: use the whole token
-  if (parts.length >= 2) {
-    // Try progressively shorter suffixes
-    for (let i = 1; i < parts.length; i++) {
-      const candidate = parts.slice(i).join('_');
-      if (
-        TYPE_HUMAN_LABELS[candidate] ||
-        RESOURCE_PREFIX_TYPES.has(candidate)
-      ) {
-        actionSuffix = candidate;
-        break;
-      }
-    }
-  }
-
-  const base =
-    TYPE_HUMAN_LABELS[actionSuffix] ?? token.toLowerCase().replace(/_/g, ' ');
-
-  // ── Context-rich handlers ───────────────────────────────────────────
-
-  // STAGE_MOVED / STAGE_CHANGED: "Candidate moved from Phone Screen to Offer"
-  if (actionSuffix === 'STAGE_MOVED' || actionSuffix === 'STAGE_CHANGED') {
-    const to =
-      metadata.to || metadata.toStage || metadata.stageName || metadata.stage;
-    const from = metadata.from || metadata.fromStage;
-    if (to && from) return `${resType} moved from ${from} to ${to}`;
-    if (to) return `${resType} moved to ${to}`;
-    return `${resType} Stage Changed`;
-  }
-
-  // STATUS_CHANGED: "Candidate status: pending → approved"
-  if (actionSuffix === 'STATUS_CHANGED') {
-    const to = metadata.to || metadata.status;
-    const from = metadata.from;
-    if (to && from)
-      return `${resType} status: ${String(from).toLowerCase()} → ${String(to).toLowerCase()}`;
-    if (to) return `${resType} changed status to ${String(to).toLowerCase()}`;
-    return `${resType} ${capitalizeFirst(base)}`;
-  }
-
-  // APPROVED: "Application approved — placed into [Stage]"
-  if (actionSuffix === 'APPROVED' && metadata.stageName) {
-    return `${resType} approved — placed into ${metadata.stageName}`;
-  }
-
-  // ── Name context for verbs that benefit from a known name ───────────
-  const name = metadata.name || metadata.contactName || metadata.candidateName;
-  if (name && (actionSuffix === 'ASSIGNED' || actionSuffix === 'UNASSIGNED')) {
-    return `${resType} ${capitalizeFirst(base)} ${name}`;
-  }
-
-  // ── Generic CRUD-type mutations: "Client Updated", "Job Created" ────
-  if (RESOURCE_PREFIX_TYPES.has(actionSuffix)) {
-    return `${resType} ${capitalizeFirst(base)}`;
-  }
-
-  // ── Self-describing types (TALENT_POOL_ADDED, CONTACT_REMOVED, etc.)
-  // Already have full human labels → just capitalise.
-  if (TYPE_HUMAN_LABELS[actionSuffix]) {
-    return capitalizeWords(base);
-  }
-
-  // ── Fallback: split snake_case into words ───────────────────────────
-  return capitalizeWords(base) || 'Activity';
-}
+/** Stable reference for feeds that have not loaded yet. */
+const EMPTY_LOGS: ActivityLog[] = [];
 
 export interface ActivityTimelineProps {
   /** The kind of entity this feed belongs to. Required for self-fetch mode. */
@@ -575,13 +272,13 @@ export interface ActivityTimelineProps {
   resourceId: string;
   /** Optional heading rendered above the feed. Defaults to no heading. */
   heading?: string;
-  /** Show the resource-type icon next to each entry (useful in the global
-   * feed where multiple resource types are interleaved). Entity-scoped views
-   * leave this off to keep the list compact. */
+  /** Show the resource-type label under each entry (useful in the global feed
+   * where several resource types are interleaved). Entity-scoped views leave
+   * this off to keep the list compact. */
   showResourceIcon?: boolean;
   /** Max entries to render before the container scrolls internally. */
   maxItems?: number;
-  /** Compact variant — smaller padding for dense side sheets. */
+  /** Compact variant — tighter padding for dense side sheets. */
   compact?: boolean;
   className?: string;
   /** Pre-loaded logs. When provided, the component skips self-fetching and
@@ -595,14 +292,19 @@ export interface ActivityTimelineProps {
 /**
  * Activity feed rendered as a vertical timeline. Two modes:
  *
- * 1. Self-fetch (default): the component pulls the per-entity feed from
- *    `useActivityLogStore.fetchForEntity` and caches it by
- *    `${resourceType}|${resourceId}`. Re-mounting the same entity reuses the
- *    cached entries.
+ * 1. Self-fetch (default): pulls the per-entity feed from
+ *    `useActivityLogStore.fetchForEntity`, cached by `${resourceType}|${resourceId}`.
  * 2. Controlled: pass `logs` (and optionally `loading`) to render entries you
- *    already have — used by the global Activity Feed page.
+ *    already have.
  *
- * To real-time optimistically update after a mutation, call
+ * Each row leads with the performer's avatar and a tone badge, followed by a
+ * single plain sentence:
+ *
+ *   **Cyril Thomas** moved the candidate from Phone Screen to Offer   14:32
+ *   Reason: Skills mismatch
+ *
+ * The performer is resolved client-side from the boot-loaded user list, so no
+ * extra API calls are made. To update optimistically after a mutation, call
  * `useActivityLogStore.getState()._prepend(resourceType, resourceId, log)`.
  */
 export function ActivityTimeline({
@@ -619,12 +321,13 @@ export function ActivityTimeline({
   const feeds = useActivityLogStore(s => s.feeds);
   const storeLoading = useActivityLogStore(s => s.loading);
   const fetchForEntity = useActivityLogStore(s => s.fetchForEntity);
+  const { resolve } = useActivityActors();
 
   const key = `${resourceType}|${resourceId}`;
   const isControlled = controlledLogs !== undefined;
   const logs: ActivityLog[] = isControlled
-    ? controlledLogs!
-    : (feeds[key] ?? []);
+    ? controlledLogs
+    : (feeds[key] ?? EMPTY_LOGS);
   const loading = isControlled ? !!controlledLoading : storeLoading;
 
   // Self-fetch mode: trigger a fetch on mount and whenever the entity changes.
@@ -636,8 +339,22 @@ export function ActivityTimeline({
     void fetchForEntity(resourceType, resourceId);
   }, [isControlled, resourceType, resourceId, fetchForEntity]);
 
-  const shown = logs.slice(0, maxItems);
+  const shown = useMemo(() => logs.slice(0, maxItems), [logs, maxItems]);
   const isLoading = loading && logs.length === 0;
+
+  // Build the render model once per data change instead of on every item render.
+  const items = useMemo(() => {
+    const now = new Date();
+    return shown.map(log => {
+      const actor = resolve(log);
+      return {
+        log,
+        actor,
+        sentence: buildActivitySentence(log, actor),
+        time: formatActivityTime(log.createdAt, now),
+      };
+    });
+  }, [shown, resolve]);
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
@@ -656,7 +373,7 @@ export function ActivityTimeline({
         <div className="flex flex-col gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-start gap-3">
-              <Skeleton className="size-6 rounded-full" />
+              <Skeleton className="size-7 rounded-full" />
               <div className="flex-1 flex flex-col gap-1.5">
                 <Skeleton className="h-3 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />
@@ -671,15 +388,18 @@ export function ActivityTimeline({
         </div>
       ) : (
         <ol className="relative flex flex-col">
-          {/* vertical spine */}
+          {/* vertical spine, centred under the avatar column */}
           <span
             aria-hidden
-            className="pointer-events-none absolute left-[11px] top-2 bottom-2 w-px bg-border"
+            className="pointer-events-none absolute left-3 top-3 bottom-3 w-px bg-border-subtle"
           />
-          {shown.map((log, idx) => (
+          {items.map((item, idx) => (
             <ActivityItem
-              key={log._id ?? idx}
-              log={log}
+              key={item.log._id ?? idx}
+              log={item.log}
+              actor={item.actor}
+              sentence={item.sentence}
+              time={item.time}
               showResourceIcon={showResourceIcon}
               compact={compact}
             />
@@ -692,200 +412,150 @@ export function ActivityTimeline({
 
 function ActivityItem({
   log,
+  actor,
+  sentence,
+  time,
   showResourceIcon,
   compact,
 }: {
   log: ActivityLog;
+  actor: ActivityActor;
+  sentence: ActivitySentence;
+  time: ReturnType<typeof formatActivityTime>;
   showResourceIcon?: boolean;
   compact?: boolean;
 }) {
-  const { icon, iconColor, bgClass } = resolvePreset(log);
-  const text = humanizeActivity(log);
-  const ID_RE = /^[a-f\d]{24}$/i;
-  const rawWho = log.performerName ?? log.performedBy;
-  const who = rawWho && !ID_RE.test(rawWho) ? rawWho : null;
-  const when = timeAgo(log.createdAt);
-  const fullDate = new Date(log.createdAt).toLocaleString();
+  const tone = TONE_STYLES[sentence.tone];
+  const isImpersonal = actor.kind === 'system';
+  const isLegacy = sentence.isLegacy;
 
   return (
     <li
       className={cn(
-        'relative flex items-start gap-3 -mx-2 rounded-lg px-2 transition-colors hover:bg-muted/40',
-        compact ? 'py-2' : 'py-3'
+        'relative flex items-start gap-3 rounded-lg px-2 -mx-2 transition-colors hover:bg-muted/40',
+        compact ? 'py-2' : 'py-2.5'
       )}
     >
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span
-              className={cn(
-                'relative z-10 grid size-6 shrink-0 place-items-center rounded-full border shadow-xs',
-                iconColor,
-                bgClass
-              )}
-            >
-              {icon}
-            </span>
+            <div className="relative z-10 shrink-0">
+              <ActorAvatar actor={actor} />
+              <ActivityBadge
+                icon={sentence.icon}
+                tone={sentence.tone}
+                isLegacy={isLegacy}
+              />
+            </div>
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
-            <p className="text-xs">{fullDate}</p>
-            {who && <p className="text-xs text-muted-foreground">by {who}</p>}
+            <p className="text-xs">{time.absolute || 'Unknown time'}</p>
+            {!isImpersonal && (
+              <p className="text-xs text-muted-foreground">
+                {actor.isViewer ? 'You' : actor.name}
+              </p>
+            )}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
-      <div className="min-w-0 flex-1">
-        <ActivityText text={text} />
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-          {who && <span className="truncate">{who}</span>}
-          {who && when && <span aria-hidden>·</span>}
-          {when && <span>{when}</span>}
-          {showResourceIcon && log.resourceType && (
-            <>
-              <span aria-hidden>·</span>
-              <span className="capitalize">
-                {RESOURCE_ICON[log.resourceType] ? (
-                  <span className="inline-flex items-center gap-1">
-                    {RESOURCE_ICON[log.resourceType]}
-                    {log.resourceType}
-                  </span>
-                ) : (
-                  log.resourceType
-                )}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="min-w-0 flex-1">
+          {/* `first-letter:uppercase` keeps the guarantee in one place whether
+              the row leads with an actor name or an impersonal clause —
+              sentence fragments themselves stay lowercase for composition. */}
+          <p className="text-sm leading-snug break-words first-letter:uppercase">
+            {sentence.actor && (
+              <span className="font-medium text-foreground">
+                {sentence.actor}{' '}
               </span>
-            </>
+            )}
+            <span className="text-foreground/90">{sentence.text}</span>
+          </p>
+
+          {sentence.detail && (
+            <p className="mt-0.5 text-xs leading-relaxed break-words text-muted-foreground">
+              {sentence.detail}
+            </p>
+          )}
+
+          {showResourceIcon && log.resourceType && (
+            <div className="mt-1 flex items-center gap-1 text-[11px] capitalize text-muted-foreground">
+              {RESOURCE_ICON[log.resourceType] ?? (
+                <ActivityIcon className="size-3" />
+              )}
+              <span>{log.resourceType.replace(/_/g, ' ')}</span>
+            </div>
           )}
         </div>
-        {log.metadata && Object.keys(log.metadata).length > 0 && (
-          <MetadataChips metadata={log.metadata} />
+
+        {/* Timestamp sits in its own right-aligned column so it reads as
+            metadata rather than as part of the sentence. */}
+        {time.label && (
+          <time
+            dateTime={time.dateTime}
+            title={time.absolute}
+            className={cn(
+              'shrink-0 whitespace-nowrap pt-px text-[11px] leading-snug tabular-nums',
+              time.isRecent ? tone.accent : 'text-muted-foreground/80'
+            )}
+          >
+            {time.label}
+          </time>
         )}
-        {Array.isArray(log.metadata?.changes) &&
-          (log.metadata.changes as string[]).length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {(log.metadata.changes as string[]).map((change, i) => (
-                <li key={i}>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[11px] leading-none text-muted-foreground">
-                    <span
-                      aria-hidden
-                      className="size-1 rounded-full bg-primary/50"
-                    />
-                    {summarizeChange(change)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
       </div>
     </li>
   );
 }
 
-/**
- * Reduce a change description to just its field label, dropping the
- * before/after values (which can contain long HTML like full job
- * descriptions). `Description changed from "<h1>…" to "<h1>…"` becomes
- * `Description changed`.
- */
-function summarizeChange(change: string): string {
-  const bare = change.replace(/\s+from\s+.*$/s, '').trim();
-  return htmlToPlainText(bare);
-}
+const ACTOR_AVATAR_SIZE = 26;
 
 /**
- * Renders an activity description as clean plain text. Strips any HTML,
- * shows a concise summary (with expand/collapse) when the content is long,
- * and preserves list/indent structure via pre-line whitespace.
+ * Actor avatar. Users get their photo or coloured initials (same palette as
+ * the team and candidate tables); AI and system events get a neutral glyph so
+ * automated entries are never mistaken for a person.
  */
-function ActivityText({
-  text,
-  className,
-}: {
-  text: string;
-  className?: string;
-}) {
-  const plain = htmlToPlainText(text);
-  const { summary, truncated } = summarizeText(plain);
-  const [expanded, setExpanded] = useState(false);
+function ActorAvatar({ actor }: { actor: ActivityActor }) {
+  const size = { width: ACTOR_AVATAR_SIZE, height: ACTOR_AVATAR_SIZE };
 
-  const cls =
-    className ?? 'text-sm leading-snug break-words whitespace-pre-line';
-
-  if (!truncated) {
-    return <p className={cls}>{plain}</p>;
+  if (actor.kind === 'user') {
+    return (
+      <span
+        style={size}
+        className={cn(
+          'grid shrink-0 select-none place-items-center overflow-hidden rounded-full text-[10px] font-semibold',
+          !actor.avatar && avatarBg(actor.name || '?')
+        )}
+      >
+        {actor.avatar ? (
+          <img
+            src={actor.avatar}
+            alt={actor.name}
+            className="size-full object-cover"
+          />
+        ) : (
+          actor.initials
+        )}
+      </span>
+    );
   }
 
+  const isAi = actor.kind === 'ai';
   return (
-    <div>
-      <p className={cls}>{expanded ? plain : `${summary}…`}</p>
-      <button
-        type="button"
-        onClick={() => setExpanded(v => !v)}
-        className="mt-0.5 text-xs font-medium text-primary hover:underline"
-      >
-        {expanded ? 'Show less' : 'Show more'}
-      </button>
-    </div>
-  );
-}
-
-function MetadataChips({ metadata }: { metadata: Record<string, unknown> }) {
-  const SKIP_KEYS = new Set([
-    '_id',
-    'id',
-    'resourceId',
-    'resourceType',
-    'clientId',
-    'jobId',
-    'candidateId',
-    'applicationId',
-    'userId',
-    'assigneeId',
-    'assignedTo',
-    'assignedBy',
-    'createdBy',
-    'updatedBy',
-    'tagId',
-    'contactId',
-    'performerName',
-    'performedBy',
-    'ownerId',
-    'creatorId',
-    'emailId',
-    'noteId',
-    'templateId',
-    'pipelineId',
-    'stageId',
-    // shown inline in the main event text
-    'from',
-    'to',
-    'stageName',
-    // already shown elsewhere in the UI
-    'reason',
-    // rendered as a bullet list in ActivityItem
-    'changes',
-  ]);
-  const ID_RE = /^[a-f\d]{24}$/i;
-
-  const entries = Object.entries(metadata).filter(
-    ([k, v]) =>
-      !SKIP_KEYS.has(k) &&
-      v !== null &&
-      v !== undefined &&
-      v !== '' &&
-      !ID_RE.test(String(v))
-  );
-  if (entries.length === 0) return null;
-  return (
-    <div className="mt-1.5 flex flex-wrap gap-1">
-      {entries.slice(0, 4).map(([k, v]) => (
-        <span
-          key={k}
-          className="inline-flex min-h-5 items-start gap-1 rounded-md border border-border bg-card px-1.5 py-px text-[11px] text-foreground/80"
-        >
-          <span className="shrink-0 text-muted-foreground">{k}:</span>
-          <span className="break-all">{htmlToPlainText(String(v))}</span>
-        </span>
-      ))}
-    </div>
+    <span
+      style={size}
+      className={cn(
+        'grid shrink-0 place-items-center rounded-full',
+        isAi
+          ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300'
+          : 'bg-muted text-muted-foreground'
+      )}
+    >
+      {isAi ? (
+        <SparklesIcon className="size-3.5" />
+      ) : (
+        <BanIcon className="size-3.5" />
+      )}
+    </span>
   );
 }
