@@ -40,6 +40,7 @@ import {
   CirclePauseIcon,
   CirclePlayIcon,
   ClipboardCheckIcon,
+  CogIcon,
   ContactIcon,
   FilePlusIcon,
   FileSearchIcon,
@@ -303,6 +304,9 @@ export interface ActivityTimelineProps {
  *   **Cyril Thomas** moved the candidate from Phone Screen to Offer   14:32
  *   Reason: Skills mismatch
  *
+ * Rows with no recorded performer carry the event glyph in the avatar slot and
+ * drop the corner badge, which would otherwise repeat it (see `ActorAvatar`).
+ *
  * The performer is resolved client-side from the boot-loaded user list, so no
  * extra API calls are made. To update optimistically after a mutation, call
  * `useActivityLogStore.getState()._prepend(resourceType, resourceId, log)`.
@@ -429,6 +433,26 @@ function ActivityItem({
   const isImpersonal = actor.kind === 'system';
   const isLegacy = sentence.isLegacy;
 
+  // Lines rendered UNDER the main sentence. They are what makes the text
+  // column taller than the avatar — see the alignment note on the content
+  // wrapper below.
+  const hasDetailLine = Boolean(sentence.detail);
+  const hasResourceLine = showResourceIcon && Boolean(log.resourceType);
+  const isSingleLine = !hasDetailLine && !hasResourceLine;
+
+  // Whether this row names a performer. `sentence.actor` is the single source
+  // of truth for that decision (see `showActor` in `activity-sentence.ts`) —
+  // every row that names nobody, from a public application to an edit whose
+  // actor was never recorded, arrives here with `actor: null`.
+  const hasActor = sentence.actor !== null;
+
+  // The avatar answers "who did this". When no performer is named there is no
+  // "who", so the event glyph itself takes that slot (see `ActorAvatar`) and
+  // the corner badge is dropped — it would print the same glyph twice, at two
+  // sizes. Legacy rows keep theirs regardless: the question mark is the only
+  // thing marking them as uninterpreted.
+  const showBadge = hasActor || isLegacy;
+
   return (
     <li
       className={cn(
@@ -440,12 +464,19 @@ function ActivityItem({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="relative z-10 shrink-0">
-              <ActorAvatar actor={actor} />
-              <ActivityBadge
+              <ActorAvatar
+                actor={actor}
                 icon={sentence.icon}
                 tone={sentence.tone}
-                isLegacy={isLegacy}
+                impersonal={!hasActor}
               />
+              {showBadge && (
+                <ActivityBadge
+                  icon={sentence.icon}
+                  tone={sentence.tone}
+                  isLegacy={isLegacy}
+                />
+              )}
             </div>
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
@@ -459,7 +490,19 @@ function ActivityItem({
         </Tooltip>
       </TooltipProvider>
 
-      <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div
+        // The avatar is a fixed 26px square. A row with a detail/resource line
+        // grows taller than that, so top-alignment reads correctly; a row with
+        // ONLY the main sentence is ~19px and would otherwise hug the top with
+        // dead space under it. Forcing the single-line row to the avatar's
+        // height and centring its contents keeps the ink optically parallel to
+        // the avatar in both cases.
+        style={isSingleLine ? { minHeight: ACTOR_AVATAR_SIZE } : undefined}
+        className={cn(
+          'flex min-w-0 flex-1 gap-3',
+          isSingleLine ? 'items-center' : 'items-start'
+        )}
+      >
         <div className="min-w-0 flex-1">
           {/* `first-letter:uppercase` keeps the guarantee in one place whether
               the row leads with an actor name or an impersonal clause —
@@ -490,13 +533,16 @@ function ActivityItem({
         </div>
 
         {/* Timestamp sits in its own right-aligned column so it reads as
-            metadata rather than as part of the sentence. */}
+            metadata rather than as part of the sentence. The 1px nudge only
+            applies to top-aligned rows — a centred single-line row needs no
+            compensation. */}
         {time.label && (
           <time
             dateTime={time.dateTime}
             title={time.absolute}
             className={cn(
-              'shrink-0 whitespace-nowrap pt-px text-[11px] leading-snug tabular-nums',
+              'shrink-0 whitespace-nowrap text-[11px] leading-snug tabular-nums',
+              !isSingleLine && 'pt-px',
               time.isRecent ? tone.accent : 'text-muted-foreground/80'
             )}
           >
@@ -511,12 +557,53 @@ function ActivityItem({
 const ACTOR_AVATAR_SIZE = 26;
 
 /**
- * Actor avatar. Users get their photo or coloured initials (same palette as
- * the team and candidate tables); AI and system events get a neutral glyph so
- * automated entries are never mistaken for a person.
+ * Actor avatar — who performed the event.
+ *
+ * A named performer gets an identity mark: users their photo or coloured
+ * initials (same palette as the team and candidate tables), AI a violet
+ * sparkle, a scheduler/cron a cog. A person is never implied where an engine
+ * acted.
+ *
+ * A row that names nobody has no "who" to show. That slot used to hold a
+ * `BanIcon` (a circle with a slash) on EVERY such row, which read as "blocked
+ * / cancelled" on events that are neither — a public application, an edit
+ * whose actor was never written. The event glyph moves into the avatar
+ * instead, so the row's most prominent mark says what happened (a pencil for
+ * an edit, a paper-plus for an application) and carries the tone as its ink,
+ * exactly as the badge does when a performer IS named.
  */
-function ActorAvatar({ actor }: { actor: ActivityActor }) {
+function ActorAvatar({
+  actor,
+  icon,
+  tone,
+  impersonal,
+}: {
+  actor: ActivityActor;
+  /** Event glyph, used as the avatar when no performer is named. */
+  icon: ActivityIconName;
+  /** Ink colour for that glyph — the tone the badge would have used. */
+  tone: ActivityTone;
+  /** True when the sentence names no actor, so there is no identity to show. */
+  impersonal: boolean;
+}) {
   const size = { width: ACTOR_AVATAR_SIZE, height: ACTOR_AVATAR_SIZE };
+
+  if (impersonal) {
+    // Legacy rows resolve to the generic `activity` glyph, so they stay
+    // plainly uninterpreted rather than dressed up as a known event.
+    const EventIcon = ACTIVITY_ICON[icon];
+    return (
+      <span
+        style={size}
+        className={cn(
+          'grid shrink-0 place-items-center rounded-full bg-muted',
+          TONE_STYLES[tone].accent
+        )}
+      >
+        <EventIcon className="size-3.5" />
+      </span>
+    );
+  }
 
   if (actor.kind === 'user') {
     return (
@@ -540,22 +627,33 @@ function ActorAvatar({ actor }: { actor: ActivityActor }) {
     );
   }
 
-  const isAi = actor.kind === 'ai';
+  if (actor.kind === 'ai') {
+    return (
+      <span
+        style={size}
+        // A hairline keeps the violet disc from reading as a flat blob against
+        // the muted avatar slot. The shade is picked to land at the same
+        // ~1.5:1 edge strength as `ui/avatar.tsx`'s own `after:border-border`,
+        // so AI avatars sit at the house standard rather than louder or
+        // fainter than every other avatar in the app. `border-box` is set
+        // globally in Tailwind's preflight, so the fixed 26px size is
+        // unchanged by the 1px edge.
+        className="grid shrink-0 place-items-center rounded-full border border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800/70 dark:bg-violet-950/60 dark:text-violet-300"
+      >
+        <SparklesIcon className="size-3.5" />
+      </span>
+    );
+  }
+
+  // A genuinely automated event that the sentence does credit to "System" —
+  // a cron compliance sweep or a dispatched survey. It gets a machine glyph
+  // so it is not mistaken for a person, and keeps its event badge.
   return (
     <span
       style={size}
-      className={cn(
-        'grid shrink-0 place-items-center rounded-full',
-        isAi
-          ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300'
-          : 'bg-muted text-muted-foreground'
-      )}
+      className="grid shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
     >
-      {isAi ? (
-        <SparklesIcon className="size-3.5" />
-      ) : (
-        <BanIcon className="size-3.5" />
-      )}
+      <CogIcon className="size-3.5" />
     </span>
   );
 }
