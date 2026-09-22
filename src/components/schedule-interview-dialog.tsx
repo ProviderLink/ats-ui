@@ -32,7 +32,7 @@ import {
   type Job,
 } from '@/store/types';
 import { AlertTriangleIcon, CheckIcon, ChevronDownIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 export interface ScheduleInterviewInput {
   title: string;
@@ -50,11 +50,28 @@ export interface ScheduleInterviewInput {
 }
 
 /**
+ * Default start: the next whole hour. Computed as initial state rather than
+ * assigned in an effect so the form is correct on first paint.
+ */
+function nextHourDefaults() {
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  now.setHours(now.getHours() + 1);
+  return {
+    date: now.toISOString().slice(0, 10),
+    time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+  };
+}
+
+/**
  * Schedule an interview against a candidate's application.
  *
  * Extracted from the candidate detail sheet so the candidates table can offer
  * scheduling from a row without duplicating this form. Pure: it owns only its
  * own field state and reports the collected values via `onConfirm`.
+ *
+ * The caller must render this only while open (or key it) — the field state is
+ * seeded from initial state and never reset by an effect.
  */
 export function ScheduleInterviewDialog({
   open,
@@ -75,47 +92,25 @@ export function ScheduleInterviewDialog({
   users: { _id: string; firstName: string; lastName: string }[];
   loading?: boolean;
 }) {
-  const [title, setTitle] = useState(`Interview - ${candidateName}`);
+  const [title, setTitle] = useState(
+    () => `Interview - ${candidateName} for ${job?.title ?? 'this job'}`
+  );
   const [type, setType] = useState('zoom');
   const [interviewType, setInterviewType] =
     useState<InterviewMeetingType>('initial_screening');
-  const [jobId, setJobId] = useState('');
+  const [jobId, setJobId] = useState(() => job?._id ?? '');
   const [round, setRound] = useState(1);
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('10:00');
+  const [date, setDate] = useState(() => nextHourDefaults().date);
+  const [time, setTime] = useState(() => nextHourDefaults().time);
   const [duration, setDuration] = useState(45);
-  const defaultTz =
-    useSettingsStore.getState().settings?.companyTimezone || DEFAULT_TIMEZONE;
+  const settings = useSettingsStore(s => s.settings);
+  const defaultTz = settings?.companyTimezone || DEFAULT_TIMEZONE;
   const [timezone, setTimezone] = useState(defaultTz);
   const [interviewerIds, setInterviewerIds] = useState<string[]>([]);
   const [meetingLink, setMeetingLink] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [typeSearch, setTypeSearch] = useState('');
-
-  useEffect(() => {
-    if (open) {
-      setTitle(`Interview - ${candidateName} for ${job?.title ?? 'this job'}`);
-      setType('zoom');
-      setInterviewType('initial_screening');
-      setJobId(job?._id ?? '');
-      setRound(1);
-      const now = new Date();
-      now.setMinutes(0, 0, 0);
-      now.setHours(now.getHours() + 1);
-      setDate(now.toISOString().slice(0, 10));
-      setTime(
-        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      );
-      setDuration(45);
-      setTimezone(defaultTz);
-      setInterviewerIds([]);
-      setMeetingLink('');
-      setPhoneNumber('');
-      setAddress('');
-      setTypeSearch('');
-    }
-  }, [open, candidateName, job?.title, job?._id]);
 
   const jobOptions = useMemo(() => {
     const map = new Map<string, string>();

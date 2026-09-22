@@ -454,25 +454,53 @@ function RescheduleDialog({
   currentDuration: number;
   loading?: boolean;
 }) {
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [duration, setDuration] = useState(currentDuration);
+  // Only mounted while open, so the form below is seeded from initial state
+  // and needs no reset effect. The key re-seeds it if the interview changes.
+  if (!open) return null;
+  return (
+    <RescheduleForm
+      key={`${interviewTitle}:${currentDate}`}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      interviewTitle={interviewTitle}
+      currentDate={currentDate}
+      currentDuration={currentDuration}
+      loading={loading}
+    />
+  );
+}
 
-  useEffect(() => {
-    if (open) {
-      const d = new Date(currentDate);
-      setDate(d.toISOString().slice(0, 10));
-      setTime(
-        `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-      );
-      setDuration(currentDuration);
-    }
-  }, [open, currentDate, currentDuration]);
+function RescheduleForm({
+  onClose,
+  onConfirm,
+  interviewTitle,
+  currentDate,
+  currentDuration,
+  loading,
+}: {
+  onClose: () => void;
+  onConfirm: (data: { scheduledAt: string; duration: number }) => Promise<void>;
+  interviewTitle: string;
+  currentDate: string;
+  currentDuration: number;
+  loading?: boolean;
+}) {
+  const initial = useMemo(() => {
+    const d = new Date(currentDate);
+    return {
+      date: d.toISOString().slice(0, 10),
+      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+    };
+  }, [currentDate]);
+
+  const [date, setDate] = useState(initial.date);
+  const [time, setTime] = useState(initial.time);
+  const [duration, setDuration] = useState(currentDuration);
 
   const isValid = date && time && duration > 0;
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-sm">Reschedule Interview</DialogTitle>
@@ -1400,8 +1428,10 @@ function RejectionHistory({
     resourceType?: string | null;
     metadata?: Record<string, unknown>;
   }
-  const [items, setItems] = useState<TransitionEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  // `null` means not loaded yet. The effect only sets state from the async
+  // callbacks — setting a loading flag synchronously in the effect body would
+  // trigger a cascading render on every refreshKey change.
+  const [items, setItems] = useState<TransitionEntry[] | null>(null);
   // Resolves the raw `performedBy` ObjectId into a display name.
   const allUsers = useUserStore(s => s.items);
   // Resolves the job a transition happened on (from the application id).
@@ -1409,13 +1439,14 @@ function RejectionHistory({
   const allJobs = useJobStore(s => s.items);
 
   useEffect(() => {
-    setLoading(true);
+    let alive = true;
     // includeRelated pulls in application-scoped rows that point at this
     // candidate, which is where rejections and hires are recorded.
     getJson<TransitionEntry[]>(
       `/shared/activity-logs/candidate/${candidateId}?includeRelated=true&limit=100`
     )
       .then(all => {
+        if (!alive) return;
         const transitions = (all ?? []).filter(entry =>
           TRANSITION_ACTIONS.has(entry.action)
         );
@@ -1423,8 +1454,11 @@ function RejectionHistory({
       })
       .catch(() => {
         // silently fail — the activity timeline above shows the full log
-      })
-      .finally(() => setLoading(false));
+        if (alive) setItems((prev) => prev ?? []);
+      });
+    return () => {
+      alive = false;
+    };
   }, [candidateId, refreshKey]);
 
   const performerName = useCallback(
@@ -1448,8 +1482,7 @@ function RejectionHistory({
     [allApps, allJobs]
   );
 
-  if (loading) return null;
-  if (items.length === 0) return null;
+  if (!items || items.length === 0) return null;
 
   return (
     <>

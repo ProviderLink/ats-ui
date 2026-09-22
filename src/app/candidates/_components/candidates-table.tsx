@@ -1333,8 +1333,10 @@ function PipelineActionsMenu({
         onConfirm={handleAddAnotherJob}
       />
 
-      {/* Schedule Interview */}
+      {/* Schedule Interview — keyed by candidate so the form re-seeds when a
+          different row's menu is used. */}
       <ScheduleInterviewDialog
+        key={candidate._id}
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
         onConfirm={handleScheduleInterview}
