@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Application, Job } from '@/store';
+import type { Application, Candidate, Job } from '@/store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 import {
   BriefcaseIcon,
@@ -78,8 +78,15 @@ export function DashSnapshot() {
     );
   }
 
-  const pending = applications.filter(
-    (a: Application) => a.phase === 'pending'
+  // Applicants awaiting a decision. An application is created at approval
+  // already approved, and a public applicant has no application at all, so
+  // counting `phase: 'pending'` applications would report a meaningless zero.
+  // The wait list is candidate-level.
+  const pending = candidates.filter(
+    (c: Candidate) =>
+      c.status === 'pending' &&
+      !c.inTalentPool &&
+      c.eligibilityStatus !== 'permanently_ineligible'
   ).length;
   const total = applications.length;
   const approved = applications.filter(
@@ -108,7 +115,7 @@ export function DashSnapshot() {
       icon: ClockIcon,
       label: 'Pending Review',
       value: pending,
-      sub: 'Applications awaiting action',
+      sub: 'Candidates awaiting action',
     },
     {
       icon: CheckCircle2Icon,

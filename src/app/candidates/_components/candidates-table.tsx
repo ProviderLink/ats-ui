@@ -671,7 +671,6 @@ function ReviewActionsDropdown({
   );
 }
 
-
 function PipelineActionsMenu({
   candidate,
   allApps,

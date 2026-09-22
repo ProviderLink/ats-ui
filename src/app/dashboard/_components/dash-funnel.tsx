@@ -39,8 +39,15 @@ const STAGES = [
 export function DashFunnel() {
   const { loading, kpi, candidates, applications } = useDashboardStore();
 
+  // "In Review" must match the Candidates page exactly: pending AND not parked
+  // elsewhere. Counting the raw status would include candidates already in the
+  // Talent Pool or permanently ineligible, so the dashboard would disagree with
+  // the tab it is describing.
   const pendingCount = candidates.filter(
-    (c: Candidate) => c.status === 'pending'
+    (c: Candidate) =>
+      c.status === 'pending' &&
+      !c.inTalentPool &&
+      c.eligibilityStatus !== 'permanently_ineligible'
   ).length;
 
   // "In Pipeline" mirrors the Candidates page: a candidate with at least one
