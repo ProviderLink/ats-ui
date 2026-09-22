@@ -407,7 +407,10 @@ export function PermanentlyIneligibleTable() {
       />
 
       {/* Permanent delete — the only deletion path in the ATS. */}
-      <Dialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={v => !v && setDeleteTarget(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-destructive">

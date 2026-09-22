@@ -1,5 +1,6 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { ChangeJobDialog } from '@/components/change-job-dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { ResumeViewer } from '@/components/resume-viewer';
@@ -85,6 +86,7 @@ import {
   PencilIcon,
   PhoneIcon,
   PlayIcon,
+  PlusIcon,
   SearchIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -1794,10 +1796,10 @@ export function CandidateDetailSheet({
   const [hireOpen, setHireOpen] = useState(false);
   const [rejectPipelineOpen, setRejectPipelineOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [reassignOpen, setReassignOpen] = useState(false);
+  const [changeJobOpen, setChangeJobOpen] = useState(false);
+  const [jobDialogMode, setJobDialogMode] = useState<'change' | 'add'>('add');
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState('');
   const [approveJobId, setApproveJobId] = useState('');
   // Stores result from candidate approval so email compose has correct context
   const [approvedContext, setApprovedContext] = useState<{
@@ -1815,6 +1817,7 @@ export function CandidateDetailSheet({
 
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
+  const changeJob = useCandidateStore(s => s.changeJob);
   const approveCandidate = useCandidateStore(s => s.approve);
   const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
   const updateCandidate = useCandidateStore(s => s.update);
@@ -2466,20 +2469,56 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleReassign() {
-    if (!selectedJobId || !candidate) return;
+  /**
+   * Change the job on the candidate's active application.
+   *
+   * Implemented as a server-side composite — close the current application and
+   * create one for the target job — because `jobId` is part of the unique
+   * (candidateId, jobId) index and cannot be edited in place.
+   */
+  async function handleChangeJob(jobId: string, startStageId?: string) {
+    if (!candidate || !activePipelineApp) return;
     setPipelineLoading(true);
     try {
-      await assignJob(candidate._id, selectedJobId);
+      const targetJob = jobs.find(j => j._id === jobId);
+      await changeJob(candidate._id, {
+        applicationId: activePipelineApp._id,
+        targetJobId: jobId,
+        startStageId,
+      });
+      logOptimisticActivity(
+        'candidate',
+        candidate._id,
+        'updated',
+        `Moved to ${targetJob?.title ?? 'another job'}`
+      );
+      toast.success(
+        `${fullName} moved to ${targetJob?.title ?? 'the new job'}`
+      );
+      setChangeJobOpen(false);
+      await useApplicationStore.getState().fetch({ limit: 9999 });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setPipelineLoading(false);
+    }
+  }
+
+  /** Add another application without touching the current one. */
+  async function handleAddJob(jobId: string, startStageId?: string) {
+    if (!candidate) return;
+    setPipelineLoading(true);
+    try {
+      await assignJob(candidate._id, jobId, startStageId);
       logOptimisticActivity(
         'candidate',
         candidate._id,
         'created',
-        `Applied to another job`
+        'Applied to another job'
       );
       toast.success(`${fullName} added to another job`);
-      setReassignOpen(false);
-      setSelectedJobId('');
+      setChangeJobOpen(false);
+      await useApplicationStore.getState().fetch({ limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -3731,18 +3770,34 @@ export function CandidateDetailSheet({
                   <StarIcon className="size-3.5" />
                   {c.inTalentPool ? 'Remove from Pool' : 'Add to Pool'}
                 </Button>
-                {/* Reassign */}
+                {/* Change Job — replaces the current job on this application */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    pipelineLoading || !activePipelineApp || openJobs.length === 0
+                  }
+                  className="h-8 gap-1.5"
+                  onClick={() => {
+                    setJobDialogMode('change');
+                    setChangeJobOpen(true);
+                  }}
+                >
+                  <ArrowRightLeftIcon className="size-3.5" />
+                  Change Job
+                </Button>
+                {/* Add to Job — keeps the current job and adds another */}
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={pipelineLoading || openJobs.length === 0}
                   className="h-8 gap-1.5"
                   onClick={() => {
-                    setSelectedJobId('');
-                    setReassignOpen(true);
+                    setJobDialogMode('add');
+                    setChangeJobOpen(true);
                   }}
                 >
-                  <ArrowRightLeftIcon className="size-3.5" />
+                  <PlusIcon className="size-3.5" />
                   Add to Job
                 </Button>
               </div>
@@ -3781,11 +3836,11 @@ export function CandidateDetailSheet({
                   disabled={pipelineLoading || openJobs.length === 0}
                   className="h-8 gap-1.5"
                   onClick={() => {
-                    setSelectedJobId('');
-                    setReassignOpen(true);
+                    setJobDialogMode('add');
+                    setChangeJobOpen(true);
                   }}
                 >
-                  <ArrowRightLeftIcon className="size-3.5" />
+                  <PlusIcon className="size-3.5" />
                   Add to Job
                 </Button>
               </div>
@@ -4267,46 +4322,23 @@ export function CandidateDetailSheet({
         onConfirm={handleRejectPipeline}
       />
 
-      {/* Pipeline: Reassign to Job */}
-      <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add to Another Job</DialogTitle>
-            <DialogDescription>
-              Also assign <span className="font-medium">{fullName}</span> to
-              another open position.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label>Select Job</Label>
-            <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a job..." />
-              </SelectTrigger>
-              <SelectContent>
-                {openJobs
-                  .filter(j => j._id !== pipelineJob?._id)
-                  .map(j => (
-                    <SelectItem key={j._id} value={j._id}>
-                      {j.title}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReassignOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleReassign}
-              disabled={!selectedJobId || pipelineLoading}
-            >
-              {pipelineLoading ? 'Assigning…' : 'Assign'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Job & Stage — change the job on this application, or add another */}
+      <ChangeJobDialog
+        open={changeJobOpen}
+        onOpenChange={setChangeJobOpen}
+        mode={jobDialogMode}
+        candidateName={fullName}
+        currentJobTitle={pipelineJob?.title ?? appliedJobTitle ?? undefined}
+        jobs={openJobs.map(j => ({
+          ...j,
+          stages: (jobs.find(x => x._id === j._id)?.pipeline?.stages ?? [])
+            .filter(s => s.isActive !== false)
+            .sort((a, b) => a.order - b.order)
+            .map(s => ({ _id: s._id, name: s.name })),
+        }))}
+        submitting={pipelineLoading}
+        onConfirm={jobDialogMode === 'change' ? handleChangeJob : handleAddJob}
+      />
 
       {/* Pipeline: Talent Pool Confirm */}
       <Dialog
