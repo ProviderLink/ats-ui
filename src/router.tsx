@@ -17,6 +17,7 @@ import Dashboard from '@/app/dashboard/page';
 import EmailDetailPage from '@/app/emails/[id]/page';
 import EmailsPage from '@/app/emails/page';
 import ErrorPage from '@/app/error';
+import HiredPage from '@/app/hired/page';
 import HomePage from '@/app/home/page';
 import JobDetailPage from '@/app/jobs/[id]/page';
 import JobNewPage from '@/app/jobs/new/page';
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
               },
               { path: 'candidates/:id', element: <CandidateDetailPage /> },
               { path: 'talent-pool', element: <TalentPoolPage /> },
+              { path: 'hired', element: <HiredPage /> },
               {
                 path: 'permanently-ineligible',
                 element: (

@@ -26,6 +26,7 @@ import {
   Settings2Icon,
   ShieldAlertIcon,
   TagIcon,
+  UserCheckIcon,
   UserRoundSearchIcon,
   UsersIcon,
 } from 'lucide-react';
@@ -43,6 +44,11 @@ const data = {
       title: 'Talent Pool',
       url: '/ats/talent-pool',
       icon: <BookmarkCheckIcon />,
+    },
+    {
+      title: 'Hired',
+      url: '/ats/hired',
+      icon: <UserCheckIcon />,
     },
     {
       title: 'Ineligible',
@@ -80,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const filteredNavMain = data.navMain.filter(item => {
     if (item.title === 'Clients') return hasPermission('clients', 'read');
     if (item.title === 'Jobs') return hasPermission('jobs', 'read');
-    if (item.title === 'Candidates' || item.title === 'Talent Pool')
+    if (item.title === 'Candidates' || item.title === 'Talent Pool' || item.title === 'Hired')
       return hasPermission('candidates', 'read');
     if (item.title === 'Ineligible') return user?.roles.includes('admin');
     return true;

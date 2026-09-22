@@ -2483,11 +2483,6 @@ export function CandidatesTable() {
                   label: 'In Pipeline',
                   count: counts.approved,
                 },
-                {
-                  value: 'hired' as const,
-                  label: 'Hired',
-                  count: counts.hired,
-                },
               ].map(({ value, label, count }) => (
                 <TabsTrigger key={value} value={value}>
                   {label} <TabCountChip n={count} />
