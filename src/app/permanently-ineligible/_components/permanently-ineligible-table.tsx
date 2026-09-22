@@ -13,13 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Input } from '@/components/ui/input';
 import { patchJson } from '@/lib/api-client';
 import { cn, formatDate } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -112,7 +112,9 @@ export function PermanentlyIneligibleTable() {
       setRestoreTarget(null);
       await fetchIneligible(true);
       // Refresh the main candidate list so they appear under In Review.
-      await useCandidateStore.getState().fetch({ status: 'pending', limit: 9999 });
+      await useCandidateStore
+        .getState()
+        .fetch({ status: 'pending', limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message || 'Failed to restore candidate');
     } finally {
@@ -431,83 +433,83 @@ function RestoreForm({
             {candidate.firstName} {candidate.lastName}
           </span>{' '}
           clears their permanent ineligibility. Choose the job they are being
-          considered for — they return to <strong>In Review</strong> and must
-          be approved like any new applicant.
+          considered for — they return to <strong>In Review</strong> and must be
+          approved like any new applicant.
         </DialogDescription>
       </DialogHeader>
 
-        <div className="flex flex-col gap-3">
-          <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search jobs…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
-          </div>
-          <div className="max-h-64 overflow-y-auto rounded-md border">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-                No open jobs found
-              </p>
-            ) : (
-              <div className="flex flex-col">
-                {filtered.map(j => (
-                  <button
-                    key={j._id}
-                    type="button"
-                    className={cn(
-                      'flex items-start gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
-                      selectedJobId === j._id && 'bg-muted font-medium'
-                    )}
-                    onClick={() => setSelectedJobId(j._id)}
-                  >
-                    <span
-                      className={cn(
-                        'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
-                        selectedJobId === j._id
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted-foreground/30'
-                      )}
-                    >
-                      {selectedJobId === j._id && (
-                        <CheckIcon className="size-3" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex flex-col">
-                      <span className="truncate">{j.title}</span>
-                      {j.clientName && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          {j.clientName}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {jobs.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              There are no open jobs. Open a job before restoring a candidate.
+      <div className="flex flex-col gap-3">
+        <div className="relative">
+          <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search jobs…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+        <div className="max-h-64 overflow-y-auto rounded-md border">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+              No open jobs found
             </p>
+          ) : (
+            <div className="flex flex-col">
+              {filtered.map(j => (
+                <button
+                  key={j._id}
+                  type="button"
+                  className={cn(
+                    'flex items-start gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
+                    selectedJobId === j._id && 'bg-muted font-medium'
+                  )}
+                  onClick={() => setSelectedJobId(j._id)}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
+                      selectedJobId === j._id
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-muted-foreground/30'
+                    )}
+                  >
+                    {selectedJobId === j._id && (
+                      <CheckIcon className="size-3" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex flex-col">
+                    <span className="truncate">{j.title}</span>
+                    {j.clientName && (
+                      <span className="text-xs text-muted-foreground truncate">
+                        {j.clientName}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
+        {jobs.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            There are no open jobs. Open a job before restoring a candidate.
+          </p>
+        )}
+      </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!selectedJobId || submitting}
-            onClick={() => {
-              if (selectedJobId) onConfirm(candidate, selectedJobId);
-            }}
-          >
-            {submitting ? 'Restoring…' : 'Restore'}
-          </Button>
-        </DialogFooter>
-      </>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button
+          disabled={!selectedJobId || submitting}
+          onClick={() => {
+            if (selectedJobId) onConfirm(candidate, selectedJobId);
+          }}
+        >
+          {submitting ? 'Restoring…' : 'Restore'}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
