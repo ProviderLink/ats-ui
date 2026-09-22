@@ -68,6 +68,9 @@ export interface Candidate {
   resumeRawText?: string;
   videoIntroUrl?: string | null;
   videoIntroSource?: 'cloudinary' | 'external' | null;
+  portfolioUrl?: string | null;
+  portfolioFileUrl?: string | null;
+  portfolioFileName?: string | null;
   parsedData?: CandidateParsedData;
   aiValidation?: CandidateAiValidation | null;
   aiScore?: CandidateAiScore;

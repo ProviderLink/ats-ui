@@ -1,4 +1,5 @@
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { PortfolioSection } from '@/components/portfolio-section';
 import { ResumeViewer } from '@/components/resume-viewer';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
@@ -744,6 +745,19 @@ export function TalentPoolDetailSheet({
                   )}
                 </div>
               </div>
+
+              {/* Portfolio — always shown so an absent portfolio is visible */}
+              <>
+                <Separator />
+                <div className="flex flex-col gap-3">
+                  <SectionLabel>Portfolio</SectionLabel>
+                  <PortfolioSection
+                    url={c.portfolioUrl}
+                    fileUrl={c.portfolioFileUrl}
+                    fileName={c.portfolioFileName}
+                  />
+                </div>
+              </>
 
               {/* CRM Profile */}
               {c.crmProfile && (

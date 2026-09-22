@@ -2,6 +2,7 @@ import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet'
 import { ActivityTimeline } from '@/components/activity-timeline';
 import { ChangeJobDialog } from '@/components/change-job-dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { PortfolioSection } from '@/components/portfolio-section';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { ResumeViewer } from '@/components/resume-viewer';
@@ -3509,6 +3510,16 @@ export function CandidateDetailSheet({
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Portfolio — always shown so an absent portfolio is visible */}
+              <div className="flex flex-col gap-3">
+                <SectionLabel>Portfolio</SectionLabel>
+                <PortfolioSection
+                  url={c.portfolioUrl}
+                  fileUrl={c.portfolioFileUrl}
+                  fileName={c.portfolioFileName}
+                />
               </div>
 
               {/* CRM Profile */}

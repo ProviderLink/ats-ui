@@ -81,6 +81,11 @@ const inputSchema = z.object({
   phone: z.string().min(1, 'Required'),
   yearsOfExperience: z.number().min(0, 'Must be 0 or more'),
   videoIntroUrl: z.string().min(1, 'Required').url('Must be a valid URL'),
+  portfolioUrl: z
+    .string()
+    .url('Must be a valid URL')
+    .optional()
+    .or(z.literal('')),
   englishProficiency: z.enum([
     'basic',
     'conversational',
@@ -402,6 +407,8 @@ function InputStep({
   resumeFile,
   setResumeFile,
   resumeError,
+  portfolioFile,
+  setPortfolioFile,
   onSubmit,
 }: {
   job: Job;
@@ -409,9 +416,12 @@ function InputStep({
   resumeFile: File | null;
   setResumeFile: (file: File | null) => void;
   resumeError: string | null;
+  portfolioFile: File | null;
+  setPortfolioFile: (file: File | null) => void;
   onSubmit: (values: InputFormValues) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const portfolioInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const {
@@ -438,6 +448,34 @@ function InputStep({
     if (file.type === 'application/pdf') setResumeFile(file);
     else toast.error('Please upload a PDF file');
     e.target.value = '';
+  }
+
+  const PORTFOLIO_ACCEPT =
+    '.pdf,.zip,image/png,image/jpeg,image/webp,image/gif';
+  const PORTFOLIO_TYPES = [
+    'application/pdf',
+    'application/zip',
+    'application/x-zip-compressed',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+  ];
+
+  function handlePortfolioChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (PORTFOLIO_TYPES.includes(file.type)) setPortfolioFile(file);
+    else toast.error('Portfolio must be a PDF, ZIP, or image file');
+    e.target.value = '';
+  }
+
+  function handlePortfolioDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (PORTFOLIO_TYPES.includes(file.type)) setPortfolioFile(file);
+    else toast.error('Portfolio must be a PDF, ZIP, or image file');
   }
 
   return (
@@ -690,6 +728,80 @@ function InputStep({
                   Accepts Google Drive, Loom, YouTube, Vimeo, etc.
                 </p>
               </Field>
+
+              <Separator />
+
+              <div className="flex flex-col gap-1.5">
+                <Label>Portfolio</Label>
+                <p className="text-xs text-muted-foreground">
+                  Optional — for roles where you have work samples to show
+                  (design, writing, video, etc.). Add a link, a file, or both.
+                </p>
+              </div>
+
+              <Field
+                label="Portfolio Link"
+                error={errors.portfolioUrl?.message}
+              >
+                <Input
+                  placeholder="https://behance.net/... or a Drive link"
+                  {...register('portfolioUrl')}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Behance, Dribbble, GitHub, Google Drive, personal website,
+                  etc.
+                </p>
+              </Field>
+
+              <Field label="Portfolio File">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-input px-4 py-6 text-center transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  onClick={() => portfolioInputRef.current?.click()}
+                  onKeyDown={e =>
+                    e.key === 'Enter' && portfolioInputRef.current?.click()
+                  }
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={handlePortfolioDrop}
+                >
+                  {portfolioFile ? (
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FileTextIcon className="size-4 text-muted-foreground" />
+                      <span>{portfolioFile.name}</span>
+                      <button
+                        type="button"
+                        className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setPortfolioFile(null);
+                        }}
+                      >
+                        <XIcon className="size-3 text-foreground/50" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadIcon className="size-6 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          Click or drag to upload your portfolio
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PDF, ZIP, or image — up to 10 MB
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={portfolioInputRef}
+                  type="file"
+                  className="hidden"
+                  accept={PORTFOLIO_ACCEPT}
+                  onChange={handlePortfolioChange}
+                />
+              </Field>
             </CardContent>
           </Card>
         </div>
@@ -728,6 +840,7 @@ function ReviewStep({
   reviewData,
   setReviewData,
   videoIntroUrl,
+  portfolioFileName,
   onSubmit,
   onBack,
   submitting,
@@ -737,6 +850,7 @@ function ReviewStep({
   reviewData: ReviewData;
   setReviewData: React.Dispatch<React.SetStateAction<ReviewData>>;
   videoIntroUrl: string;
+  portfolioFileName: string | null;
   onSubmit: () => void;
   onBack: () => void;
   submitting: boolean;
@@ -899,6 +1013,38 @@ function ReviewStep({
                 </CardContent>
               </Card>
             )}
+            {(values.portfolioUrl || portfolioFileName) && (
+              <Card className="rounded-sm">
+                <CardHeader>
+                  <CardTitle className="font-heading text-sm">
+                    Portfolio
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-2">
+                  {values.portfolioUrl && (
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-xs text-muted-foreground">Link</p>
+                      <a
+                        href={values.portfolioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-xs text-primary underline-offset-2 hover:underline"
+                      >
+                        {values.portfolioUrl}
+                      </a>
+                    </div>
+                  )}
+                  {portfolioFileName && (
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-xs text-muted-foreground">File</p>
+                      <p className="break-all text-xs font-medium">
+                        {portfolioFileName}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             <div className="flex flex-col gap-3">
               <Button
                 type="button"
@@ -979,6 +1125,7 @@ export default function CareerApplyPage() {
   const [step, setStep] = useState<Step>('input');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
   const [resumeData, setResumeData] = useState<ResumeUploadResult | null>(null);
   const [inputValues, setInputValues] = useState<InputFormValues | null>(null);
   const [reviewData, setReviewData] = useState<ReviewData>(EMPTY_REVIEW);
@@ -993,6 +1140,7 @@ export default function CareerApplyPage() {
       phone: '',
       yearsOfExperience: 0,
       videoIntroUrl: '',
+      portfolioUrl: '',
       currentSalaryPHP: undefined,
       currentSalaryUSD: undefined,
       reasonForLeaving: '',
@@ -1052,6 +1200,7 @@ export default function CareerApplyPage() {
       fd.append('videoIntroUrl', values.videoIntroUrl);
       fd.append('videoIntroSource', 'external');
     }
+    if (values.portfolioUrl) fd.append('portfolioUrl', values.portfolioUrl);
     fd.append('file', resumeFile);
 
     try {
@@ -1125,6 +1274,8 @@ export default function CareerApplyPage() {
         fd.append('videoIntroUrl', inputValues.videoIntroUrl);
         fd.append('videoIntroSource', 'external');
       }
+      if (inputValues.portfolioUrl)
+        fd.append('portfolioUrl', inputValues.portfolioUrl);
       fd.append('resumeOriginalName', resumeData.resumeOriginalName);
       fd.append('resumeRawText', resumeData.resumeRawText);
       fd.append(
@@ -1139,6 +1290,7 @@ export default function CareerApplyPage() {
         })
       );
       fd.append('file', resumeFile);
+      if (portfolioFile) fd.append('portfolioFile', portfolioFile);
 
       await publicApi.postForm(`/ats/jobs/${id}/apply`, fd);
       setStep('success');
@@ -1154,7 +1306,6 @@ export default function CareerApplyPage() {
     setReviewData(EMPTY_REVIEW);
     setStep('input');
   }
-
   // --- Loading state ---
   if (loading) return <ApplyPageSkeleton />;
 
@@ -1252,6 +1403,8 @@ export default function CareerApplyPage() {
             if (file) setResumeError(null);
           }}
           resumeError={resumeError}
+          portfolioFile={portfolioFile}
+          setPortfolioFile={setPortfolioFile}
           onSubmit={handleInputSubmit}
         />
       )}
@@ -1270,6 +1423,7 @@ export default function CareerApplyPage() {
           reviewData={reviewData}
           setReviewData={setReviewData}
           videoIntroUrl={inputValues.videoIntroUrl ?? ''}
+          portfolioFileName={portfolioFile?.name ?? null}
           onSubmit={handleSubmit}
           onBack={handleBackToUpload}
           submitting={step === 'submitting'}
