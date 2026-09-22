@@ -1454,7 +1454,7 @@ function RejectionHistory({
       })
       .catch(() => {
         // silently fail — the activity timeline above shows the full log
-        if (alive) setItems((prev) => prev ?? []);
+        if (alive) setItems(prev => prev ?? []);
       });
     return () => {
       alive = false;
