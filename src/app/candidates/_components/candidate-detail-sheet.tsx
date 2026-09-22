@@ -1672,9 +1672,7 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
 
   useEffect(() => {
     setLoading(true);
-    getJson<RejectionEntry[]>(
-      `/shared/activity-logs/candidate/${candidateId}`
-    )
+    getJson<RejectionEntry[]>(`/shared/activity-logs/candidate/${candidateId}`)
       .then(all => {
         // Rejections surface as `disposition` entries (application-level) or
         // `rejected` entries (candidate-level, when no application exists yet).
@@ -3635,9 +3633,9 @@ export function CandidateDetailSheet({
                 />
               </div>
 
-      {/* Rejection history — filtered from the same ActivityLog,
+              {/* Rejection history — filtered from the same ActivityLog,
           shown as a compact summary when reject events exist */}
-      <RejectionHistory candidateId={c._id} />
+              <RejectionHistory candidateId={c._id} />
             </div>
           </div>
 
