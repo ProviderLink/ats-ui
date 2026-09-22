@@ -1844,6 +1844,24 @@ export function CandidatesTable() {
     return candidatesInPipelineIds;
   }, [candidatesInPipelineIds, pipelineIdsFallback]);
 
+  // ── "In Review" membership ──────────────────────────────────────
+  // A candidate is In Review when they are still pending AND not already
+  // parked somewhere else. The flag exclusions are what make Reject and
+  // "Add to Talent Pool" remove the row immediately: neither action changes
+  // `status`, so without them the candidate would stay visible in this tab
+  // with no remaining work to do.
+  //
+  // NOTE: public-apply candidates have NO application at this stage — the
+  // application is only created at approval (see job.controller.ts). So this
+  // rule must stay candidate-level; it cannot be application-derived.
+  const isInReview = useCallback(
+    (c: Candidate) =>
+      c.status === 'pending' &&
+      !c.inTalentPool &&
+      c.eligibilityStatus !== 'permanently_ineligible',
+    []
+  );
+
   // ── Tab counts derived from local data ──────────────────────────
   const counts = useMemo(() => {
     const base = jobIdFilter
@@ -1855,11 +1873,11 @@ export function CandidatesTable() {
         })()
       : items;
     return {
-      pending: base.filter(c => c.status === 'pending').length,
+      pending: base.filter(isInReview).length,
       approved: base.filter(c => effectivePipelineIds.has(c._id)).length,
       hired: base.filter(c => c.status === 'hired').length,
     };
-  }, [items, jobIdFilter, allApps, effectivePipelineIds]);
+  }, [items, jobIdFilter, allApps, effectivePipelineIds, isInReview]);
 
   // ── Client-side filtering by tab + search ────────────────────────
   // After boot, ALL candidates are in the store. We filter by activeTab
@@ -1869,6 +1887,9 @@ export function CandidatesTable() {
     let result = items.filter(c => {
       if (activeTab === 'approved') {
         return effectivePipelineIds.has(c._id);
+      }
+      if (activeTab === 'pending') {
+        return isInReview(c);
       }
       return c.status === activeTab;
     });
