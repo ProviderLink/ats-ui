@@ -30,7 +30,15 @@ interface ApplicationActions {
   ) => Promise<void>;
   moveStage: (id: string, stageId: string) => Promise<void>;
   hire: (id: string) => Promise<void>;
-  reject: (id: string, reason?: string) => Promise<void>;
+  reject: (
+    id: string,
+    payload?: {
+      reason?: string;
+      rejectionReasonId?: string;
+      destination?: 'candidate_pool' | 'permanently_ineligible';
+      internalNotes?: string;
+    }
+  ) => Promise<void>;
   updateNotes: (id: string, notes: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   setFilters: (f: Partial<ApplicationFilters>) => void;
@@ -248,7 +256,7 @@ export const useApplicationStore = create<
         }
       },
 
-      reject: async (id, reason) => {
+      reject: async (id, payload) => {
         set(s => {
           s.mutating = true;
           s.error = null;
@@ -256,7 +264,12 @@ export const useApplicationStore = create<
         try {
           const app = await patchJson<Application>(
             `/ats/applications/${id}/reject`,
-            { reason: reason ?? undefined }
+            {
+              reason: payload?.reason ?? undefined,
+              rejectionReasonId: payload?.rejectionReasonId ?? undefined,
+              destination: payload?.destination ?? undefined,
+              internalNotes: payload?.internalNotes ?? undefined,
+            }
           );
           set(s => {
             const idx = s.items.findIndex(x => x._id === id);

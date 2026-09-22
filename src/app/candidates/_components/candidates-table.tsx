@@ -1903,8 +1903,7 @@ export function CandidatesTable() {
     }
 
     // Then apply search
-    const q = query.trim().toLowerCase();
-    if (q) {
+    const q = query.trim().toLowerCase();    if (q) {
       result = result.filter(c => {
         const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
         if (fullName.includes(q)) return true;
@@ -1920,7 +1919,15 @@ export function CandidatesTable() {
       });
     }
     return result;
-  }, [items, query, activeTab, jobIdFilter, allApps, effectivePipelineIds]);
+  }, [
+    items,
+    query,
+    activeTab,
+    jobIdFilter,
+    allApps,
+    effectivePipelineIds,
+    isInReview,
+  ]);
 
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => {
@@ -2029,7 +2036,7 @@ export function CandidatesTable() {
             ? stageInfoByCandidateId.get(id)?.applicationId
             : pendingApplicationByCandidateId.get(id);
         if (!appId) return Promise.reject(new Error('No application found'));
-        return rejectApp(appId, reason);
+        return rejectApp(appId, reason ? { reason } : undefined);
       })
     );
     setBulkActing(false);

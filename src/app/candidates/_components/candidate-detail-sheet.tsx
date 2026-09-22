@@ -2,6 +2,7 @@ import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet'
 import { ActivityTimeline } from '@/components/activity-timeline';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DispositionDialog } from '@/components/disposition-dialog';
+import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { ResumeViewer } from '@/components/resume-viewer';
 import { TagsSelector } from '@/components/tags-selector';
 import { TimezoneSelect } from '@/components/timezone-select';
@@ -1141,51 +1142,6 @@ function EducationList({ items }: { items: ParsedEducation[] }) {
   );
 }
 
-function RejectDialog({
-  open,
-  onClose,
-  onConfirm,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (reason: string) => void;
-}) {
-  const [reason, setReason] = useState('');
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Reject Application</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label>Rejection Reason (optional)</Label>
-          <Textarea
-            rows={3}
-            placeholder="e.g. Not enough experience"
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            className="resize-none"
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onConfirm(reason);
-              onClose();
-            }}
-          >
-            Reject
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function TalentPoolDialog({
   open,
   onClose,
@@ -1845,7 +1801,6 @@ export function CandidateDetailSheet({
   const [disposeOpen, setDisposeOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [approveJobId, setApproveJobId] = useState('');
   // Stores result from candidate approval so email compose has correct context
@@ -1865,6 +1820,7 @@ export function CandidateDetailSheet({
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
   const approveCandidate = useCandidateStore(s => s.approve);
+  const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
   const updateCandidate = useCandidateStore(s => s.update);
 
   const allTags = useTagStore(s => s.items);
@@ -2285,23 +2241,34 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectConfirm(reason: string) {
-    if (!pendingApplication) {
-      toast.error('No pending application to reject');
+  /**
+   * Candidate-level reject (In Review). Public-apply candidates have no
+   * application yet, so this goes through the candidate endpoint and routes
+   * them to Talent Pool or Permanently Ineligible.
+   */
+  async function handleRejectConfirm(payload: RejectPayload) {
+    if (!candidate) {
       setRejectOpen(false);
       return;
     }
     setActionLoading(true);
     try {
-      await rejectApp(pendingApplication._id, reason);
+      await rejectCandidateStore(candidate._id, payload);
       logOptimisticActivity(
-        'application',
-        pendingApplication._id,
+        'candidate',
+        candidate._id,
         'rejected',
-        'Application rejected',
-        { reason: reason || null }
+        'Candidate rejected',
+        {
+          reasonId: payload.rejectionReasonId,
+          destination: payload.destination ?? null,
+        }
       );
-      toast.success('Application rejected');
+      toast.success(
+        payload.destination === 'permanently_ineligible'
+          ? `${fullName} rejected and marked permanently ineligible`
+          : `${fullName} rejected and moved to Talent Pool`
+      );
       setRejectOpen(false);
     } catch (e) {
       toast.error((e as Error).message);
@@ -2310,23 +2277,25 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectAndEmailConfirm(reason: string) {
-    if (!pendingApplication) {
-      toast.error('No pending application to reject');
+  async function handleRejectAndEmailConfirm(payload: RejectPayload) {
+    if (!candidate) {
       setRejectEmailOpen(false);
       return;
     }
     setActionLoading(true);
     try {
-      await rejectApp(pendingApplication._id, reason);
+      await rejectCandidateStore(candidate._id, payload);
       logOptimisticActivity(
-        'application',
-        pendingApplication._id,
+        'candidate',
+        candidate._id,
         'rejected',
-        'Application rejected',
-        { reason: reason || null }
+        'Candidate rejected',
+        {
+          reasonId: payload.rejectionReasonId,
+          destination: payload.destination ?? null,
+        }
       );
-      toast.success('Application rejected');
+      toast.success(`${fullName} rejected`);
       setRejectEmailOpen(false);
       setPendingEmailFor('reject');
       setComposeOpen(true);
@@ -2341,6 +2310,21 @@ export function CandidateDetailSheet({
   const activePipelineApp = useMemo(
     () => candidateApplications.find(a => a.phase === 'approved') ?? null,
     [candidateApplications]
+  );
+
+  /**
+   * How many OTHER applications the candidate still has open. When this is
+   * non-zero a reject must not ban or pool them — that would silently destroy
+   * the other job's pipeline. The destination options are hidden in that case.
+   */
+  const otherLiveApplicationCount = useMemo(
+    () =>
+      candidateApplications.filter(
+        a =>
+          a._id !== activePipelineApp?._id &&
+          (a.phase === 'pending' || a.phase === 'approved')
+      ).length,
+    [candidateApplications, activePipelineApp]
   );
   const pipelineJob = useMemo(
     () =>
@@ -2427,23 +2411,30 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRejectPipeline() {
+  async function handleRejectPipeline(payload: RejectPayload) {
     if (!activePipelineApp) return;
     setPipelineLoading(true);
     try {
-      await rejectApp(activePipelineApp._id, rejectReason);
+      await rejectApp(activePipelineApp._id, payload);
       logOptimisticActivity(
         'application',
         activePipelineApp._id,
         'rejected',
         `${fullName} rejected from ${pipelineJob?.title ?? 'job'}`,
-        { reason: rejectReason || null }
+        {
+          reasonId: payload.rejectionReasonId,
+          destination: payload.destination ?? null,
+        }
       );
       toast.success(
-        `${fullName} rejected from ${pipelineJob?.title ?? 'this job'}`
+        `${fullName} rejected from ${pipelineJob?.title ?? 'this job'}` +
+          (payload.destination === 'permanently_ineligible'
+            ? ' and marked permanently ineligible'
+            : payload.destination === 'candidate_pool'
+              ? ' and moved to Talent Pool'
+              : '')
       );
       setRejectPipelineOpen(false);
-      setRejectReason('');
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -3728,7 +3719,6 @@ export function CandidateDetailSheet({
                   disabled={pipelineLoading || !activePipelineApp}
                   className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
                   onClick={() => {
-                    setRejectReason('');
                     setRejectPipelineOpen(true);
                   }}
                 >
@@ -4105,17 +4095,24 @@ export function CandidateDetailSheet({
         )}
       </ConfirmDialog>
 
-      {/* Reject — reason is optional, uses RejectDialog */}
+      {/* Reject (In Review) — structured reason + destination.
+          No application exists yet, so this rejects at candidate level. */}
       <RejectDialog
         open={rejectOpen}
-        onClose={() => setRejectOpen(false)}
+        onOpenChange={setRejectOpen}
+        candidateName={fullName}
+        jobTitle={appliedJobTitle ?? undefined}
+        submitting={actionLoading}
         onConfirm={handleRejectConfirm}
       />
 
-      {/* Reject & Email — reason is optional, uses RejectDialog */}
+      {/* Reject & Email — same flow, then opens the composer. */}
       <RejectDialog
         open={rejectEmailOpen}
-        onClose={() => setRejectEmailOpen(false)}
+        onOpenChange={setRejectEmailOpen}
+        candidateName={fullName}
+        jobTitle={appliedJobTitle ?? undefined}
+        submitting={actionLoading}
         onConfirm={handleRejectAndEmailConfirm}
       />
 
@@ -4307,45 +4304,19 @@ export function CandidateDetailSheet({
         </DialogContent>
       </Dialog>
 
-      {/* Pipeline: Reject */}
-      <Dialog open={rejectPipelineOpen} onOpenChange={setRejectPipelineOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Reject from this Job</DialogTitle>
-            <DialogDescription>
-              Reject <span className="font-medium">{fullName}</span> for{' '}
-              <span className="font-medium">
-                {pipelineJob?.title ?? 'this job'}
-              </span>
-              . The candidate remains in the system.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Reason (optional)</Label>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              placeholder="e.g. Not enough experience..."
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRejectPipelineOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleRejectPipeline}
-              disabled={pipelineLoading}
-            >
-              {pipelineLoading ? 'Rejecting…' : 'Reject'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Pipeline: Reject — structured reason + destination.
+          Destination is offered only when this is the candidate's last live
+          application (otherwise it is hidden inside the dialog). */}
+      <RejectDialog
+        open={rejectPipelineOpen}
+        onOpenChange={setRejectPipelineOpen}
+        candidateName={fullName}
+        jobTitle={pipelineJob?.title ?? undefined}
+        currentStageName={activePipelineApp?.currentStage?.stageName}
+        hasOtherLiveApplication={otherLiveApplicationCount > 0}
+        submitting={pipelineLoading}
+        onConfirm={handleRejectPipeline}
+      />
 
       {/* Pipeline: Disposition */}
       <DispositionDialog

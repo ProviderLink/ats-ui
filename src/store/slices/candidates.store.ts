@@ -50,6 +50,14 @@ interface CandidateActions {
     jobId: string,
     startStageId?: string
   ) => Promise<void>;
+  rejectCandidate: (
+    id: string,
+    payload: {
+      rejectionReasonId: string;
+      destination?: 'candidate_pool' | 'permanently_ineligible';
+      internalNotes?: string;
+    }
+  ) => Promise<void>;
   approve: (
     id: string,
     jobId: string
@@ -356,6 +364,31 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           const c = await patchJson<Candidate>(
             `/ats/candidates/${id}/talent-pool`,
             { action, notes }
+          );
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === id);
+            if (idx !== -1) s.items[idx] = c;
+            if (s.detail[id]) s.detail[id] = c;
+            s.mutating = false;
+          });
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
+          throw e;
+        }
+      },
+
+      rejectCandidate: async (id, payload) => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          const c = await patchJson<Candidate>(
+            `/ats/candidates/${id}/reject`,
+            payload
           );
           set(s => {
             const idx = s.items.findIndex(x => x._id === id);
