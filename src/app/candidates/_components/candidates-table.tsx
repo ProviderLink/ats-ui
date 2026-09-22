@@ -1,5 +1,10 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import { ChangeJobDialog } from '@/components/change-job-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
+import {
+  ScheduleInterviewDialog,
+  type ScheduleInterviewInput,
+} from '@/components/schedule-interview-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,12 +56,14 @@ import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
+import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useUserStore } from '@/store/slices/users.store';
 import type {
   Application,
   Candidate,
   CandidateStatus,
+  Interview,
   Job,
 } from '@/store/types';
 import {
@@ -73,6 +80,7 @@ import {
   ArrowRightLeftIcon,
   ArrowUpDownIcon,
   BanIcon,
+  CalendarIcon,
   CheckIcon,
   ChevronDownIcon,
   EllipsisIcon,
@@ -490,28 +498,78 @@ function PipelineStageSelectCell({
 
 function ReviewActionsDropdown({
   candidate,
+  allJobs,
   onMutated,
 }: {
   candidate: Candidate;
+  allJobs: Job[];
   onMutated?: () => void;
 }) {
   const candStore = useCandidateStore();
   const appStore = useApplicationStore();
+  const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
   const [approveOpen, setApproveOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [acting, setActing] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState('');
 
   const name = `${candidate.firstName} ${candidate.lastName}`;
   const hasJobApplied = !!candidate.appliedJobId;
 
+  // Open jobs the candidate can be approved into.
+  const openJobs = useMemo(
+    () => allJobs.filter(j => j.status === 'open'),
+    [allJobs]
+  );
+
   async function handleApprove() {
+    const jobId = hasJobApplied ? candidate.appliedJobId! : selectedJobId;
+    if (!jobId) {
+      toast.error('Please select a job to assign this candidate to');
+      return;
+    }
     setActing(true);
     try {
-      await candStore.approve(candidate._id, candidate.appliedJobId || '');
+      await candStore.approve(candidate._id, jobId);
       toast.success(`${name} approved`);
       setApproveOpen(false);
+      setSelectedJobId('');
       await candStore.fetch();
       await appStore.fetch({ limit: 9999 });
+      onMutated?.();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  }
+
+  /**
+   * Reject an In Review candidate (candidate-level).
+   *
+   * Spec §4.8: the destination is always offered here — this candidate has no
+   * application yet, so a reject is always the decisive, platform-wide one.
+   */
+  async function handleReject(payload: RejectPayload) {
+    setActing(true);
+    try {
+      await rejectCandidateStore(candidate._id, {
+        rejectionReasonId: payload.rejectionReasonId,
+        ...(payload.destination ? { destination: payload.destination } : {}),
+        ...(payload.internalNotes
+          ? { internalNotes: payload.internalNotes }
+          : {}),
+      });
+      toast.success(
+        `${name} rejected` +
+          (payload.destination === 'permanently_ineligible'
+            ? ' and marked permanently ineligible'
+            : payload.destination === 'candidate_pool'
+              ? ' and moved to Talent Pool'
+              : '')
+      );
+      setRejectOpen(false);
       onMutated?.();
     } catch (e) {
       toast.error((e as Error).message);
@@ -553,11 +611,15 @@ function ReviewActionsDropdown({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64 p-1.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 pb-1.5 pt-0.5">
-            Approve
+            Decide
           </div>
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
-            onClick={() => setApproveOpen(true)}
+            disabled={acting || (!hasJobApplied && openJobs.length === 0)}
+            onClick={() => {
+              setSelectedJobId(candidate.appliedJobId || '');
+              setApproveOpen(true);
+            }}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-green-100 dark:bg-green-900/30 shrink-0">
               <CheckIcon className="size-3.5 text-green-600 dark:text-green-400" />
@@ -565,7 +627,24 @@ function ReviewActionsDropdown({
             <span className="flex flex-col">
               <span className="text-sm">Approve</span>
               <span className="text-[11px] text-muted-foreground">
-                Create application for applied job
+                {hasJobApplied
+                  ? 'Create application for applied job'
+                  : 'Choose a job to approve into'}
+              </span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
+            disabled={acting}
+            onClick={() => setRejectOpen(true)}
+          >
+            <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
+              <BanIcon className="size-3.5 text-red-600 dark:text-red-400" />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-sm">Reject</span>
+              <span className="text-[11px] text-muted-foreground">
+                Choose a reason and destination
               </span>
             </span>
           </DropdownMenuItem>
@@ -640,33 +719,72 @@ function ReviewActionsDropdown({
         }}
       />
 
-      <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
+      <Dialog
+        open={approveOpen}
+        onOpenChange={v => {
+          if (!v) setApproveOpen(false);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Approve {name}</DialogTitle>
             <DialogDescription>
               {hasJobApplied
                 ? 'This will approve the candidate and create an application for the job they applied to. AI scoring will run automatically.'
-                : 'This candidate did not apply through a job posting. Use quick-import to assign them to a job first.'}
+                : 'This candidate did not apply through a job posting. Choose the job to approve them into — an application is created at the first pipeline stage.'}
             </DialogDescription>
           </DialogHeader>
+          {!hasJobApplied && (
+            <div className="space-y-3">
+              <Label>Select Job</Label>
+              <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a job..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {openJobs.map(j => (
+                    <SelectItem key={j._id} value={j._id}>
+                      {j.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveOpen(false)}>
               Cancel
             </Button>
-            {hasJobApplied && (
-              <Button onClick={handleApprove} disabled={acting}>
-                {acting ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : (
-                  <CheckIcon className="size-4" />
-                )}
-                Approve
-              </Button>
-            )}
+            <Button
+              onClick={handleApprove}
+              disabled={acting || (hasJobApplied ? false : !selectedJobId)}
+            >
+              {acting ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <CheckIcon className="size-4" />
+              )}
+              Approve
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reject — candidate-level. Destination is always offered: they hold no
+          application yet, so this reject is always the decisive one. */}
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        candidateName={name}
+        jobTitle={
+          candidate.appliedJobId
+            ? allJobs.find(j => j._id === candidate.appliedJobId)?.title
+            : undefined
+        }
+        hasOtherLiveApplication={false}
+        submitting={acting}
+        onConfirm={handleReject}
+      />
     </>
   );
 }
@@ -675,13 +793,18 @@ function PipelineActionsMenu({
   candidate,
   allApps,
   allJobs,
+  users,
 }: {
   candidate: Candidate;
   allApps: Application[];
   allJobs: Job[];
+  users: { _id: string; firstName: string; lastName: string }[];
 }) {
   const appStore = useApplicationStore();
   const candStore = useCandidateStore();
+  const createInterviewForApplication = useInterviewStore(
+    s => s.createForApplication
+  );
 
   const candidateApps = useMemo(
     () =>
@@ -707,8 +830,9 @@ function PipelineActionsMenu({
   const [reassignOpen, setReassignOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [changeJobOpen, setChangeJobOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState('');
   const [acting, setActing] = useState(false);
 
   const openJobs = useMemo(
@@ -718,6 +842,35 @@ function PipelineActionsMenu({
   const stageSelectRef = useRef<HTMLButtonElement>(null);
 
   const name = `${candidate.firstName} ${candidate.lastName}`;
+
+  /**
+   * Every job this candidate already holds an application for, in any phase.
+   * The (candidateId, jobId) index is unique regardless of phase, so adding a
+   * duplicate is rejected by the backend with `409 CANDIDATE_ALREADY_APPLIED`.
+   * The reassign picker disables these rather than letting the user hit that.
+   */
+  const heldJobIds = useMemo(
+    () => new Set(allCandidateApps.map(a => a.jobId)),
+    [allCandidateApps]
+  );
+
+  /**
+   * Open jobs with their active pipeline stages, for the ChangeJobDialog job
+   * picker. The stage list is what powers the dialog's optional "Starting
+   * stage" choice — without it that section never renders.
+   */
+  const jobOptionsForActions = useMemo(
+    () =>
+      openJobs.map(j => ({
+        _id: j._id,
+        title: j.title,
+        stages: (j.pipeline?.stages ?? [])
+          .filter(s => s.isActive !== false)
+          .sort((a, b) => a.order - b.order)
+          .map(s => ({ _id: s._id, name: s.name })),
+      })),
+    [openJobs]
+  );
 
   /**
    * Live applications the candidate holds on other jobs. When non-zero the
@@ -833,14 +986,78 @@ function PipelineActionsMenu({
     }
   }
 
-  async function handleReassign() {
-    if (!selectedJobId) return;
+  /** Add a second job alongside the current one (the current app stays open). */
+  async function handleAddAnotherJob(jobId: string, startStageId?: string) {
     setActing(true);
     try {
-      await candStore.assignJob(candidate._id, selectedJobId);
+      await candStore.assignJob(candidate._id, jobId, startStageId);
       toast.success(`${name} added to another job`);
       setReassignOpen(false);
-      setSelectedJobId('');
+      await appStore.fetchScopedMerge({ limit: 9999 });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  }
+
+  /**
+   * Change job — the chosen job REPLACES the current one. The existing
+   * application is closed and a new one opened, because `jobId` is part of the
+   * application's unique key and cannot be edited in place. Distinct from
+   * "Add to Another Job", which keeps the current application.
+   */
+  async function handleChangeJob(jobId: string, startStageId?: string) {
+    if (!application) return;
+    setActing(true);
+    try {
+      const target = allJobs.find(j => j._id === jobId);
+      await candStore.changeJob(candidate._id, {
+        applicationId: application._id,
+        targetJobId: jobId,
+        startStageId,
+      });
+      toast.success(`${name} moved to ${target?.title ?? 'the new job'}`);
+      setChangeJobOpen(false);
+      // Re-read applications so the Job/Stage columns reflect the closed and
+      // newly created applications immediately. `fetch()` would be a no-op here
+      // (the store skips it after boot when items are loaded and no explicit
+      // filter is passed), and `fetchScoped` only returns rows without merging
+      // them — so `fetchScopedMerge` is the one that actually updates the store.
+      await appStore.fetchScopedMerge({ limit: 9999 });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleScheduleInterview(data: ScheduleInterviewInput) {
+    if (!application) return;
+    if (data.type === 'google_meet' && !data.meetingLink.trim()) {
+      toast.error('Meeting link is required for Google Meet interviews');
+      return;
+    }
+    setActing(true);
+    try {
+      await createInterviewForApplication(application._id, {
+        title: data.title,
+        type: data.type as Interview['type'],
+        interviewType: data.interviewType,
+        jobId: data.jobId || undefined,
+        round: data.round,
+        scheduledAt: new Date(data.scheduledAt).toISOString(),
+        duration: data.duration,
+        timezone: data.timezone,
+        interviewerIds: data.interviewerIds,
+        meetingDetails: {
+          link: data.meetingLink || null,
+          phoneNumber: data.phoneNumber || null,
+          address: data.address || null,
+        },
+      });
+      toast.success('Interview scheduled');
+      setScheduleOpen(false);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -903,6 +1120,21 @@ function PipelineActionsMenu({
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
+            disabled={!application || acting}
+            onClick={() => setScheduleOpen(true)}
+          >
+            <span className="flex items-center justify-center size-7 rounded-md bg-indigo-100 dark:bg-indigo-900/30 shrink-0">
+              <CalendarIcon className="size-3.5 text-indigo-600 dark:text-indigo-400" />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-sm">Schedule Interview</span>
+              <span className="text-[11px] text-muted-foreground">
+                Book and invite interviewers
+              </span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={!application}
             onClick={() => setRejectOpen(true)}
           >
@@ -956,19 +1188,31 @@ function PipelineActionsMenu({
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
-            disabled={openJobs.length === 0}
-            onClick={() => {
-              setSelectedJobId('');
-              setReassignOpen(true);
-            }}
+            disabled={openJobs.length === 0 || acting}
+            onClick={() => setChangeJobOpen(true)}
+          >
+            <span className="flex items-center justify-center size-7 rounded-md bg-orange-100 dark:bg-orange-900/30 shrink-0">
+              <ArrowRightLeftIcon className="size-3.5 text-orange-600 dark:text-orange-400" />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-sm">Change Job</span>
+              <span className="text-[11px] text-muted-foreground">
+                Move to a different job
+              </span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
+            disabled={openJobs.length === 0 || acting}
+            onClick={() => setReassignOpen(true)}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-teal-100 dark:bg-teal-900/30 shrink-0">
-              <ArrowRightLeftIcon className="size-3.5 text-teal-600 dark:text-teal-400" />
+              <PlusIcon className="size-3.5 text-teal-600 dark:text-teal-400" />
             </span>
             <span className="flex flex-col">
               <span className="text-sm">Add to Another Job</span>
               <span className="text-[11px] text-muted-foreground">
-                Also assign to another open position
+                Add another job alongside the current one
               </span>
             </span>
           </DropdownMenuItem>
@@ -1063,48 +1307,43 @@ function PipelineActionsMenu({
         onConfirm={handleReject}
       />
 
-      {/* Reassign Dialog */}
-      <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add to Another Job</DialogTitle>
-            <DialogDescription>
-              Also assign <span className="font-medium">{name}</span> to another
-              open position. This does not remove them from{' '}
-              <span className="font-medium">{job?.title ?? 'current job'}</span>
-              .
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label>Select Job</Label>
-            <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a job..." />
-              </SelectTrigger>
-              <SelectContent>
-                {openJobs
-                  .filter(j => j._id !== job?._id)
-                  .map(j => (
-                    <SelectItem key={j._id} value={j._id}>
-                      {j.title}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReassignOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleReassign}
-              disabled={!selectedJobId || acting}
-            >
-              {acting ? 'Assigning…' : 'Assign'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Change Job — replaces the current job; the old application closes. */}
+      <ChangeJobDialog
+        open={changeJobOpen}
+        onOpenChange={setChangeJobOpen}
+        mode="change"
+        candidateName={name}
+        currentJobId={job?._id}
+        currentJobTitle={job?.title}
+        jobs={jobOptionsForActions}
+        submitting={acting}
+        onConfirm={handleChangeJob}
+      />
+
+      {/* Add to Another Job — keeps the current job and adds a second one. */}
+      <ChangeJobDialog
+        open={reassignOpen}
+        onOpenChange={setReassignOpen}
+        mode="add"
+        candidateName={name}
+        currentJobId={job?._id}
+        currentJobTitle={job?.title}
+        jobs={jobOptionsForActions.filter(j => !heldJobIds.has(j._id))}
+        submitting={acting}
+        onConfirm={handleAddAnotherJob}
+      />
+
+      {/* Schedule Interview */}
+      <ScheduleInterviewDialog
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        onConfirm={handleScheduleInterview}
+        candidateName={name}
+        job={job ?? null}
+        jobs={openJobs.map(j => ({ _id: j._id, title: j.title }))}
+        users={users}
+        loading={acting}
+      />
 
       {/* Talent Pool Confirm */}
       <Dialog
@@ -1207,6 +1446,8 @@ export function CandidatesTable() {
 
   const allJobs = useJobStore(s => s.items);
   const allClients = useClientStore(s => s.items);
+  // Interviewers for the Schedule Interview dialog (boot-loaded).
+  const allUsers = useUserStore(s => s.items);
 
   const [activeTab, setActiveTab] = useState<TabValue>('pending');
   const [inputValue, setInputValue] = useState('');
@@ -1906,9 +2147,13 @@ export function CandidatesTable() {
                 candidate={row.original}
                 allApps={allApps}
                 allJobs={allJobs}
+                users={allUsers}
               />
             ) : (
-              <ReviewActionsDropdown candidate={row.original} />
+              <ReviewActionsDropdown
+                candidate={row.original}
+                allJobs={allJobs}
+              />
             )}
           </div>
         ),
@@ -1921,6 +2166,7 @@ export function CandidatesTable() {
     allApps,
     allJobs,
     allClients,
+    allUsers,
     selectedIds,
     selectedCount,
     allFilteredSelected,

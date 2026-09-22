@@ -92,6 +92,8 @@ export interface Candidate {
   permanentlyIneligibleAt?: string | null;
   permanentlyIneligibleBy?: string | null;
   permanentlyIneligibleReason?: string | null;
+  /** Derived server-side — resolved label for `permanentlyIneligibleReason`. */
+  permanentlyIneligibleReasonLabel?: string | null;
   legalHold?: boolean;
   crmProfile?: CandidateCrmProfile | null;
   createdBy?: string;
@@ -131,6 +133,7 @@ export interface UpdateCandidateDto {
 export interface CandidateFilters {
   status?: CandidateStatus;
   inTalentPool?: boolean;
+  eligibilityStatus?: 'eligible' | 'permanently_ineligible';
   search?: string;
   tags?: string[];
   page?: number;

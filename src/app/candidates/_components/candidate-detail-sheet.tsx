@@ -3,9 +3,10 @@ import { ActivityTimeline } from '@/components/activity-timeline';
 import { ChangeJobDialog } from '@/components/change-job-dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
+import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { ResumeViewer } from '@/components/resume-viewer';
+import { ScheduleInterviewDialog } from '@/components/schedule-interview-dialog';
 import { TagsSelector } from '@/components/tags-selector';
-import { TimezoneSelect } from '@/components/timezone-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,11 +20,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -35,9 +31,8 @@ import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
-import { getJson } from '@/lib/api-client';
+import { getJson, patchJson } from '@/lib/api-client';
 import { getTagIds } from '@/lib/tags';
-import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
@@ -47,7 +42,6 @@ import { useEmailTemplateStore } from '@/store/slices/email-templates.store';
 import { useInterviewScorecardStore } from '@/store/slices/interview-scorecards.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
-import { useSettingsStore } from '@/store/slices/settings.store';
 import { useTagStore } from '@/store/slices/tags.store';
 import { useUserStore } from '@/store/slices/users.store';
 import type { InterviewScorecard } from '@/store/types/interview-scorecard.types';
@@ -59,7 +53,6 @@ import type {
   Interview,
   InterviewMeetingType,
   InterviewRecommendation,
-  Job,
   ParsedEducation,
   ParsedExperience,
 } from '@/store/types';
@@ -73,7 +66,6 @@ import {
   CalendarIcon,
   CheckCircle2Icon,
   CheckIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   ClockIcon,
   ExternalLinkIcon,
@@ -88,9 +80,12 @@ import {
   PlayIcon,
   PlusIcon,
   SearchIcon,
+  ShieldAlertIcon,
   ShieldCheckIcon,
+  ShieldOffIcon,
   SparklesIcon,
   StarIcon,
+  Trash2Icon,
   UserCheckIcon,
   VideoIcon,
   XCircleIcon,
@@ -545,393 +540,6 @@ function RescheduleDialog({
             }}
           >
             {loading ? 'Saving…' : 'Reschedule'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ScheduleInterviewDialog({
-  open,
-  onClose,
-  onConfirm,
-  candidateName,
-  job,
-  jobs,
-  users,
-  loading,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (data: {
-    title: string;
-    type: string;
-    interviewType: InterviewMeetingType;
-    jobId: string;
-    round: number;
-    scheduledAt: string;
-    duration: number;
-    timezone: string;
-    interviewerIds: string[];
-    meetingLink: string;
-    phoneNumber: string;
-    address: string;
-  }) => void;
-  candidateName: string;
-  job: Job | null;
-  jobs: { _id: string; title: string }[];
-  users: { _id: string; firstName: string; lastName: string }[];
-  loading?: boolean;
-}) {
-  const [title, setTitle] = useState(`Interview - ${candidateName}`);
-  const [type, setType] = useState('zoom');
-  const [interviewType, setInterviewType] =
-    useState<InterviewMeetingType>('initial_screening');
-  const [jobId, setJobId] = useState('');
-  const [round, setRound] = useState(1);
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('10:00');
-  const [duration, setDuration] = useState(45);
-  const defaultTz =
-    useSettingsStore.getState().settings?.companyTimezone || DEFAULT_TIMEZONE;
-  const [timezone, setTimezone] = useState(defaultTz);
-  const [interviewerIds, setInterviewerIds] = useState<string[]>([]);
-  const [meetingLink, setMeetingLink] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [address, setAddress] = useState('');
-  const [typeSearch, setTypeSearch] = useState('');
-
-  useEffect(() => {
-    if (open) {
-      setTitle(`Interview - ${candidateName} for ${job?.title ?? 'this job'}`);
-      setType('zoom');
-      setInterviewType('initial_screening');
-      setJobId(job?._id ?? '');
-      setRound(1);
-      const now = new Date();
-      now.setMinutes(0, 0, 0);
-      now.setHours(now.getHours() + 1);
-      setDate(now.toISOString().slice(0, 10));
-      setTime(
-        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      );
-      setDuration(45);
-      setTimezone(defaultTz);
-      setInterviewerIds([]);
-      setMeetingLink('');
-      setPhoneNumber('');
-      setAddress('');
-      setTypeSearch('');
-    }
-  }, [open, candidateName, job?.title, job?._id]);
-
-  const jobOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    if (job) map.set(job._id, job.title);
-    for (const j of jobs) map.set(j._id, j.title);
-    return Array.from(map.entries()).map(([_id, title]) => ({ _id, title }));
-  }, [jobs, job]);
-
-  const filteredTypes = useMemo(() => {
-    const q = typeSearch.trim().toLowerCase();
-    const entries = Object.entries(INTERVIEW_MEETING_TYPE_LABELS) as [
-      InterviewMeetingType,
-      string,
-    ][];
-    if (!q) return entries;
-    return entries.filter(([, label]) => label.toLowerCase().includes(q));
-  }, [typeSearch]);
-
-  const scheduledAt = date && time ? `${date}T${time}:00` : '';
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Schedule Interview</DialogTitle>
-          <DialogDescription>
-            Schedule an interview for{' '}
-            <span className="font-medium">{candidateName}</span>
-            {job && (
-              <>
-                {' '}
-                for <span className="font-medium">{job.title}</span>
-              </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-4 gap-3">
-          <div className="col-span-4 flex flex-col gap-1.5">
-            <Label>Title</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} />
-          </div>
-          <div className="col-span-4 flex flex-col gap-1.5">
-            <Label>Job</Label>
-            <Select value={jobId} onValueChange={setJobId}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {jobOptions.map(j => (
-                  <SelectItem key={j._id} value={j._id}>
-                    {j.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-2 flex flex-col gap-1.5">
-            <Label>Interview Type</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-between font-normal text-sm"
-                >
-                  <span className="truncate">
-                    {INTERVIEW_MEETING_TYPE_LABELS[interviewType] ??
-                      interviewType}
-                  </span>
-                  <ChevronDownIcon className="size-4 opacity-50 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-[var(--radix-popover-trigger-width)] p-0"
-                align="start"
-              >
-                <div className="flex flex-col gap-0.5 p-1 max-h-60 overflow-y-auto">
-                  <Input
-                    placeholder="Search interview type…"
-                    value={typeSearch}
-                    onChange={e => setTypeSearch(e.target.value)}
-                    className="h-8 text-sm mb-1"
-                    autoFocus
-                  />
-                  <Separator />
-                  {filteredTypes.map(([t, label]) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setInterviewType(t);
-                        setTypeSearch('');
-                      }}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left hover:bg-accent transition-colors',
-                        interviewType === t && 'bg-primary/10 text-primary'
-                      )}
-                    >
-                      {interviewType === t ? (
-                        <CheckIcon className="size-3.5 shrink-0" />
-                      ) : (
-                        <span className="size-3.5 shrink-0" />
-                      )}
-                      {label}
-                    </button>
-                  ))}
-                  {filteredTypes.length === 0 && (
-                    <p className="px-2 py-3 text-xs text-muted-foreground text-center">
-                      No matching interview type
-                    </p>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Type</Label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="zoom">Zoom</SelectItem>
-                <SelectItem value="google_meet">Google Meet</SelectItem>
-                <SelectItem value="phone_call">Phone Call</SelectItem>
-                <SelectItem value="in_person">In Person</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Round</Label>
-            <Input
-              type="number"
-              min={1}
-              value={round}
-              onChange={e => setRound(Number(e.target.value) || 1)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Date</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Time</Label>
-            <Input
-              type="time"
-              value={time}
-              onChange={e => setTime(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Duration (min)</Label>
-            <Input
-              type="number"
-              min={15}
-              max={480}
-              step={15}
-              value={duration}
-              onChange={e => setDuration(Number(e.target.value) || 45)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Timezone</Label>
-            <TimezoneSelect value={timezone} onValueChange={setTimezone} />
-          </div>
-        </div>
-
-        {(type === 'zoom' || type === 'google_meet') && (
-          <div className="flex flex-col gap-1.5 mt-3">
-            <Label>
-              Meeting Link{type !== 'google_meet' && ' (optional)'}
-              {type === 'google_meet' && (
-                <span className="text-destructive ml-0.5">*</span>
-              )}
-            </Label>
-            <Input
-              placeholder={
-                type === 'google_meet'
-                  ? 'https://meet.google.com/...'
-                  : 'https://zoom.us/j/...'
-              }
-              value={meetingLink}
-              onChange={e => setMeetingLink(e.target.value)}
-              required={type === 'google_meet'}
-            />
-          </div>
-        )}
-
-        {type === 'google_meet' && (
-          <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 mt-3">
-            <AlertTriangleIcon className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="flex flex-col gap-1 text-xs">
-              <p className="font-medium text-amber-800 dark:text-amber-300">
-                Google Meet requires a manual link
-              </p>
-              <p className="text-amber-700/80 dark:text-amber-400/80">
-                <strong>Zoom</strong> interviews are auto-created via API — no
-                manual link needed. For <strong>Google Meet</strong>, create a
-                meeting at{' '}
-                <a
-                  href="https://meet.google.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
-                >
-                  meet.google.com
-                </a>{' '}
-                and paste the link above.
-              </p>
-            </div>
-          </div>
-        )}
-        {type === 'phone_call' && (
-          <div className="flex flex-col gap-1.5 mt-3">
-            <Label>Phone Number</Label>
-            <Input
-              placeholder="+1 555-123-4567"
-              value={phoneNumber}
-              onChange={e => setPhoneNumber(e.target.value)}
-            />
-          </div>
-        )}
-        {type === 'in_person' && (
-          <div className="flex flex-col gap-1.5 mt-3">
-            <Label>Address</Label>
-            <Input
-              placeholder="123 Main St, New York, NY"
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-            />
-          </div>
-        )}
-
-        <div className="flex flex-col gap-1.5 mt-3">
-          <Label>
-            Interviewers
-            {interviewerIds.length > 0 && (
-              <span className="text-muted-foreground font-normal">
-                {' '}
-                ({interviewerIds.length} selected)
-              </span>
-            )}
-          </Label>
-          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-            {users.length === 0 ? (
-              <p className="px-3 py-4 text-xs text-muted-foreground text-center w-full">
-                No users available
-              </p>
-            ) : (
-              users.map(u => (
-                <button
-                  key={u._id}
-                  type="button"
-                  aria-pressed={interviewerIds.includes(u._id)}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors cursor-pointer',
-                    interviewerIds.includes(u._id)
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-muted/30 border-muted text-muted-foreground hover:border-foreground/20'
-                  )}
-                  onClick={() =>
-                    setInterviewerIds(prev =>
-                      prev.includes(u._id)
-                        ? prev.filter(id => id !== u._id)
-                        : [...prev, u._id]
-                    )
-                  }
-                >
-                  {interviewerIds.includes(u._id) && (
-                    <CheckIcon className="size-3 shrink-0" />
-                  )}
-                  {u.firstName} {u.lastName}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={
-              !title || !date || !time || interviewerIds.length === 0 || loading
-            }
-            onClick={() =>
-              onConfirm({
-                title,
-                type,
-                interviewType,
-                jobId,
-                round,
-                scheduledAt,
-                duration,
-                timezone,
-                interviewerIds,
-                meetingLink,
-                phoneNumber,
-                address,
-              })
-            }
-          >
-            {loading ? 'Scheduling…' : 'Schedule'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1599,6 +1207,68 @@ type Props = {
 };
 
 /**
+ * IneligibleActions
+ *
+ * Footer bar for a permanently ineligible candidate. This state has no pipeline
+ * and no application, so the pending/approved/hired toolbars do not apply — the
+ * only two things an admin can do here are restore them (which clears
+ * ineligibility and lands them in In Review for a chosen job) or delete them
+ * outright, the single permanent-delete path in the ATS.
+ */
+function IneligibleActions({
+  legalHold,
+  onToggleLegalHold,
+  onRestore,
+  onDelete,
+  disabled,
+}: {
+  legalHold: boolean;
+  onToggleLegalHold: () => void;
+  onRestore: () => void;
+  onDelete: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={disabled}
+        className="h-8 gap-1.5"
+        onClick={onToggleLegalHold}
+      >
+        {legalHold ? (
+          <ShieldOffIcon className="size-3.5" />
+        ) : (
+          <ShieldAlertIcon className="size-3.5" />
+        )}
+        {legalHold ? 'Remove Legal Hold' : 'Place Legal Hold'}
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={disabled}
+        className="h-8 gap-1.5"
+        onClick={onRestore}
+      >
+        <ShieldOffIcon className="size-3.5" />
+        Restore
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={disabled}
+        className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+        onClick={onDelete}
+      >
+        <Trash2Icon className="size-3.5" />
+        Delete Permanently
+      </Button>
+    </div>
+  );
+}
+
+/**
  * Small inline button for provisioning/revoking CRM access on a hired candidate.
  */
 function CandidateCrmButton({
@@ -1929,6 +1599,11 @@ export function CandidateDetailSheet({
   } | null>(null);
   const [pipelineLoading, setPipelineLoading] = useState(false);
 
+  // Permanently-ineligible flow (admin only): restore / legal hold / delete.
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [ineligibleLoading, setIneligibleLoading] = useState(false);
+
   const applications = useApplicationStore(s => s.items);
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
@@ -1942,6 +1617,8 @@ export function CandidateDetailSheet({
   const approveCandidate = useCandidateStore(s => s.approve);
   const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
   const updateCandidate = useCandidateStore(s => s.update);
+  const restoreCandidate = useCandidateStore(s => s.restoreCandidate);
+  const removeCandidate = useCandidateStore(s => s.remove);
 
   const allTags = useTagStore(s => s.items);
   const fetchTags = useTagStore(s => s.fetch);
@@ -2021,8 +1698,30 @@ export function CandidateDetailSheet({
     [jobs]
   );
 
+  /** Open jobs with the client name resolved, for the restore job picker. */
+  const restoreJobs = useMemo(() => {
+    const clientMap = new Map(clients.map(c => [c._id, c.companyName]));
+    return jobs
+      .filter(j => j.status === 'open')
+      .map(j => ({
+        _id: j._id,
+        title: j.title,
+        clientName: clientMap.get(j.clientId) ?? '',
+      }));
+  }, [jobs, clients]);
+
   const candidateApplications = applications.filter(
     a => a.candidateId === candidate?._id
+  );
+
+  /**
+   * Jobs the restore target already holds an application for. The
+   * (candidateId, jobId) index is unique regardless of phase, so restoring onto
+   * one of these would block the approval that follows.
+   */
+  const blockedJobIdsForRestore = useMemo(
+    () => new Set(candidateApplications.map(a => a.jobId)),
+    [candidateApplications]
   );
 
   function getJobTitle(jobId: string) {
@@ -2080,6 +1779,68 @@ export function CandidateDetailSheet({
       toast.success('Notes saved');
     } catch (e) {
       toast.error((e as Error).message);
+    }
+  }
+
+  /**
+   * Restore a permanently ineligible candidate. A job is required — they return
+   * to **In Review** and must be approved normally; no application is created.
+   */
+  async function handleRestoreConfirm(target: Candidate, jobId: string) {
+    setIneligibleLoading(true);
+    try {
+      await restoreCandidate(target._id, { jobId });
+      logOptimisticActivity(
+        'candidate',
+        target._id,
+        'eligibility_changed',
+        `${fullName} restored from permanently ineligible`
+      );
+      toast.success('Candidate restored — now in review');
+      setRestoreOpen(false);
+      onOpenChange(false);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to restore candidate');
+    } finally {
+      setIneligibleLoading(false);
+    }
+  }
+
+  /**
+   * Permanently delete a candidate. Mirrors the Ineligible list — this is the
+   * only path in the ATS that removes a candidate and all their history.
+   */
+  async function handleDeleteConfirm() {
+    if (!candidate) return;
+    setIneligibleLoading(true);
+    try {
+      await removeCandidate(candidate._id);
+      toast.success('Candidate permanently deleted');
+      setDeleteOpen(false);
+      onOpenChange(false);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to delete candidate');
+    } finally {
+      setIneligibleLoading(false);
+    }
+  }
+
+  async function handleToggleLegalHold() {
+    if (!candidate) return;
+    setIneligibleLoading(true);
+    try {
+      const next = !candidate.legalHold;
+      await patchJson(`/ats/candidates/${candidate._id}/legal-hold`, {
+        legalHold: next,
+      });
+      toast.success(`Legal hold ${next ? 'enabled' : 'disabled'}`);
+      // The candidate prop is owned by the parent; refetch into the store so
+      // the sheet reflects the new hold state without closing.
+      await useCandidateStore.getState().fetchOne(candidate._id);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to toggle legal hold');
+    } finally {
+      setIneligibleLoading(false);
     }
   }
 
@@ -2637,7 +2398,11 @@ export function CandidateDetailSheet({
         `${fullName} moved to ${targetJob?.title ?? 'the new job'}`
       );
       setChangeJobOpen(false);
-      await useApplicationStore.getState().fetch({ limit: 9999 });
+      // Re-read applications so the Job/Stage columns reflect the closed and
+      // newly created applications. A plain `fetch()` is a no-op after boot
+      // (the store skips it when items are loaded and no explicit filter is
+      // passed); `fetchScopedMerge` is the variant that actually writes.
+      await useApplicationStore.getState().fetchScopedMerge({ limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -2659,7 +2424,7 @@ export function CandidateDetailSheet({
       );
       toast.success(`${fullName} added to another job`);
       setChangeJobOpen(false);
-      await useApplicationStore.getState().fetch({ limit: 9999 });
+      await useApplicationStore.getState().fetchScopedMerge({ limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -2745,6 +2510,10 @@ export function CandidateDetailSheet({
   const fullName = `${c.firstName} ${c.lastName}`;
   const appliedJobTitle = c.appliedJobId ? getJobTitle(c.appliedJobId) : null;
   const bg = avatarBg(c.firstName);
+  // Ineligible candidates have no pipeline and no live application, so every
+  // other footer action (approve / reject / stage / hire) is meaningless.
+  const isPermanentlyIneligible =
+    c.eligibilityStatus === 'permanently_ineligible';
   const { aiScore, aiValidation, parsedData } = c;
   const hasValidation = !!aiValidation && aiValidation.score != null;
   const hasScoring =
@@ -3804,7 +3573,15 @@ export function CandidateDetailSheet({
 
           {/* Footer */}
           <div className="shrink-0 border-t px-6 py-4">
-            {c.status === 'pending' ? (
+            {isPermanentlyIneligible ? (
+              <IneligibleActions
+                legalHold={!!c.legalHold}
+                disabled={ineligibleLoading || mutating}
+                onToggleLegalHold={handleToggleLegalHold}
+                onRestore={() => setRestoreOpen(true)}
+                onDelete={() => setDeleteOpen(true)}
+              />
+            ) : c.status === 'pending' ? (
               <PendingActionsToolbar
                 disabled={actionLoading || appMutating}
                 onApprove={() => {
@@ -4474,13 +4251,24 @@ export function CandidateDetailSheet({
         candidateName={fullName}
         currentJobTitle={pipelineJob?.title ?? appliedJobTitle ?? undefined}
         currentJobId={activePipelineApp?.jobId}
-        jobs={openJobs.map(j => ({
-          ...j,
-          stages: (jobs.find(x => x._id === j._id)?.pipeline?.stages ?? [])
-            .filter(s => s.isActive !== false)
-            .sort((a, b) => a.order - b.order)
-            .map(s => ({ _id: s._id, name: s.name })),
-        }))}
+        jobs={openJobs
+          .filter(j =>
+            // Any job the candidate already holds would be rejected with a 409
+            // (the (candidateId, jobId) index is unique regardless of phase).
+            // In `change` mode the current job stays listed so the dialog can
+            // show it as the one being moved away from — it excludes it itself.
+            jobDialogMode === 'change'
+              ? !blockedJobIdsForRestore.has(j._id) ||
+                j._id === activePipelineApp?.jobId
+              : !blockedJobIdsForRestore.has(j._id)
+          )
+          .map(j => ({
+            ...j,
+            stages: (jobs.find(x => x._id === j._id)?.pipeline?.stages ?? [])
+              .filter(s => s.isActive !== false)
+              .sort((a, b) => a.order - b.order)
+              .map(s => ({ _id: s._id, name: s.name })),
+          }))}
         submitting={pipelineLoading}
         onConfirm={jobDialogMode === 'change' ? handleChangeJob : handleAddJob}
       />
@@ -4527,6 +4315,55 @@ export function CandidateDetailSheet({
               disabled={pipelineLoading}
             >
               {c?.inTalentPool ? 'Remove' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Permanently ineligible: Restore — a job is required. */}
+      <RestoreCandidateDialog
+        candidate={isPermanentlyIneligible && restoreOpen ? c : null}
+        jobs={restoreJobs}
+        blockedJobIds={blockedJobIdsForRestore}
+        submitting={ineligibleLoading}
+        onClose={() => setRestoreOpen(false)}
+        onConfirm={handleRestoreConfirm}
+      />
+
+      {/* Permanently ineligible: the only permanent-delete path in the ATS. */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              Permanently Delete Candidate
+            </DialogTitle>
+            <DialogDescription className="flex flex-col gap-3 pt-2">
+              <p>
+                This will permanently delete{' '}
+                <span className="font-medium text-foreground">{fullName}</span>{' '}
+                and all associated data — applications, interviews, emails, and
+                history — across every job.
+              </p>
+              <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs">
+                This action <em>cannot</em> be undone. To keep their history
+                instead, use Restore.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={ineligibleLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={ineligibleLoading}
+              onClick={handleDeleteConfirm}
+            >
+              {ineligibleLoading ? 'Deleting…' : 'Delete permanently'}
             </Button>
           </DialogFooter>
         </DialogContent>

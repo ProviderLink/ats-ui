@@ -234,6 +234,11 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           set(s => {
             s.detail[id] = c;
             s.loading = false;
+            // Keep the admin Ineligible list consistent with the fresh record.
+            // The sheet uses this to refresh after a legal-hold toggle, which
+            // changes a field rendered by that list.
+            const iIdx = s.ineligibleItems.findIndex(x => x._id === id);
+            if (iIdx !== -1) s.ineligibleItems[iIdx] = c;
           });
         } catch (e) {
           set(s => {
@@ -254,9 +259,17 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           s.error = null;
         });
         try {
+          // Filter server-side. `includeIneligible` only stops the default
+          // exclusion, so it returned a mixed newest-first page which the page
+          // then filtered client-side — silently dropping every ineligible
+          // candidate older than the page size. `eligibilityStatus` is an exact
+          // match, so the limit only bounds the ineligible set itself.
           const res = await getJson<
             Candidate[] | ({ data: Candidate[] } & Pagination)
-          >('/ats/candidates', { includeIneligible: true, limit: 50 });
+          >('/ats/candidates', {
+            eligibilityStatus: 'permanently_ineligible',
+            limit: 9999,
+          });
           const data = Array.isArray(res) ? res : (res.data ?? []);
           set(s => {
             s.ineligibleItems = data;
@@ -340,6 +353,10 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           await deleteJson(`/ats/candidates/${id}`);
           set(s => {
             s.items = s.items.filter(x => x._id !== id);
+            // The admin Ineligible list reads this separate cached array, so a
+            // delete from the detail sheet must clear it here too — otherwise
+            // the row survives until the page is refetched.
+            s.ineligibleItems = s.ineligibleItems.filter(x => x._id !== id);
             delete s.detail[id];
             s.mutating = false;
           });
@@ -571,11 +588,29 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           if (idx !== -1) s.items[idx] = merge(s.items[idx]);
           else s.items.unshift(c);
           if (s.detail[c._id]) s.detail[c._id] = merge(s.detail[c._id]);
+          // Keep the admin Ineligible list in step with the same event. The
+          // patch is only trusted when it actually carries eligibilityStatus —
+          // lightweight socket payloads omit it, and guessing would either
+          // drop a row or resurrect a restored one.
+          if (c.eligibilityStatus !== undefined) {
+            const iIdx = s.ineligibleItems.findIndex(x => x._id === c._id);
+            const isIneligible =
+              c.eligibilityStatus === 'permanently_ineligible';
+            // `merge` dereferences its base, so a brand-new row is inserted
+            // as-is rather than merged against a non-existent previous value.
+            if (isIneligible && iIdx === -1)
+              s.ineligibleItems.unshift({ ...c } as Candidate);
+            else if (!isIneligible && iIdx !== -1)
+              s.ineligibleItems.splice(iIdx, 1);
+            else if (iIdx !== -1)
+              s.ineligibleItems[iIdx] = merge(s.ineligibleItems[iIdx]);
+          }
         }),
 
       _remove: id =>
         set(s => {
           s.items = s.items.filter(x => x._id !== id);
+          s.ineligibleItems = s.ineligibleItems.filter(x => x._id !== id);
           delete s.detail[id];
         }),
     })),

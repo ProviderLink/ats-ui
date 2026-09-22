@@ -1,7 +1,11 @@
+import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
 import {
   CandidateCell,
+  ColHeader,
+  SortHeader,
   TableSkeleton,
 } from '@/app/candidates/_components/candidates-table';
+import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,13 +19,22 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useSocketRoom } from '@/hooks/use-socket-room';
 import { deleteJson, patchJson } from '@/lib/api-client';
-import { cn, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
@@ -31,25 +44,27 @@ import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type SortingState,
 } from '@tanstack/react-table';
 import {
   BanIcon,
-  CheckIcon,
   ExternalLinkIcon,
   SearchIcon,
   ShieldAlertIcon,
   ShieldOffIcon,
   Trash2Icon,
+  XIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-export function PermanentlyIneligibleTable() {
-  const navigate = useNavigate();
+const LEGAL_HOLD_CLS =
+  'border-red-500/30 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400';
 
+export function PermanentlyIneligibleTable() {
   // Reads from the dedicated store field (cached once per session), mirroring
   // how the Candidates and Talent Pool pages read the boot-loaded `items`.
   // The page never refetches on navigation — only after a restore / legal-hold.
@@ -57,17 +72,49 @@ export function PermanentlyIneligibleTable() {
   const loading = useCandidateStore(s => s.ineligibleLoading);
   const fetchIneligible = useCandidateStore(s => s.fetchIneligible);
 
-  const [restoringId, setRestoringId] = useState<string | null>(null);
-  const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<Candidate | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
   const jobs = useJobStore(s => s.items);
   const fetchJobs = useJobStore(s => s.fetch);
   const applications = useApplicationStore(s => s.items);
   const clients = useClientStore(s => s.items);
   const fetchClients = useClientStore(s => s.fetch);
+
+  // Keep the list live: an eligibility flip elsewhere (reject → Ineligible)
+  // patches the store, and this page reads the same field.
+  useSocketRoom('candidates');
+
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<Candidate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Candidate | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // Toolbar state — search is client-side (the store already holds the full
+  // ineligible set) so it stays instant like every other list page.
+  const [query, setQuery] = useState('');
+  const [inputValue, setInputValue] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'ineligibleAt', desc: true },
+  ]);
+
+  const VALID_PAGE_SIZES = [10, 15, 20, 30, 50];
+  const [pageIndex, setPageIndex] = useState(() => {
+    const raw = parseInt(
+      sessionStorage.getItem('ineligible-page-index') ?? '',
+      10
+    );
+    return Number.isFinite(raw) && raw >= 0 ? raw : 0;
+  });
+  const [pageSize, setPageSize] = useState(() => {
+    const raw = parseInt(
+      localStorage.getItem('ineligible-page-size') ?? '',
+      10
+    );
+    return VALID_PAGE_SIZES.includes(raw) ? raw : 20;
+  });
+
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     if (jobs.length === 0) fetchJobs({ page: 1, limit: 9999 });
@@ -107,11 +154,65 @@ export function PermanentlyIneligibleTable() {
     void fetchIneligible();
   }, [fetchIneligible]);
 
-  // Client-side filter for permanently ineligible only
-  const data = useMemo(
-    () => items.filter(c => c.eligibilityStatus === 'permanently_ineligible'),
-    [items]
-  );
+  // The store field is already server-filtered to permanently ineligible, so
+  // only the search query is applied here.
+  const data = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(c => {
+      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      if (fullName.includes(q)) return true;
+      if (c.email?.toLowerCase().includes(q)) return true;
+      if (c.phone?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [items, query]);
+
+  const totalRows = data.length;
+  const hasFilters = !!query;
+
+  function persistPagination(pIndex: number, pSize: number) {
+    sessionStorage.setItem('ineligible-page-index', String(pIndex));
+    localStorage.setItem('ineligible-page-size', String(pSize));
+  }
+
+  function handleSearchChange(q: string) {
+    setInputValue(q);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    setPageIndex(0);
+    sessionStorage.setItem('ineligible-page-index', '0');
+    searchTimer.current = setTimeout(() => setQuery(q), 300);
+  }
+
+  function handleClearSearch() {
+    setInputValue('');
+    setQuery('');
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+  }
+
+  function handlePaginationChange(
+    updater:
+      | { pageIndex: number; pageSize: number }
+      | ((prev: { pageIndex: number; pageSize: number }) => {
+          pageIndex: number;
+          pageSize: number;
+        })
+  ) {
+    const next =
+      typeof updater === 'function'
+        ? updater({ pageIndex, pageSize })
+        : updater;
+    const safeIndex =
+      Number.isFinite(next.pageIndex) && next.pageIndex >= 0
+        ? next.pageIndex
+        : 0;
+    const safeSize = VALID_PAGE_SIZES.includes(next.pageSize)
+      ? next.pageSize
+      : 20;
+    setPageIndex(safeIndex);
+    setPageSize(safeSize);
+    persistPagination(safeIndex, safeSize);
+  }
 
   /**
    * Restore a permanently ineligible candidate.
@@ -178,30 +279,60 @@ export function PermanentlyIneligibleTable() {
     }
   }
 
+  const toggleLegalHold = useCallback(handleLegalHold, [fetchIneligible]);
+
+  /**
+   * Open the shared candidate detail sheet — the same one every other list
+   * page uses. Previously this navigated to /ats/candidates/:id, which is
+   * still a placeholder page rendering `Candidate #<id>`.
+   */
+  function openDetail(candidate: Candidate) {
+    setSelected(candidate);
+    setDetailOpen(true);
+  }
+
   const columns = useMemo<ColumnDef<Candidate>[]>(
     () => [
       {
-        accessorKey: 'candidate',
-        header: 'Candidate',
-        size: 250,
-        cell: ({ row }) => <CandidateCell candidate={row.original} />,
-      },
-      {
-        accessorKey: 'reason',
-        header: 'Reason',
-        size: 200,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground line-clamp-1">
-            {row.original.permanentlyIneligibleReason
-              ? `Reason ID: ${row.original.permanentlyIneligibleReason}`
-              : '—'}
-          </span>
+        id: 'candidate',
+        accessorFn: row => `${row.firstName} ${row.lastName}`,
+        header: ({ column }) => (
+          <SortHeader column={column} label="Candidate" />
         ),
+        cell: ({ row }) => <CandidateCell candidate={row.original} />,
+        size: 250,
       },
       {
-        accessorKey: 'ineligibleAt',
-        header: 'Marked Ineligible',
-        size: 160,
+        id: 'reason',
+        accessorFn: row => row.permanentlyIneligibleReasonLabel ?? '',
+        header: () => <ColHeader>Reason</ColHeader>,
+        cell: ({ row }) => {
+          // Resolved server-side from the disposition reason's label — this
+          // column previously printed the raw ObjectId.
+          const label = row.original.permanentlyIneligibleReasonLabel;
+          if (!label)
+            return <span className="text-xs text-muted-foreground">—</span>;
+          return (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="block max-w-56 truncate text-sm text-muted-foreground">
+                    {label}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-64">
+                  {label}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 200,
+      },
+      {
+        id: 'ineligibleAt',
+        accessorFn: row => row.permanentlyIneligibleAt ?? '',
+        header: () => <ColHeader>Marked Ineligible</ColHeader>,
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">
             {row.original.permanentlyIneligibleAt
@@ -209,60 +340,65 @@ export function PermanentlyIneligibleTable() {
               : '—'}
           </span>
         ),
+        size: 160,
       },
       {
-        accessorKey: 'legalHold',
-        header: 'Legal Hold',
-        size: 90,
+        id: 'legalHold',
+        header: () => <ColHeader>Legal Hold</ColHeader>,
         cell: ({ row }) =>
           row.original.legalHold ? (
-            <Badge
-              variant="secondary"
-              className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] h-5"
-            >
+            <Badge variant="outline" className={LEGAL_HOLD_CLS}>
               ON HOLD
             </Badge>
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           ),
+        size: 90,
       },
       {
-        accessorKey: 'actions',
-        header: '',
-        size: 100,
+        id: 'actions',
+        header: () => (
+          <div className="flex justify-center">
+            <ShieldAlertIcon className="size-4 text-muted-foreground" />
+          </div>
+        ),
+        enableSorting: false,
+        size: 130,
+        minSize: 120,
         cell: ({ row }) => (
-          <div className="flex items-center gap-1 justify-end">
+          <div
+            className="flex items-center gap-1 justify-end"
+            onClick={e => e.stopPropagation()}
+          >
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    size="icon-sm"
                     variant="ghost"
+                    size="icon-xs"
                     aria-label="View details"
-                    onClick={() =>
-                      navigate(`/ats/candidates/${row.original._id}`)
-                    }
+                    onClick={() => openDetail(row.original)}
                   >
                     <ExternalLinkIcon className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>View details</TooltipContent>
+                <TooltipContent side="top">View details</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    size="icon-sm"
                     variant="ghost"
+                    size="icon-xs"
                     aria-label="Restore candidate"
-                    disabled={restoringId === row.original._id}
+                    disabled={!!restoringId}
                     onClick={() => setRestoreTarget(row.original)}
                   >
                     <ShieldOffIcon className="size-3.5 text-amber-600" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side="top">
                   Restore candidate (requires a job)
                 </TooltipContent>
               </Tooltip>
@@ -271,8 +407,8 @@ export function PermanentlyIneligibleTable() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    size="icon-sm"
                     variant="ghost"
+                    size="icon-xs"
                     aria-label={
                       row.original.legalHold
                         ? 'Remove legal hold'
@@ -280,7 +416,7 @@ export function PermanentlyIneligibleTable() {
                     }
                     disabled={holdTogglingId === row.original._id}
                     onClick={() =>
-                      handleLegalHold(
+                      toggleLegalHold(
                         row.original._id,
                         !!row.original.legalHold
                       )
@@ -293,7 +429,7 @@ export function PermanentlyIneligibleTable() {
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side="top">
                   {row.original.legalHold
                     ? 'Remove legal hold'
                     : 'Place legal hold'}
@@ -304,8 +440,8 @@ export function PermanentlyIneligibleTable() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    size="icon-sm"
                     variant="ghost"
+                    size="icon-xs"
                     aria-label="Delete permanently"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     disabled={deletingId === row.original._id}
@@ -314,335 +450,200 @@ export function PermanentlyIneligibleTable() {
                     <Trash2Icon className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Delete permanently</TooltipContent>
+                <TooltipContent side="top">Delete permanently</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
         ),
       },
     ],
-    [navigate, restoringId, holdTogglingId, setRestoreTarget, deletingId]
+    [restoringId, holdTogglingId, deletingId, toggleLegalHold]
   );
 
   const table = useReactTable({
     data,
     columns,
+    state: {
+      sorting,
+      pagination: { pageIndex, pageSize },
+    },
+    onSortingChange: setSorting,
+    onPaginationChange: handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    autoResetPageIndex: false,
   });
 
-  if (loading && data.length === 0) return <TableSkeleton cols={5} />;
-
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Permanently Ineligible</h2>
-          <p className="text-sm text-muted-foreground">
-            Candidates excluded from the normal pipeline. Admin access only.
-          </p>
-        </div>
-        <Badge
-          variant="secondary"
-          className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-        >
-          {data.length} candidate{data.length !== 1 ? 's' : ''}
-        </Badge>
-      </div>
-
-      {data.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-          <CheckIcon className="size-8 opacity-30" />
-          <p className="text-sm">No permanently ineligible candidates</p>
-        </div>
-      ) : (
-        <>
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
-              <thead>
-                {table.getHeaderGroups().map(hg => (
-                  <tr key={hg.id}>
-                    {hg.headers.map(h => (
-                      <th
-                        key={h.id}
-                        className={cn(
-                          'px-4 py-3 text-left text-xs font-medium text-muted-foreground bg-muted/50',
-                          h.column.id === 'actions' && 'text-right'
-                        )}
-                        style={{ width: h.getSize() }}
-                      >
-                        {flexRender(h.column.columnDef.header, h.getContext())}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map(row => (
-                  <tr
-                    key={row.id}
-                    className="border-t hover:bg-muted/30 transition-colors"
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          'px-4 py-3',
-                          cell.column.id === 'actions' && 'text-right'
-                        )}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <TooltipProvider>
+      <div className="flex flex-col gap-4 flex-1 min-h-0">
+        {/* Toolbar */}
+        <div className="flex items-center gap-3 flex-wrap shrink-0">
+          <div className="relative min-w-48 max-w-sm flex-1">
+            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search by name, email, or phone…"
+              value={inputValue}
+              onChange={e => handleSearchChange(e.target.value)}
+              className="pl-8 pr-8 h-9"
+            />
+            {inputValue && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 size-7"
+                onClick={handleClearSearch}
+              >
+                <XIcon className="size-3.5" />
+              </Button>
+            )}
           </div>
-          <TablePagination
-            table={table}
-            pageIndex={table.getState().pagination.pageIndex}
-            pageSize={table.getState().pagination.pageSize}
-            totalRows={data.length}
-            label="candidates"
-          />
-        </>
-      )}
-
-      {/* Restore — a job is required, and the candidate returns to In Review. */}
-      <RestoreDialog
-        candidate={restoreTarget}
-        jobs={openJobs}
-        blockedJobIds={blockedJobIdsForRestore}
-        submitting={!!restoringId}
-        onClose={() => setRestoreTarget(null)}
-        onConfirm={handleRestore}
-      />
-
-      {/* Permanent delete — the only deletion path in the ATS. */}
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={v => !v && setDeleteTarget(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">
-              Permanently Delete Candidate
-            </DialogTitle>
-            <DialogDescription className="flex flex-col gap-3 pt-2">
-              <p>
-                This will permanently delete{' '}
-                <span className="font-medium text-foreground">
-                  {deleteTarget
-                    ? `${deleteTarget.firstName} ${deleteTarget.lastName}`
-                    : 'this candidate'}
-                </span>{' '}
-                and all associated data — applications, interviews, emails, and
-                history — across every job.
-              </p>
-              <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs">
-                This action <em>cannot</em> be undone. To keep their history
-                instead, use Restore.
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              disabled={!!deletingId}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!!deletingId}
-              onClick={() => deleteTarget && handleDelete(deleteTarget)}
-            >
-              {deletingId ? 'Deleting…' : 'Delete permanently'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function RestoreDialog({
-  candidate,
-  jobs,
-  blockedJobIds,
-  submitting,
-  onClose,
-  onConfirm,
-}: {
-  candidate: Candidate | null;
-  jobs: { _id: string; title: string; clientName: string }[];
-  blockedJobIds: Set<string>;
-  submitting: boolean;
-  onClose: () => void;
-  onConfirm: (candidate: Candidate, jobId: string) => void;
-}) {
-  return (
-    <Dialog open={!!candidate} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        {candidate && (
-          <RestoreForm
-            key={candidate._id}
-            candidate={candidate}
-            jobs={jobs}
-            blockedJobIds={blockedJobIds}
-            submitting={submitting}
-            onClose={onClose}
-            onConfirm={onConfirm}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function RestoreForm({
-  candidate,
-  jobs,
-  blockedJobIds,
-  submitting,
-  onClose,
-  onConfirm,
-}: {
-  candidate: Candidate;
-  jobs: { _id: string; title: string; clientName: string }[];
-  blockedJobIds: Set<string>;
-  submitting: boolean;
-  onClose: () => void;
-  onConfirm: (candidate: Candidate, jobId: string) => void;
-}) {
-  const [search, setSearch] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState('');
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return jobs;
-    return jobs.filter(
-      j =>
-        j.title.toLowerCase().includes(q) ||
-        j.clientName.toLowerCase().includes(q)
-    );
-  }, [jobs, search]);
-
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Restore Candidate</DialogTitle>
-        <DialogDescription>
-          Restoring{' '}
-          <span className="font-medium text-foreground">
-            {candidate.firstName} {candidate.lastName}
-          </span>{' '}
-          clears their permanent ineligibility. Choose the job they are being
-          considered for — they return to <strong>In Review</strong> and must be
-          approved like any new applicant.
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="flex flex-col gap-3">
-        <div className="relative">
-          <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search jobs…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-8 h-9 text-sm"
-          />
         </div>
-        <div className="max-h-64 overflow-y-auto rounded-md border">
-          {filtered.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-              No open jobs found
-            </p>
-          ) : (
-            <div className="flex flex-col">
-              {filtered.map(j => {
-                const blocked = blockedJobIds.has(j._id);
-                return (
-                  <button
-                    key={j._id}
-                    type="button"
-                    disabled={blocked}
-                    title={
-                      blocked
-                        ? 'This candidate already has an application for this job'
-                        : undefined
-                    }
-                    className={cn(
-                      'flex items-start gap-2 px-3 py-2 text-sm text-left transition-colors',
-                      blocked
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'hover:bg-muted',
-                      selectedJobId === j._id && 'bg-muted font-medium'
-                    )}
-                    onClick={() => !blocked && setSelectedJobId(j._id)}
+
+        <p className="text-xs text-muted-foreground -mt-1 shrink-0">
+          {loading && data.length === 0
+            ? 'Loading…'
+            : `${totalRows} ${totalRows === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' ineligible'}`}
+        </p>
+
+        {/* Table */}
+        <div className="rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="overflow-auto flex-1">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-foreground/5 dark:bg-muted">
+                {table.getHeaderGroups().map(hg => (
+                  <TableRow
+                    key={hg.id}
+                    className="border-b hover:bg-transparent"
                   >
-                    <span
-                      className={cn(
-                        'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
-                        selectedJobId === j._id
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted-foreground/30'
-                      )}
+                    {hg.headers.map(h => (
+                      <TableHead key={h.id} className="h-10 px-4">
+                        {h.isPlaceholder
+                          ? null
+                          : flexRender(
+                              h.column.columnDef.header,
+                              h.getContext()
+                            )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {loading && data.length === 0 ? (
+                  <TableSkeleton cols={columns.length} />
+                ) : table.getRowModel().rows.length > 0 ? (
+                  table.getRowModel().rows.map(row => (
+                    <TableRow
+                      key={row.id}
+                      className="border-b last:border-0 cursor-pointer"
+                      onClick={() => openDetail(row.original)}
                     >
-                      {selectedJobId === j._id && (
-                        <CheckIcon className="size-3" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex flex-col">
-                      <span className="truncate">{j.title}</span>
-                      {j.clientName && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          {j.clientName}
-                        </span>
-                      )}
-                      {blocked && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          Already applied — not available
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                      {row.getVisibleCells().map(cell => (
+                        <TableCell key={cell.id} className="px-4 py-3">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-32 text-center text-sm text-muted-foreground"
+                    >
+                      {hasFilters
+                        ? 'No candidates match your search.'
+                        : 'No permanently ineligible candidates.'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="border-t px-2 py-2 shrink-0 bg-background">
+            <TablePagination
+              table={table}
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              totalRows={totalRows}
+              label="candidates"
+            />
+          </div>
         </div>
-        {jobs.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            There are no open jobs. Open a job before restoring a candidate.
-          </p>
-        )}
-        {jobs.length > 0 && jobs.every(j => blockedJobIds.has(j._id)) && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            This candidate already has an application for every open job, so
-            none are available for restore.
-          </p>
-        )}
-      </div>
 
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose} disabled={submitting}>
-          Cancel
-        </Button>
-        <Button
-          disabled={!selectedJobId || submitting}
-          onClick={() => {
-            if (selectedJobId) onConfirm(candidate, selectedJobId);
-          }}
+        {/* Restore — a job is required, and the candidate returns to In Review. */}
+        <RestoreCandidateDialog
+          candidate={restoreTarget}
+          jobs={openJobs}
+          blockedJobIds={blockedJobIdsForRestore}
+          submitting={!!restoringId}
+          onClose={() => setRestoreTarget(null)}
+          onConfirm={handleRestore}
+        />
+
+        {/* Permanent delete — the only deletion path in the ATS. */}
+        <Dialog
+          open={!!deleteTarget}
+          onOpenChange={v => !v && setDeleteTarget(null)}
         >
-          {submitting ? 'Restoring…' : 'Restore'}
-        </Button>
-      </DialogFooter>
-    </>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive">
+                Permanently Delete Candidate
+              </DialogTitle>
+              <DialogDescription className="flex flex-col gap-3 pt-2">
+                <p>
+                  This will permanently delete{' '}
+                  <span className="font-medium text-foreground">
+                    {deleteTarget
+                      ? `${deleteTarget.firstName} ${deleteTarget.lastName}`
+                      : 'this candidate'}
+                  </span>{' '}
+                  and all associated data — applications, interviews, emails,
+                  and history — across every job.
+                </p>
+                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs">
+                  This action <em>cannot</em> be undone. To keep their history
+                  instead, use Restore.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteTarget(null)}
+                disabled={!!deletingId}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!!deletingId}
+                onClick={() => deleteTarget && handleDelete(deleteTarget)}
+              >
+                {deletingId ? 'Deleting…' : 'Delete permanently'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Detail sheet — the shared candidate sheet, which renders the
+            ineligible-specific footer actions (restore / legal hold / delete). */}
+        <CandidateDetailSheet
+          candidate={selected}
+          open={detailOpen}
+          onOpenChange={open => {
+            setDetailOpen(open);
+            if (!open) setSelected(null);
+          }}
+          mutating={!!holdTogglingId || !!deletingId || !!restoringId}
+        />
+      </div>
+    </TooltipProvider>
   );
 }
