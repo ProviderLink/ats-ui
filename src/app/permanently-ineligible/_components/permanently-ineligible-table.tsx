@@ -20,7 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { patchJson } from '@/lib/api-client';
+import { deleteJson, patchJson } from '@/lib/api-client';
 import { cn, formatDate } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
@@ -40,6 +40,7 @@ import {
   SearchIcon,
   ShieldAlertIcon,
   ShieldOffIcon,
+  Trash2Icon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,8 @@ export function PermanentlyIneligibleTable() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Candidate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const jobs = useJobStore(s => s.items);
   const fetchJobs = useJobStore(s => s.fetch);
@@ -119,6 +122,29 @@ export function PermanentlyIneligibleTable() {
       toast.error((e as Error).message || 'Failed to restore candidate');
     } finally {
       setRestoringId(null);
+    }
+  }
+
+  /**
+   * Permanently delete a candidate.
+   *
+   * This is the only place in the ATS where permanent deletion is allowed —
+   * elsewhere candidates are closed out by rejecting them so their history is
+   * preserved. The backend enforces the same rule.
+   */
+  async function handleDelete(candidate: Candidate) {
+    setDeletingId(candidate._id);
+    try {
+      await deleteJson(`/ats/candidates/${candidate._id}`);
+      toast.success(
+        `${candidate.firstName} ${candidate.lastName} permanently deleted`
+      );
+      setDeleteTarget(null);
+      await fetchIneligible(true);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to delete candidate');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -259,11 +285,28 @@ export function PermanentlyIneligibleTable() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Delete permanently"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    disabled={deletingId === row.original._id}
+                    onClick={() => setDeleteTarget(row.original)}
+                  >
+                    <Trash2Icon className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete permanently</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         ),
       },
     ],
-    [navigate, restoringId, holdTogglingId, setRestoreTarget]
+    [navigate, restoringId, holdTogglingId, setRestoreTarget, deletingId]
   );
 
   const table = useReactTable({
@@ -362,6 +405,49 @@ export function PermanentlyIneligibleTable() {
         onClose={() => setRestoreTarget(null)}
         onConfirm={handleRestore}
       />
+
+      {/* Permanent delete — the only deletion path in the ATS. */}
+      <Dialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              Permanently Delete Candidate
+            </DialogTitle>
+            <DialogDescription className="flex flex-col gap-3 pt-2">
+              <p>
+                This will permanently delete{' '}
+                <span className="font-medium text-foreground">
+                  {deleteTarget
+                    ? `${deleteTarget.firstName} ${deleteTarget.lastName}`
+                    : 'this candidate'}
+                </span>{' '}
+                and all associated data — applications, interviews, emails, and
+                history — across every job.
+              </p>
+              <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs">
+                This action <em>cannot</em> be undone. To keep their history
+                instead, use Restore.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={!!deletingId}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!!deletingId}
+              onClick={() => deleteTarget && handleDelete(deleteTarget)}
+            >
+              {deletingId ? 'Deleting…' : 'Delete permanently'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

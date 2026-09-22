@@ -2,7 +2,6 @@ import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-det
 import {
   CandidateCell,
   ColHeader,
-  DeleteConfirmDialog,
   SortHeader,
   TableSkeleton,
 } from '@/app/candidates/_components/candidates-table';
@@ -71,7 +70,6 @@ import {
   MailIcon,
   SearchIcon,
   StarIcon,
-  Trash2Icon,
   XIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -89,7 +87,6 @@ export function HiredTable() {
   const items = useCandidateStore(s => s.items);
   const loading = useCandidateStore(s => s.loading);
   const mutating = useCandidateStore(s => s.mutating);
-  const remove = useCandidateStore(s => s.remove);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
 
@@ -119,7 +116,6 @@ export function HiredTable() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [assignJobOpen, setAssignJobOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<Candidate | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTarget, setComposeTarget] = useState<Candidate | null>(null);
 
@@ -285,15 +281,6 @@ export function HiredTable() {
     setPageIndex(safeIndex);
     setPageSize(safeSize);
     persistPagination(safeIndex, safeSize);
-  }
-
-  async function handleDelete(candidate: Candidate) {
-    try {
-      await remove(candidate._id);
-      toast.success(`${candidate.firstName} ${candidate.lastName} deleted`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
   }
 
   async function handleAssignToJob(jobId: string, startStageId?: string) {
@@ -593,13 +580,6 @@ export function HiredTable() {
                       ? 'Remove from Talent Pool'
                       : 'Add to Talent Pool'}
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="gap-2.5 text-destructive focus:text-destructive"
-                    onClick={() => setDeleteTarget(candidate)}
-                  >
-                    <Trash2Icon className="size-3.5" />
-                    Delete Candidate
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -761,13 +741,6 @@ export function HiredTable() {
           if (!open) setSelected(null);
         }}
         mutating={mutating}
-      />
-
-      <DeleteConfirmDialog
-        candidate={deleteTarget}
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => handleDelete(deleteTarget!)}
       />
 
       <AssignJobDialog

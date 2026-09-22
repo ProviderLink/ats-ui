@@ -20,14 +20,6 @@ interface ApplicationActions {
   fetch: (params?: ApplicationFilters) => Promise<void>;
   fetchOne: (id: string) => Promise<void>;
   approve: (id: string) => Promise<void>;
-  dispose: (
-    id: string,
-    payload: {
-      dispositionReasonId: string;
-      destination: 'candidate_pool' | 'permanently_ineligible';
-      internalNotes?: string;
-    }
-  ) => Promise<void>;
   moveStage: (id: string, stageId: string) => Promise<void>;
   hire: (id: string) => Promise<void>;
   reject: (
@@ -167,31 +159,6 @@ export const useApplicationStore = create<
           const app = await patchJson<Application>(
             `/ats/applications/${id}/approve`,
             {}
-          );
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = app;
-            if (s.detail[id]) s.detail[id] = app;
-            s.mutating = false;
-          });
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      dispose: async (id, payload) => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const app = await patchJson<Application>(
-            `/ats/applications/${id}/dispose`,
-            payload
           );
           set(s => {
             const idx = s.items.findIndex(x => x._id === id);

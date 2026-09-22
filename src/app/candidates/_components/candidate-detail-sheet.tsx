@@ -89,7 +89,6 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   StarIcon,
-  Trash2Icon,
   UserCheckIcon,
   VideoIcon,
   XCircleIcon,
@@ -1796,7 +1795,6 @@ export function CandidateDetailSheet({
   const [rejectPipelineOpen, setRejectPipelineOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -2482,21 +2480,6 @@ export function CandidateDetailSheet({
       toast.success(`${fullName} added to another job`);
       setReassignOpen(false);
       setSelectedJobId('');
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setPipelineLoading(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!candidate) return;
-    setPipelineLoading(true);
-    try {
-      await useCandidateStore.getState().remove(candidate._id);
-      toast.success(`${fullName} deleted`);
-      setDeleteOpen(false);
-      onOpenChange(false);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -3762,17 +3745,6 @@ export function CandidateDetailSheet({
                   <ArrowRightLeftIcon className="size-3.5" />
                   Add to Job
                 </Button>
-                {/* Delete */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading}
-                  className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2Icon className="size-3.5" />
-                  Delete
-                </Button>
               </div>
             ) : c.status === 'hired' ? (
               <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -3815,16 +3787,6 @@ export function CandidateDetailSheet({
                 >
                   <ArrowRightLeftIcon className="size-3.5" />
                   Add to Job
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading}
-                  className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2Icon className="size-3.5" />
-                  Delete
                 </Button>
               </div>
             ) : (
@@ -4388,31 +4350,6 @@ export function CandidateDetailSheet({
               disabled={pipelineLoading}
             >
               {c?.inTalentPool ? 'Remove' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Pipeline: Delete */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Candidate</DialogTitle>
-            <DialogDescription>
-              Permanently delete <span className="font-medium">{fullName}</span>
-              ? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={pipelineLoading}
-            >
-              {pipelineLoading ? 'Deleting…' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

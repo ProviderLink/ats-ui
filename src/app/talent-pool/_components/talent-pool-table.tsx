@@ -1,7 +1,6 @@
 import {
   CandidateCell,
   ColHeader,
-  DeleteConfirmDialog,
   SortHeader,
   TableSkeleton,
 } from '@/app/candidates/_components/candidates-table';
@@ -475,7 +474,6 @@ export function TalentPoolTable() {
   const items = useCandidateStore(s => s.items);
   const loading = useCandidateStore(s => s.loading);
   const mutating = useCandidateStore(s => s.mutating);
-  const remove = useCandidateStore(s => s.remove);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
 
@@ -505,7 +503,6 @@ export function TalentPoolTable() {
   const [removePoolTarget, setRemovePoolTarget] = useState<Candidate | null>(
     null
   );
-  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTarget, setComposeTarget] = useState<Candidate | null>(null);
 
@@ -662,15 +659,6 @@ export function TalentPoolTable() {
       toast.error((e as Error).message);
     } finally {
       setRemovePoolTarget(null);
-    }
-  }
-
-  async function handleDelete(candidate: Candidate) {
-    try {
-      await remove(candidate._id);
-      toast.success(`${candidate.firstName} ${candidate.lastName} deleted`);
-    } catch (e) {
-      toast.error((e as Error).message);
     }
   }
 
@@ -1008,13 +996,6 @@ export function TalentPoolTable() {
           if (!open) setSelected(null);
         }}
         mutating={mutating}
-      />
-
-      <DeleteConfirmDialog
-        candidate={deleteTarget}
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => handleDelete(deleteTarget!)}
       />
 
       <AssignJobDialog

@@ -930,8 +930,6 @@ function PipelineActionsMenu({
   const [hireOpen, setHireOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [appDeleteOpen, setAppDeleteOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
@@ -945,12 +943,6 @@ function PipelineActionsMenu({
   const stageSelectRef = useRef<HTMLButtonElement>(null);
 
   const name = `${candidate.firstName} ${candidate.lastName}`;
-
-  // Delete restriction: candidate is protected if active in any pipeline, hired, or in talent pool
-  const hasActivePipeline = allCandidateApps.some(a => a.phase === 'approved');
-  const hasHired = allCandidateApps.some(a => a.phase === 'hired');
-  const isDeletable =
-    !hasActivePipeline && !hasHired && !candidate.inTalentPool;
 
   /**
    * Live applications the candidate holds on other jobs. When non-zero the
@@ -1081,33 +1073,6 @@ function PipelineActionsMenu({
     }
   }
 
-  async function handleDelete() {
-    setActing(true);
-    try {
-      await candStore.remove(candidate._id);
-      toast.success(`${name} deleted`);
-      setDeleteOpen(false);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setActing(false);
-    }
-  }
-
-  async function handleDeleteApp() {
-    if (!application) return;
-    setActing(true);
-    try {
-      await appStore.remove(application._id);
-      toast.success(`Application removed`);
-      setAppDeleteOpen(false);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setActing(false);
-    }
-  }
-
   return (
     <>
       <DropdownMenu>
@@ -1229,36 +1194,6 @@ function PipelineActionsMenu({
               <span className="text-sm">Add to Another Job</span>
               <span className="text-[11px] text-muted-foreground">
                 Also assign to another open position
-              </span>
-            </span>
-          </DropdownMenuItem>
-          <div className="mx-2 my-2 h-px bg-border" />
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-            disabled={!application}
-            onClick={() => setAppDeleteOpen(true)}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
-              <XIcon className="size-3.5 text-red-600 dark:text-red-400" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">Delete Application</span>
-              <span className="text-[11px] text-muted-foreground">
-                Remove from this job only
-              </span>
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
-              <Trash2Icon className="size-3.5 text-red-600 dark:text-red-400" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">Delete Candidate</span>
-              <span className="text-[11px] text-muted-foreground">
-                Permanently remove
               </span>
             </span>
           </DropdownMenuItem>
@@ -1441,101 +1376,6 @@ function PipelineActionsMenu({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Application Dialog */}
-      <Dialog open={appDeleteOpen} onOpenChange={setAppDeleteOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Application?</DialogTitle>
-            <DialogDescription>
-              This will permanently remove{' '}
-              <span className="font-medium">{name}</span>'s application from{' '}
-              <span className="font-medium">{job?.title ?? 'this job'}</span>.
-              The candidate record will not be deleted.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAppDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteApp}
-              disabled={acting}
-            >
-              {acting ? 'Removing…' : 'Delete Application'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog — normal (no active dependencies) */}
-      {isDeletable ? (
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Delete Candidate</DialogTitle>
-              <DialogDescription>
-                Permanently delete <span className="font-medium">{name}</span>?
-                This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={acting}
-              >
-                {acting ? 'Deleting…' : 'Delete'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : (
-        /* Delete Dialog — super prompt for protected candidates */
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-destructive">
-                Force Delete Candidate
-              </DialogTitle>
-              <DialogDescription className="flex flex-col gap-3 pt-2">
-                <p>
-                  <span className="font-medium text-foreground">{name}</span>{' '}
-                  cannot be safely deleted because they have:
-                </p>
-                <ul className="list-disc list-inside text-xs space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-                  {hasActivePipeline && (
-                    <li>Active applications in pipeline</li>
-                  )}
-                  {hasHired && <li>Hired for one or more jobs</li>}
-                  {candidate.inTalentPool && <li>Currently in Talent Pool</li>}
-                </ul>
-                <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive text-xs font-medium">
-                  ⚠ This will permanently delete the candidate and ALL
-                  associated data — applications, interviews, emails, and
-                  history — across every job. This action cannot be undone.
-                </p>
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={acting}
-              >
-                {acting ? 'Deleting…' : 'Delete Everywhere'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }
@@ -1578,8 +1418,6 @@ export function CandidatesTable() {
   const loading = useCandidateStore(s => s.loading);
   const isRefreshing = useCandidateStore(s => s.isRefreshing);
   const mutating = useCandidateStore(s => s.mutating);
-  const fetchCandidates = useCandidateStore(s => s.fetch);
-  const remove = useCandidateStore(s => s.remove);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
 
   const allApps = useApplicationStore(s => s.items);
@@ -1607,7 +1445,6 @@ export function CandidatesTable() {
   const jobIdFilter = searchParams.get('jobId') ?? '';
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1825,27 +1662,6 @@ export function CandidatesTable() {
     setPageSize(safeSize);
     sessionStorage.setItem('candidates-page-index', String(safeIndex));
     localStorage.setItem('candidates-page-size', String(safeSize));
-  }
-
-  async function handleDelete(candidate: Candidate) {
-    try {
-      await remove(candidate._id);
-      if (data.length === 1 && pageIndex > 0) {
-        const newIdx = pageIndex - 1;
-        setPageIndex(newIdx);
-        sessionStorage.setItem('candidates-page-index', String(newIdx));
-      }
-      const refetchPage =
-        data.length === 1 && pageIndex > 0 ? pageIndex : pageIndex + 1;
-      await fetchCandidates({
-        status: activeTab,
-        page: refetchPage,
-        limit: 9999,
-      });
-      toast.success(`${candidate.firstName} ${candidate.lastName} deleted`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
   }
 
   function openDetail(candidate: Candidate) {
@@ -2796,13 +2612,6 @@ export function CandidatesTable() {
           if (!open) setSelected(null);
         }}
         mutating={mutating}
-      />
-
-      <DeleteConfirmDialog
-        candidate={deleteTarget}
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => handleDelete(deleteTarget!)}
       />
     </>
   );
