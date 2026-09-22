@@ -1707,7 +1707,9 @@ function collapseSideEffects<T extends { action: string; createdAt: string }>(
   );
   return entries.filter(e => {
     if (!REJECT_SIDE_EFFECTS.has(e.action)) return true;
-    return !primarySeconds.has(Math.floor(new Date(e.createdAt).getTime() / 1000));
+    return !primarySeconds.has(
+      Math.floor(new Date(e.createdAt).getTime() / 1000)
+    );
   });
 }
 

@@ -86,7 +86,6 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   StarIcon,
-  Trash2Icon,
   UserCheckIcon,
   XIcon,
 } from 'lucide-react';
@@ -489,50 +488,6 @@ function PipelineStageSelectCell({
   );
 }
 
-export function DeleteConfirmDialog({
-  candidate,
-  open,
-  onClose,
-  onConfirm,
-}: {
-  candidate: Candidate | null;
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  if (!candidate) return null;
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Delete Candidate</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete{' '}
-            <span className="font-medium">
-              {candidate.firstName} {candidate.lastName}
-            </span>
-            ? This action cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-          >
-            Delete
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function ReviewActionsDropdown({
   candidate,
   onMutated,
@@ -716,185 +671,6 @@ function ReviewActionsDropdown({
   );
 }
 
-function HiredActionsDropdown({ candidate }: { candidate: Candidate }) {
-  const candStore = useCandidateStore();
-  const navigate = useNavigate();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
-  const [acting, setActing] = useState(false);
-  const name = `${candidate.firstName} ${candidate.lastName}`;
-
-  async function handleTalentPool() {
-    setActing(true);
-    try {
-      await candStore.updateTalentPool(
-        candidate._id,
-        candidate.inTalentPool ? 'remove' : 'add'
-      );
-      toast.success(
-        candidate.inTalentPool
-          ? `${name} removed from talent pool`
-          : `${name} added to talent pool`
-      );
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setActing(false);
-    }
-  }
-
-  async function handleDelete() {
-    setActing(true);
-    try {
-      await candStore.remove(candidate._id);
-      toast.success(`${name} deleted`);
-      setDeleteOpen(false);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setActing(false);
-    }
-  }
-
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            disabled={acting}
-            className="hover:bg-silver-200 dark:hover:bg-white/10 data-[state=open]:bg-silver-200 dark:data-[state=open]:bg-white/10"
-          >
-            <EllipsisVerticalIcon />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 p-1.5">
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
-            onClick={() => navigate('/ats/emails')}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-blue-100 dark:bg-blue-900/30 shrink-0">
-              <MailIcon className="size-3.5 text-blue-600 dark:text-blue-400" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">Email</span>
-              <span className="text-[11px] text-muted-foreground">
-                Send a manual email
-              </span>
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
-            onClick={() => setTalentPoolConfirmOpen(true)}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 shrink-0">
-              <StarIcon className="size-3.5 text-amber-500" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">
-                {candidate.inTalentPool
-                  ? 'Remove from Talent Pool'
-                  : 'Add to Talent Pool'}
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                {candidate.inTalentPool
-                  ? 'Remove from saved candidates'
-                  : 'Save for future opportunities'}
-              </span>
-            </span>
-          </DropdownMenuItem>
-          <div className="mx-2 my-2 h-px bg-border" />
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
-              <Trash2Icon className="size-3.5 text-red-600 dark:text-red-400" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">Delete</span>
-              <span className="text-[11px] text-muted-foreground">
-                Permanently remove
-              </span>
-            </span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Talent Pool Confirm */}
-      <Dialog
-        open={talentPoolConfirmOpen}
-        onOpenChange={setTalentPoolConfirmOpen}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {candidate.inTalentPool
-                ? 'Remove from Talent Pool'
-                : 'Add to Talent Pool'}
-            </DialogTitle>
-            <DialogDescription>
-              {candidate.inTalentPool ? (
-                <>
-                  Remove <span className="font-medium">{name}</span> from the
-                  talent pool? They will no longer appear in saved candidates.
-                </>
-              ) : (
-                <>
-                  Add <span className="font-medium">{name}</span> to the talent
-                  pool? They will be saved for future opportunities.
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setTalentPoolConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setTalentPoolConfirmOpen(false);
-                handleTalentPool();
-              }}
-              disabled={acting}
-            >
-              {candidate.inTalentPool ? 'Remove' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Candidate</DialogTitle>
-            <DialogDescription>
-              Permanently delete <span className="font-medium">{name}</span>?
-              This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={acting}
-            >
-              {acting ? 'Deleting…' : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
 function PipelineActionsMenu({
   candidate,
@@ -1380,7 +1156,12 @@ function PipelineActionsMenu({
   );
 }
 
-type TabValue = CandidateStatus;
+/**
+ * Tabs this page actually renders. Hired deliberately has its own page
+ * (`/ats/hired`), so it is not a value here — narrowing the type is what keeps
+ * the `isHired` branches from silently coming back.
+ */
+type TabValue = Extract<CandidateStatus, 'pending' | 'approved'>;
 
 const CANDIDATE_SORT_OPTIONS = [
   'newest',
@@ -1569,69 +1350,13 @@ export function CandidatesTable() {
     return map;
   }, [allApps]);
 
-  // candidateId → { jobTitle, clientName, hiredAt, hiredBy } for Hired tab.
-  const hireInfoByCandidateId = useMemo(() => {
-    const jobById = new Map(allJobs.map(j => [j._id, j]));
-    const clientNameById = new Map(allClients.map(c => [c._id, c.companyName]));
-    const map = new Map<
-      string,
-      {
-        jobTitle: string;
-        clientName: string;
-        hiredAt: string;
-        hiredBy?: string;
-      }[]
-    >();
-    for (const a of allApps) {
-      if (a.phase !== 'hired') continue;
-      const job = jobById.get(a.jobId);
-      const infos = map.get(a.candidateId) ?? [];
-      infos.push({
-        jobTitle: job?.title ?? a.jobId,
-        clientName: job
-          ? (clientNameById.get(job.clientId) ?? job.clientId)
-          : '',
-        hiredAt: a.hiredAt ?? a.createdAt,
-        hiredBy: a.hiredBy ?? undefined,
-      });
-      map.set(a.candidateId, infos);
-    }
-    return map;
-  }, [allApps, allJobs, allClients]);
-
-  // candidateId → counts for other activity on hired candidates
-  const otherActivityByCandidateId = useMemo(() => {
-    const map = new Map<
-      string,
-      { inPipeline: number; inTalentPool: boolean }
-    >();
-    for (const a of allApps) {
-      if (a.phase === 'approved') {
-        const e = map.get(a.candidateId) ?? {
-          inPipeline: 0,
-          inTalentPool: false,
-        };
-        e.inPipeline++;
-        map.set(a.candidateId, e);
-      }
-    }
-    // Also set talent pool from candidate data
-    for (const c of items) {
-      const e = map.get(c._id);
-      if (e) e.inTalentPool = c.inTalentPool;
-    }
-    return map;
-  }, [allApps, items]);
-
   // ── Helpers ──────────────────────────────────────────────────────
 
   function handleTabChange(tab: TabValue) {
     setActiveTab(tab);
     setPageIndex(0);
     sessionStorage.setItem('candidates-page-index', '0');
-    setSorting([
-      { id: tab === 'hired' ? 'hiredDate' : 'createdAt', desc: true },
-    ]);
+    setSorting([{ id: 'createdAt', desc: true }]);
     const defaultSort: CandidateSortOption = 'newest';
     setSortBy(defaultSort);
     localStorage.setItem('candidates-sort-by', defaultSort);
@@ -1984,7 +1709,6 @@ export function CandidatesTable() {
 
   const columns = useMemo<ColumnDef<Candidate>[]>(() => {
     const isPipeline = activeTab === 'approved';
-    const isHired = activeTab === 'hired';
 
     const stageCol: ColumnDef<Candidate> = {
       id: 'currentStage',
@@ -2012,33 +1736,6 @@ export function CandidatesTable() {
       accessorFn: row => row.parsedData?.experience?.[0]?.title ?? '',
       header: () => <ColHeader>Current Role</ColHeader>,
       cell: ({ row }) => <CurrentRoleCell candidate={row.original} />,
-    };
-
-    const otherActivityCol: ColumnDef<Candidate> = {
-      id: 'otherActivity',
-      header: () => <ColHeader>Other Activity</ColHeader>,
-      cell: ({ row }) => {
-        const info = otherActivityByCandidateId.get(row.original._id);
-        if (!info || (info.inPipeline === 0 && !info.inTalentPool)) {
-          return <span className="text-xs text-muted-foreground/60">—</span>;
-        }
-        return (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {info.inPipeline > 0 && (
-              <span className="inline-flex items-center gap-1 h-6 rounded-md border border-pine-teal-300 bg-pine-teal-100 px-2 text-xs font-medium text-pine-teal-700 dark:border-pine-teal-800/50 dark:bg-pine-teal-950/30 dark:text-pine-teal-300">
-                <GitCommitHorizontalIcon className="size-3 shrink-0" />
-                {info.inPipeline} in pipeline
-              </span>
-            )}
-            {info.inTalentPool && row.original.inTalentPool && (
-              <span className="inline-flex items-center gap-1 h-6 rounded-md border border-violet-300 bg-violet-100 px-2 text-xs font-medium text-violet-700 dark:border-violet-800/50 dark:bg-violet-950/30 dark:text-violet-300">
-                <StarIcon className="size-3 shrink-0 fill-violet-400 text-violet-500 dark:fill-violet-500 dark:text-violet-400" />
-                Talent pool
-              </span>
-            )}
-          </div>
-        );
-      },
     };
 
     return [
@@ -2079,55 +1776,9 @@ export function CandidatesTable() {
       },
       {
         id: 'jobs',
-        header: () => (
-          <ColHeader>{isHired ? 'Hired For' : 'Job Applied'}</ColHeader>
-        ),
+        header: () => <ColHeader>Job Applied</ColHeader>,
         cell: ({ row }) => {
-          if (isHired) {
-            const infos = hireInfoByCandidateId.get(row.original._id);
-            if (!infos || infos.length === 0)
-              return <span className="text-xs text-muted-foreground">—</span>;
-            const first = infos[0];
-            const rest = infos.slice(1);
-            return (
-              <div className="flex items-start gap-1.5 min-w-35 max-w-55 rounded-sm border border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30 px-2 py-1 -my-1">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium whitespace-normal leading-tight">
-                    {first.jobTitle}
-                  </p>
-                  {first.clientName && (
-                    <p className="text-[11px] text-muted-foreground whitespace-normal leading-tight mt-0.5">
-                      {first.clientName}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    {formatDate(first.hiredAt)}
-                  </p>
-                </div>
-                {rest.length > 0 && (
-                  <TooltipProvider delayDuration={300}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1 h-4 cursor-default shrink-0"
-                        >
-                          +{rest.length}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        className="text-xs max-w-56"
-                      >
-                        {rest.map(i => i.jobTitle).join(', ')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-            );
-          }
-          // Try app-based lookup first (approved/hired candidates have applications)
+          // Try app-based lookup first (candidates with an application)
           const appInfos = jobInfosByCandidateId.get(row.original._id);
           if (appInfos && appInfos.length > 0) {
             const first = appInfos[0];
@@ -2193,80 +1844,48 @@ export function CandidatesTable() {
           return <span className="text-xs text-muted-foreground">—</span>;
         },
       },
-      ...(isHired ? [otherActivityCol] : isPipeline ? [stageCol] : [roleCol]),
+      ...(isPipeline ? [stageCol] : [roleCol]),
       {
         id: 'skills',
         accessorFn: row => (row.parsedData?.skills ?? []).join(' '),
         header: () => <ColHeader>Skills</ColHeader>,
         cell: ({ row }) => <SkillsCell candidate={row.original} />,
       },
-      ...(isHired
-        ? []
-        : ([
-            {
-              id: 'aiScore',
-              accessorFn: (row: Candidate) =>
-                row.aiScore?.score ?? row.aiValidation?.score ?? -1,
-              header: ({ column }) => (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={SORT_BTN_CLS}
-                  onClick={() => column.toggleSorting()}
-                >
-                  <SparklesIcon className="size-3" />
-                  AI Score <ArrowUpDownIcon className="size-3" />
-                </Button>
-              ),
-              cell: ({ row }) => <AiScoreCell candidate={row.original} />,
-            } satisfies ColumnDef<Candidate>,
-          ] as ColumnDef<Candidate>[])),
       {
-        id: isHired ? 'hiredDate' : 'createdAt',
-        accessorKey: isHired ? undefined : 'createdAt',
-        accessorFn: isHired
-          ? row => {
-              const infos = hireInfoByCandidateId.get(row._id);
-              return infos?.[0]?.hiredAt ?? row.createdAt;
-            }
-          : undefined,
-        header: isHired
-          ? ({ column }) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                className={SORT_BTN_CLS}
-                onClick={() => column.toggleSorting()}
-              >
-                Hired Date <ArrowUpDownIcon className="size-3" />
-              </Button>
-            )
-          : ({ column }) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                className={SORT_BTN_CLS}
-                onClick={() => column.toggleSorting()}
-              >
-                Applied <ArrowUpDownIcon className="size-3" />
-              </Button>
-            ),
-        cell: ({ row }) => {
-          if (isHired) {
-            const infos = hireInfoByCandidateId.get(row.original._id);
-            const date = infos?.[0]?.hiredAt ?? row.original.createdAt;
-            return (
-              <span className="text-xs text-muted-foreground">
-                {formatDate(date)}
-              </span>
-            );
-          }
-          return (
-            <span className="text-xs text-muted-foreground">
-              {formatDate(row.original.createdAt)}
-            </span>
-          );
-        },
+        id: 'aiScore',
+        accessorFn: (row: Candidate) =>
+          row.aiScore?.score ?? row.aiValidation?.score ?? -1,
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={SORT_BTN_CLS}
+            onClick={() => column.toggleSorting()}
+          >
+            <SparklesIcon className="size-3" />
+            AI Score <ArrowUpDownIcon className="size-3" />
+          </Button>
+        ),
+        cell: ({ row }) => <AiScoreCell candidate={row.original} />,
+      },
+      {
+        id: 'createdAt',
+        accessorKey: 'createdAt',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={SORT_BTN_CLS}
+            onClick={() => column.toggleSorting()}
+          >
+            Applied <ArrowUpDownIcon className="size-3" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {formatDate(row.original.createdAt)}
+          </span>
+        ),
       },
       {
         id: 'actions',
@@ -2277,9 +1896,7 @@ export function CandidatesTable() {
         ),
         cell: ({ row }) => (
           <div onClick={e => e.stopPropagation()}>
-            {isHired ? (
-              <HiredActionsDropdown candidate={row.original} />
-            ) : isPipeline ? (
+            {isPipeline ? (
               <PipelineActionsMenu
                 candidate={row.original}
                 allApps={allApps}
@@ -2296,8 +1913,6 @@ export function CandidatesTable() {
     activeTab,
     jobInfosByCandidateId,
     stageInfoByCandidateId,
-    hireInfoByCandidateId,
-    otherActivityByCandidateId,
     allApps,
     allJobs,
     allClients,
@@ -2401,11 +2016,7 @@ export function CandidatesTable() {
                   Sort by
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {CANDIDATE_SORT_OPTIONS.filter(opt =>
-                  activeTab === 'hired'
-                    ? !['highest_score', 'lowest_score'].includes(opt)
-                    : true
-                ).map(opt => (
+                {CANDIDATE_SORT_OPTIONS.map(opt => (
                   <DropdownMenuItem
                     key={opt}
                     onSelect={() => handleSortChange(opt)}
@@ -2462,16 +2073,14 @@ export function CandidatesTable() {
               </Button>
             )}
 
-            {activeTab !== 'hired' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setBulkRejectOpen(true)}
-              >
-                <BanIcon className="size-4" />
-                Reject
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBulkRejectOpen(true)}
+            >
+              <BanIcon className="size-4" />
+              Reject
+            </Button>
 
             <Button
               size="sm"
