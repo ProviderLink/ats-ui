@@ -1263,11 +1263,17 @@ export function CandidatesTable() {
   // ── Derived maps from shared app/job/client stores ───────────────
 
   // candidateId → { jobTitle, clientName }[] for the Job column.
+  //
+  // Only live and hired applications count. A rejected application stays in the
+  // database for history, so without this filter the column would keep showing
+  // jobs the candidate was already rejected from — and after a job change it
+  // would list the old job alongside the new one.
   const jobInfosByCandidateId = useMemo(() => {
     const jobById = new Map(allJobs.map(j => [j._id, j]));
     const clientNameById = new Map(allClients.map(c => [c._id, c.companyName]));
     const map = new Map<string, { jobTitle: string; clientName: string }[]>();
     for (const a of allApps) {
+      if (a.phase === 'rejected') continue;
       const job = jobById.get(a.jobId);
       const title = job?.title ?? a.jobId;
       const clientName = job
