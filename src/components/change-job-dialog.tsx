@@ -96,9 +96,7 @@ function ChangeJobForm({
     const q = search.trim().toLowerCase();
     // When changing, the current job is not a valid target.
     const base =
-      mode === 'change'
-        ? jobs.filter(j => j.title !== currentJobTitle)
-        : jobs;
+      mode === 'change' ? jobs.filter(j => j.title !== currentJobTitle) : jobs;
     if (!q) return base;
     return base.filter(
       j =>
@@ -123,15 +121,20 @@ function ChangeJobForm({
           {mode === 'change' ? (
             <>
               Move <span className="font-medium">{candidateName}</span> from{' '}
-              <span className="font-medium">{currentJobTitle ?? 'their job'}</span>{' '}
+              <span className="font-medium">
+                {currentJobTitle ?? 'their job'}
+              </span>{' '}
               to another position. The current application is closed and their
               history is preserved.
             </>
           ) : (
             <>
-              Also assign <span className="font-medium">{candidateName}</span> to
-              another open position. This does not remove them from{' '}
-              <span className="font-medium">{currentJobTitle ?? 'their job'}</span>.
+              Also assign <span className="font-medium">{candidateName}</span>{' '}
+              to another open position. This does not remove them from{' '}
+              <span className="font-medium">
+                {currentJobTitle ?? 'their job'}
+              </span>
+              .
             </>
           )}
         </DialogDescription>
@@ -226,9 +229,9 @@ function ChangeJobForm({
 
         {mode === 'change' && (
           <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            The candidate&apos;s current application is closed and appears in the
-            old job&apos;s Rejected column, so history stays traceable. Their
-            interviews, emails, and notes remain attached to the old job.
+            The candidate&apos;s current application is closed and appears in
+            the old job&apos;s Rejected column, so history stays traceable.
+            Their interviews, emails, and notes remain attached to the old job.
           </p>
         )}
       </div>
@@ -239,9 +242,7 @@ function ChangeJobForm({
         </Button>
         <Button
           disabled={!selectedJobId || submitting}
-          onClick={() =>
-            onConfirm(selectedJobId, selectedStageId || undefined)
-          }
+          onClick={() => onConfirm(selectedJobId, selectedStageId || undefined)}
         >
           {submitting
             ? mode === 'change'

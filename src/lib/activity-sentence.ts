@@ -902,10 +902,24 @@ export function buildActivitySentence(
 
     case 'rejected': {
       const reason = pick(metadata, 'reason', 'rejectionReason');
-      return finish(
-        'rejected the application',
-        reason ? `Reason: ${reason}` : null
-      );
+      const destination = str(metadata['destination']);
+      const lastStage = pick(metadata, 'lastStage');
+
+      // Reject now carries a destination when it was the candidate's last live
+      // application, so say where they went rather than just "rejected".
+      const target =
+        destination === 'permanently_ineligible'
+          ? 'rejected the application \u2014 the candidate is permanently ineligible'
+          : destination === 'candidate_pool'
+            ? 'rejected the application \u2014 the candidate moved to the talent pool'
+            : 'rejected the application';
+
+      const parts = [
+        reason ? `Reason: ${reason}` : null,
+        lastStage ? `Last stage: ${lastStage}` : null,
+      ].filter(Boolean);
+
+      return finish(target, parts.length > 0 ? parts.join(' \u00b7 ') : null);
     }
 
     case 'hired':

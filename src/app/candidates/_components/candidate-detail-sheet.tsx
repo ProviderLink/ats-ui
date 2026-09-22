@@ -1658,32 +1658,56 @@ function CandidateCrmButton({
   );
 }
 
+/**
+ * Candidate transition history.
+ *
+ * Rejection and job-change events live on the application, while talent pool
+ * and eligibility changes live on the candidate. This panel merges both so a
+ * recruiter can see the whole journey in one place: which job a candidate was
+ * rejected from, where they were sent, and who did it.
+ *
+ * Actions covered: rejected, disposition, eligibility_changed, talent_pool
+ * added/removed, hired, and job moves.
+ */
+const TRANSITION_ACTIONS = new Set([
+  'rejected',
+  'disposition',
+  'eligibility_changed',
+  'talent_pool_added',
+  'talent_pool_removed',
+  'hired',
+]);
+
 function RejectionHistory({ candidateId }: { candidateId: string }) {
-  interface RejectionEntry {
+  interface TransitionEntry {
     _id: string;
     action: string;
     createdAt: string;
     performedBy?: string | null;
+    relatedId?: string | null;
     metadata?: Record<string, unknown>;
   }
-  const [items, setItems] = useState<RejectionEntry[]>([]);
+  const [items, setItems] = useState<TransitionEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  // Resolves the raw `performedBy` ObjectId into a display name/avatar.
+  // Resolves the raw `performedBy` ObjectId into a display name.
   const allUsers = useUserStore(s => s.items);
+  // Resolves the job a transition happened on (from the application id).
+  const allApps = useApplicationStore(s => s.items);
+  const allJobs = useJobStore(s => s.items);
 
   useEffect(() => {
     setLoading(true);
-    getJson<RejectionEntry[]>(`/shared/activity-logs/candidate/${candidateId}`)
+    getJson<TransitionEntry[]>(
+      `/shared/activity-logs/candidate/${candidateId}`
+    )
       .then(all => {
-        // Rejections surface as `disposition` entries (application-level) or
-        // `rejected` entries (candidate-level, when no application exists yet).
-        const rejections = (all ?? []).filter(
-          entry => entry.action === 'disposition' || entry.action === 'rejected'
+        const transitions = (all ?? []).filter(entry =>
+          TRANSITION_ACTIONS.has(entry.action)
         );
-        setItems(rejections);
+        setItems(transitions);
       })
       .catch(() => {
-        // silently fail — activity timeline already shows full history
+        // silently fail — the activity timeline above shows the full log
       })
       .finally(() => setLoading(false));
   }, [candidateId]);
@@ -1698,6 +1722,17 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
     [allUsers]
   );
 
+  /** Job title for an application-level entry, when we can resolve it. */
+  const jobTitleForApplication = useCallback(
+    (applicationId: string | null | undefined) => {
+      if (!applicationId) return null;
+      const app = allApps.find(a => a._id === applicationId);
+      if (!app) return null;
+      return allJobs.find(j => j._id === app.jobId)?.title ?? null;
+    },
+    [allApps, allJobs]
+  );
+
   if (loading) return null;
   if (items.length === 0) return null;
 
@@ -1706,7 +1741,7 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
       <Separator />
       <div className="flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Rejection History
+          Transition History
         </p>
         <div className="flex flex-col gap-2">
           {items.map((entry, i) => {
@@ -1716,9 +1751,43 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
             >;
             const destination = m.destination;
             const reasonLabel = m.reasonLabel;
+            const legacyReason = m.reason;
             const lastStage = m.lastStage;
             const notes = m.internalNotes;
             const by = performerName(entry.performedBy);
+            const jobTitle = jobTitleForApplication(entry.relatedId);
+
+            // Eligibility flips carry `to` rather than a destination.
+            const isEligibility = entry.action === 'eligibility_changed';
+            const isTalentPool =
+              entry.action === 'talent_pool_added' ||
+              entry.action === 'talent_pool_removed';
+
+            const label = isEligibility
+              ? m.to === 'permanently_ineligible'
+                ? 'Ineligible'
+                : 'Restored'
+              : isTalentPool
+                ? entry.action === 'talent_pool_added'
+                  ? 'Talent Pool'
+                  : 'Left Talent Pool'
+                : entry.action === 'hired'
+                  ? 'Hired'
+                  : destination === 'permanently_ineligible'
+                    ? 'Ineligible'
+                    : destination === 'candidate_pool'
+                      ? 'Talent Pool'
+                      : 'Rejected';
+
+            const tone =
+              label === 'Ineligible'
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                : label === 'Hired'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : label === 'Restored'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
+
             return (
               <div
                 key={entry._id ?? i}
@@ -1730,19 +1799,20 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
                   </span>
                   <Badge
                     variant="secondary"
-                    className={
-                      destination === 'permanently_ineligible'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px]'
-                        : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-[10px]'
-                    }
+                    className={cn('text-[10px]', tone)}
                   >
-                    {destination === 'permanently_ineligible'
-                      ? 'Ineligible'
-                      : 'Candidate Pool'}
+                    {label}
                   </Badge>
                 </div>
-                {reasonLabel && (
-                  <p className="mt-0.5 font-medium">{reasonLabel}</p>
+                {jobTitle && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Job: {jobTitle}
+                  </p>
+                )}
+                {(reasonLabel || legacyReason) && (
+                  <p className="mt-0.5 font-medium">
+                    {reasonLabel || legacyReason}
+                  </p>
                 )}
                 {lastStage && (
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -3775,7 +3845,9 @@ export function CandidateDetailSheet({
                   size="sm"
                   variant="outline"
                   disabled={
-                    pipelineLoading || !activePipelineApp || openJobs.length === 0
+                    pipelineLoading ||
+                    !activePipelineApp ||
+                    openJobs.length === 0
                   }
                   className="h-8 gap-1.5"
                   onClick={() => {
