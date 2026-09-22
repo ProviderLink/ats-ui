@@ -86,7 +86,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const filteredNavMain = data.navMain.filter(item => {
     if (item.title === 'Clients') return hasPermission('clients', 'read');
     if (item.title === 'Jobs') return hasPermission('jobs', 'read');
-    if (item.title === 'Candidates' || item.title === 'Talent Pool' || item.title === 'Hired')
+    if (
+      item.title === 'Candidates' ||
+      item.title === 'Talent Pool' ||
+      item.title === 'Hired'
+    )
       return hasPermission('candidates', 'read');
     if (item.title === 'Ineligible') return user?.roles.includes('admin');
     return true;

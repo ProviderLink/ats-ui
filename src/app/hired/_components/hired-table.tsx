@@ -1,3 +1,4 @@
+import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
 import {
   CandidateCell,
   ColHeader,
@@ -5,7 +6,6 @@ import {
   SortHeader,
   TableSkeleton,
 } from '@/app/candidates/_components/candidates-table';
-import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { TablePagination } from '@/components/table-pagination';
 import { TagList } from '@/components/tag-list';
@@ -184,7 +184,10 @@ export function HiredTable() {
     >();
     for (const a of applications) {
       if (a.phase !== 'approved') continue;
-      const e = map.get(a.candidateId) ?? { inPipeline: 0, inTalentPool: false };
+      const e = map.get(a.candidateId) ?? {
+        inPipeline: 0,
+        inTalentPool: false,
+      };
       e.inPipeline++;
       map.set(a.candidateId, e);
     }
@@ -269,7 +272,9 @@ export function HiredTable() {
         })
   ) {
     const next =
-      typeof updater === 'function' ? updater({ pageIndex, pageSize }) : updater;
+      typeof updater === 'function'
+        ? updater({ pageIndex, pageSize })
+        : updater;
     const safeIndex =
       Number.isFinite(next.pageIndex) && next.pageIndex >= 0
         ? next.pageIndex
@@ -540,7 +545,9 @@ export function HiredTable() {
                       <BriefcaseIcon className="size-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Assign to a new job</TooltipContent>
+                  <TooltipContent side="top">
+                    Assign to a new job
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
@@ -568,7 +575,11 @@ export function HiredTable() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-xs" className="rounded p-2">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="rounded p-2"
+                  >
                     <EllipsisIcon className="size-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -704,8 +715,7 @@ export function HiredTable() {
                           key={cell.id}
                           className={cn(
                             'px-4 py-3',
-                            cell.column.id === 'hiredFor' &&
-                              'whitespace-normal'
+                            cell.column.id === 'hiredFor' && 'whitespace-normal'
                           )}
                         >
                           {flexRender(
@@ -975,9 +985,7 @@ function AssignJobDialog({
                           : 'border-muted-foreground/30'
                       )}
                     >
-                      {selected === j._id && (
-                        <CheckIcon className="size-3" />
-                      )}
+                      {selected === j._id && <CheckIcon className="size-3" />}
                     </span>
                     <span className="min-w-0 flex flex-col">
                       <span className="truncate">{j.title}</span>

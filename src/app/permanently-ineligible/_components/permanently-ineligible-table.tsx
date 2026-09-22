@@ -19,9 +19,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
 import { patchJson } from '@/lib/api-client';
 import { cn, formatDate } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
+import { useClientStore } from '@/store/slices/clients.store';
+import { useJobStore } from '@/store/slices/jobs.store';
 import type { Candidate } from '@/store/types';
 import {
   flexRender,
@@ -34,6 +37,7 @@ import {
   BanIcon,
   CheckIcon,
   ExternalLinkIcon,
+  SearchIcon,
   ShieldAlertIcon,
   ShieldOffIcon,
 } from 'lucide-react';
@@ -53,6 +57,31 @@ export function PermanentlyIneligibleTable() {
 
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<Candidate | null>(null);
+
+  const jobs = useJobStore(s => s.items);
+  const fetchJobs = useJobStore(s => s.fetch);
+  const clients = useClientStore(s => s.items);
+  const fetchClients = useClientStore(s => s.fetch);
+
+  useEffect(() => {
+    if (jobs.length === 0) fetchJobs({ page: 1, limit: 9999 });
+  }, [jobs.length, fetchJobs]);
+
+  useEffect(() => {
+    if (clients.length === 0) fetchClients({ page: 1, limit: 9999 });
+  }, [clients.length, fetchClients]);
+
+  const openJobs = useMemo(() => {
+    const clientMap = new Map(clients.map(c => [c._id, c.companyName]));
+    return jobs
+      .filter(j => j.status === 'open')
+      .map(j => ({
+        _id: j._id,
+        title: j.title,
+        clientName: clientMap.get(j.clientId) ?? '',
+      }));
+  }, [jobs, clients]);
 
   // Ensure the list is loaded once (no-op when already cached by boot or a
   // prior visit, so navigating here never triggers a network refetch).
@@ -66,16 +95,26 @@ export function PermanentlyIneligibleTable() {
     [items]
   );
 
-  async function handleRestore(id: string, name: string) {
-    setRestoringId(id);
+  /**
+   * Restore a permanently ineligible candidate.
+   *
+   * A job is always required: the candidate returns to **In Review** as a
+   * normal pending applicant for that job, and must be approved through the
+   * usual flow. No application is created here.
+   */
+  async function handleRestore(candidate: Candidate, jobId: string) {
+    setRestoringId(candidate._id);
     try {
-      await patchJson(`/ats/candidates/${id}/eligibility`, {
-        eligibilityStatus: 'eligible',
-      });
-      toast.success(`${name} restored to eligible`);
+      await patchJson(`/ats/candidates/${candidate._id}/restore`, { jobId });
+      toast.success(
+        `${candidate.firstName} ${candidate.lastName} restored — now in review`
+      );
+      setRestoreTarget(null);
       await fetchIneligible(true);
+      // Refresh the main candidate list so they appear under In Review.
+      await useCandidateStore.getState().fetch({ status: 'pending', limit: 9999 });
     } catch (e) {
-      toast.error((e as Error).message || 'Failed to restore eligibility');
+      toast.error((e as Error).message || 'Failed to restore candidate');
     } finally {
       setRestoringId(null);
     }
@@ -173,19 +212,16 @@ export function PermanentlyIneligibleTable() {
                   <Button
                     size="icon-sm"
                     variant="ghost"
-                    aria-label="Restore eligibility"
+                    aria-label="Restore candidate"
                     disabled={restoringId === row.original._id}
-                    onClick={() =>
-                      handleRestore(
-                        row.original._id,
-                        `${row.original.firstName} ${row.original.lastName}`
-                      )
-                    }
+                    onClick={() => setRestoreTarget(row.original)}
                   >
                     <ShieldOffIcon className="size-3.5 text-amber-600" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Restore eligibility</TooltipContent>
+                <TooltipContent>
+                  Restore candidate (requires a job)
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider delayDuration={300}>
@@ -225,7 +261,7 @@ export function PermanentlyIneligibleTable() {
         ),
       },
     ],
-    [navigate, restoringId, holdTogglingId]
+    [navigate, restoringId, holdTogglingId, setRestoreTarget]
   );
 
   const table = useReactTable({
@@ -316,35 +352,162 @@ export function PermanentlyIneligibleTable() {
         </>
       )}
 
-      {/* Restore confirmation */}
-      <Dialog
-        open={!!restoringId}
-        onOpenChange={v => !v && setRestoringId(null)}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Restore Eligibility</DialogTitle>
-            <DialogDescription>
-              This will allow the candidate to be considered for positions
-              again. This action will be audited.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRestoringId(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                const c = data.find(x => x._id === restoringId);
-                if (c) handleRestore(c._id, `${c.firstName} ${c.lastName}`);
-              }}
-              variant="default"
-            >
-              Restore
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Restore — a job is required, and the candidate returns to In Review. */}
+      <RestoreDialog
+        candidate={restoreTarget}
+        jobs={openJobs}
+        submitting={!!restoringId}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={handleRestore}
+      />
     </div>
+  );
+}
+
+function RestoreDialog({
+  candidate,
+  jobs,
+  submitting,
+  onClose,
+  onConfirm,
+}: {
+  candidate: Candidate | null;
+  jobs: { _id: string; title: string; clientName: string }[];
+  submitting: boolean;
+  onClose: () => void;
+  onConfirm: (candidate: Candidate, jobId: string) => void;
+}) {
+  return (
+    <Dialog open={!!candidate} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        {candidate && (
+          <RestoreForm
+            key={candidate._id}
+            candidate={candidate}
+            jobs={jobs}
+            submitting={submitting}
+            onClose={onClose}
+            onConfirm={onConfirm}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RestoreForm({
+  candidate,
+  jobs,
+  submitting,
+  onClose,
+  onConfirm,
+}: {
+  candidate: Candidate;
+  jobs: { _id: string; title: string; clientName: string }[];
+  submitting: boolean;
+  onClose: () => void;
+  onConfirm: (candidate: Candidate, jobId: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return jobs;
+    return jobs.filter(
+      j =>
+        j.title.toLowerCase().includes(q) ||
+        j.clientName.toLowerCase().includes(q)
+    );
+  }, [jobs, search]);
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Restore Candidate</DialogTitle>
+        <DialogDescription>
+          Restoring{' '}
+          <span className="font-medium text-foreground">
+            {candidate.firstName} {candidate.lastName}
+          </span>{' '}
+          clears their permanent ineligibility. Choose the job they are being
+          considered for — they return to <strong>In Review</strong> and must
+          be approved like any new applicant.
+        </DialogDescription>
+      </DialogHeader>
+
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search jobs…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto rounded-md border">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+                No open jobs found
+              </p>
+            ) : (
+              <div className="flex flex-col">
+                {filtered.map(j => (
+                  <button
+                    key={j._id}
+                    type="button"
+                    className={cn(
+                      'flex items-start gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
+                      selectedJobId === j._id && 'bg-muted font-medium'
+                    )}
+                    onClick={() => setSelectedJobId(j._id)}
+                  >
+                    <span
+                      className={cn(
+                        'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
+                        selectedJobId === j._id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-muted-foreground/30'
+                      )}
+                    >
+                      {selectedJobId === j._id && (
+                        <CheckIcon className="size-3" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex flex-col">
+                      <span className="truncate">{j.title}</span>
+                      {j.clientName && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {j.clientName}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {jobs.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              There are no open jobs. Open a job before restoring a candidate.
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!selectedJobId || submitting}
+            onClick={() => {
+              if (selectedJobId) onConfirm(candidate, selectedJobId);
+            }}
+          >
+            {submitting ? 'Restoring…' : 'Restore'}
+          </Button>
+        </DialogFooter>
+      </>
   );
 }
