@@ -25,6 +25,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
+import { useApplicationStore } from '@/store/slices/applications.store';
 import type { Candidate } from '@/store/types';
 import {
   flexRender,
@@ -64,6 +65,7 @@ export function PermanentlyIneligibleTable() {
 
   const jobs = useJobStore(s => s.items);
   const fetchJobs = useJobStore(s => s.fetch);
+  const applications = useApplicationStore(s => s.items);
   const clients = useClientStore(s => s.items);
   const fetchClients = useClientStore(s => s.fetch);
 
@@ -85,6 +87,19 @@ export function PermanentlyIneligibleTable() {
         clientName: clientMap.get(j.clientId) ?? '',
       }));
   }, [jobs, clients]);
+
+  // Jobs the restore target already holds an application for. The
+  // (candidateId, jobId) index is unique regardless of phase, so restoring onto
+  // one of these would block the approval that follows — the dialog disables
+  // them rather than letting the user walk into that error.
+  const blockedJobIdsForRestore = useMemo(() => {
+    if (!restoreTarget) return new Set<string>();
+    return new Set(
+      applications
+        .filter(a => a.candidateId === restoreTarget._id)
+        .map(a => a.jobId)
+    );
+  }, [applications, restoreTarget]);
 
   // Ensure the list is loaded once (no-op when already cached by boot or a
   // prior visit, so navigating here never triggers a network refetch).
@@ -108,16 +123,16 @@ export function PermanentlyIneligibleTable() {
   async function handleRestore(candidate: Candidate, jobId: string) {
     setRestoringId(candidate._id);
     try {
-      await patchJson(`/ats/candidates/${candidate._id}/restore`, { jobId });
+      // Patches the returned candidate into the store. Previously this called
+      // fetch({ status: 'pending' }), which replaced the whole list with
+      // pending-only rows and left the In Pipeline tab permanently empty.
+      await useCandidateStore
+        .getState()
+        .restoreCandidate(candidate._id, { jobId });
       toast.success(
         `${candidate.firstName} ${candidate.lastName} restored — now in review`
       );
       setRestoreTarget(null);
-      await fetchIneligible(true);
-      // Refresh the main candidate list so they appear under In Review.
-      await useCandidateStore
-        .getState()
-        .fetch({ status: 'pending', limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message || 'Failed to restore candidate');
     } finally {
@@ -401,6 +416,7 @@ export function PermanentlyIneligibleTable() {
       <RestoreDialog
         candidate={restoreTarget}
         jobs={openJobs}
+        blockedJobIds={blockedJobIdsForRestore}
         submitting={!!restoringId}
         onClose={() => setRestoreTarget(null)}
         onConfirm={handleRestore}
@@ -458,12 +474,14 @@ export function PermanentlyIneligibleTable() {
 function RestoreDialog({
   candidate,
   jobs,
+  blockedJobIds,
   submitting,
   onClose,
   onConfirm,
 }: {
   candidate: Candidate | null;
   jobs: { _id: string; title: string; clientName: string }[];
+  blockedJobIds: Set<string>;
   submitting: boolean;
   onClose: () => void;
   onConfirm: (candidate: Candidate, jobId: string) => void;
@@ -476,6 +494,7 @@ function RestoreDialog({
             key={candidate._id}
             candidate={candidate}
             jobs={jobs}
+            blockedJobIds={blockedJobIds}
             submitting={submitting}
             onClose={onClose}
             onConfirm={onConfirm}
@@ -489,12 +508,14 @@ function RestoreDialog({
 function RestoreForm({
   candidate,
   jobs,
+  blockedJobIds,
   submitting,
   onClose,
   onConfirm,
 }: {
   candidate: Candidate;
   jobs: { _id: string; title: string; clientName: string }[];
+  blockedJobIds: Set<string>;
   submitting: boolean;
   onClose: () => void;
   onConfirm: (candidate: Candidate, jobId: string) => void;
@@ -544,44 +565,67 @@ function RestoreForm({
             </p>
           ) : (
             <div className="flex flex-col">
-              {filtered.map(j => (
-                <button
-                  key={j._id}
-                  type="button"
-                  className={cn(
-                    'flex items-start gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
-                    selectedJobId === j._id && 'bg-muted font-medium'
-                  )}
-                  onClick={() => setSelectedJobId(j._id)}
-                >
-                  <span
+              {filtered.map(j => {
+                const blocked = blockedJobIds.has(j._id);
+                return (
+                  <button
+                    key={j._id}
+                    type="button"
+                    disabled={blocked}
+                    title={
+                      blocked
+                        ? 'This candidate already has an application for this job'
+                        : undefined
+                    }
                     className={cn(
-                      'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
-                      selectedJobId === j._id
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-muted-foreground/30'
+                      'flex items-start gap-2 px-3 py-2 text-sm text-left transition-colors',
+                      blocked
+                        ? 'cursor-not-allowed opacity-50'
+                        : 'hover:bg-muted',
+                      selectedJobId === j._id && 'bg-muted font-medium'
                     )}
+                    onClick={() => !blocked && setSelectedJobId(j._id)}
                   >
-                    {selectedJobId === j._id && (
-                      <CheckIcon className="size-3" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex flex-col">
-                    <span className="truncate">{j.title}</span>
-                    {j.clientName && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        {j.clientName}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              ))}
+                    <span
+                      className={cn(
+                        'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
+                        selectedJobId === j._id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-muted-foreground/30'
+                      )}
+                    >
+                      {selectedJobId === j._id && (
+                        <CheckIcon className="size-3" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex flex-col">
+                      <span className="truncate">{j.title}</span>
+                      {j.clientName && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {j.clientName}
+                        </span>
+                      )}
+                      {blocked && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          Already applied — not available
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
         {jobs.length === 0 && (
           <p className="text-xs text-muted-foreground">
             There are no open jobs. Open a job before restoring a candidate.
+          </p>
+        )}
+        {jobs.length > 0 && jobs.every(j => blockedJobIds.has(j._id)) && (
+          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            This candidate already has an application for every open job, so none
+            are available for restore.
           </p>
         )}
       </div>

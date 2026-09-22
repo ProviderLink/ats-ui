@@ -66,6 +66,18 @@ interface CandidateActions {
       startStageId?: string;
     }
   ) => Promise<void>;
+  /**
+   * Restore a permanently ineligible candidate to In Review.
+   *
+   * Patches the returned candidate into the store rather than refetching a
+   * filtered list — a `fetch({ status: 'pending' })` would replace `items`
+   * with pending-only rows and the post-boot guard would then block any
+   * recovery, emptying the In Pipeline tab.
+   */
+  restoreCandidate: (
+    id: string,
+    payload: { jobId: string }
+  ) => Promise<void>;
   approve: (
     id: string,
     jobId: string
@@ -437,6 +449,35 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             const idx = s.items.findIndex(x => x._id === id);
             if (idx !== -1) s.items[idx] = fresh;
             if (s.detail[id]) s.detail[id] = fresh;
+            s.mutating = false;
+          });
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
+          throw e;
+        }
+      },
+
+      restoreCandidate: async (id, payload) => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          // The endpoint returns the updated candidate, so patch it in place.
+          // Refetching a filtered list here would wipe the store.
+          const c = await patchJson<Candidate>(
+            `/ats/candidates/${id}/restore`,
+            payload
+          );
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === id);
+            if (idx !== -1) s.items[idx] = c;
+            s.detail[id] = c;
+            // Drop the stale ineligible-list entry.
+            s.ineligibleItems = s.ineligibleItems.filter(x => x._id !== id);
             s.mutating = false;
           });
         } catch (e) {

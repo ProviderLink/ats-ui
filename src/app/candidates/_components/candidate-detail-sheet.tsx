@@ -4422,6 +4422,7 @@ export function CandidateDetailSheet({
         mode={jobDialogMode}
         candidateName={fullName}
         currentJobTitle={pipelineJob?.title ?? appliedJobTitle ?? undefined}
+        currentJobId={activePipelineApp?.jobId}
         jobs={openJobs.map(j => ({
           ...j,
           stages: (jobs.find(x => x._id === j._id)?.pipeline?.stages ?? [])

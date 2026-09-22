@@ -26,6 +26,13 @@ interface ChangeJobDialogProps {
   candidateName?: string;
   /** Job the candidate is currently on, when changing rather than adding. */
   currentJobTitle?: string;
+  /**
+   * Id of the job the candidate currently holds. Used to exclude it from the
+   * picker in `change` mode — matching on title would wrongly hide a different
+   * job that happens to share a title, and would allow selecting the current
+   * job itself when titles differ in whitespace or case.
+   */
+  currentJobId?: string;
   jobs: JobOption[];
   submitting?: boolean;
   /** When set, the dialog performs a move; otherwise it is an add. */
@@ -46,6 +53,7 @@ export function ChangeJobDialog({
   onOpenChange,
   candidateName,
   currentJobTitle,
+  currentJobId,
   jobs,
   submitting = false,
   mode,
@@ -56,9 +64,10 @@ export function ChangeJobDialog({
       <DialogContent className="sm:max-w-lg">
         {open && (
           <ChangeJobForm
-            key={`${mode}:${currentJobTitle ?? ''}`}
+            key={`${mode}:${currentJobId ?? ''}`}
             candidateName={candidateName}
             currentJobTitle={currentJobTitle}
+            currentJobId={currentJobId}
             jobs={jobs}
             submitting={submitting}
             mode={mode}
@@ -74,6 +83,7 @@ export function ChangeJobDialog({
 function ChangeJobForm({
   candidateName,
   currentJobTitle,
+  currentJobId,
   jobs,
   submitting,
   mode,
@@ -82,6 +92,7 @@ function ChangeJobForm({
 }: {
   candidateName?: string;
   currentJobTitle?: string;
+  currentJobId?: string;
   jobs: JobOption[];
   submitting: boolean;
   mode: 'change' | 'add';
@@ -94,16 +105,19 @@ function ChangeJobForm({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    // When changing, the current job is not a valid target.
+    // When changing, the current job is not a valid target — excluded by id so
+    // a different job sharing the same title stays selectable.
     const base =
-      mode === 'change' ? jobs.filter(j => j.title !== currentJobTitle) : jobs;
+      mode === 'change' && currentJobId
+        ? jobs.filter(j => j._id !== currentJobId)
+        : jobs;
     if (!q) return base;
     return base.filter(
       j =>
         j.title.toLowerCase().includes(q) ||
         (j.clientName ?? '').toLowerCase().includes(q)
     );
-  }, [jobs, search, mode, currentJobTitle]);
+  }, [jobs, search, mode, currentJobId]);
 
   const selectedJob = useMemo(
     () => jobs.find(j => j._id === selectedJobId),
