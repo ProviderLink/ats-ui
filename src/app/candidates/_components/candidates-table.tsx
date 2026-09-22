@@ -1419,6 +1419,7 @@ export function CandidatesTable() {
   const isRefreshing = useCandidateStore(s => s.isRefreshing);
   const mutating = useCandidateStore(s => s.mutating);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
+  const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
 
   const allApps = useApplicationStore(s => s.items);
   const moveStageApp = useApplicationStore(s => s.moveStage);
@@ -1451,7 +1452,6 @@ export function CandidatesTable() {
   const [bulkStageOpen, setBulkStageOpen] = useState(false);
   const [bulkStageId, setBulkStageId] = useState('');
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
-  const [bulkRejectReason, setBulkRejectReason] = useState('');
   const [bulkActing, setBulkActing] = useState(false);
 
   // Subscribe to real-time candidate and application updates
@@ -1877,24 +1877,49 @@ export function CandidatesTable() {
     }
   }
 
-  async function handleBulkReject() {
+  /**
+   * Bulk reject.
+   *
+   * Each candidate is rejected through the endpoint matching their state:
+   * In Review candidates have no application yet, so they go through the
+   * candidate-level reject; pipeline candidates go through their application.
+   *
+   * The destination is applied per candidate. In Review candidates always
+   * receive it. Pipeline candidates only receive it when this is their last
+   * live application — otherwise a plain reject removes them from that job and
+   * leaves their other pipelines untouched (spec §4.8).
+   */
+  async function handleBulkReject(payload: RejectPayload) {
     if (selectedCount === 0) return;
     setBulkActing(true);
     const ids = [...selectedIds];
-    const reason = bulkRejectReason.trim() || undefined;
     const results = await runAllWithConcurrency(
       ids.map(id => () => {
         const appId =
           activeTab === 'approved'
             ? stageInfoByCandidateId.get(id)?.applicationId
             : pendingApplicationByCandidateId.get(id);
-        if (!appId) return Promise.reject(new Error('No application found'));
-        return rejectApp(appId, reason ? { reason } : undefined);
+
+        // In Review — no application exists, reject the candidate directly.
+        if (!appId) {
+          return rejectCandidateStore(id, {
+            rejectionReasonId: payload.rejectionReasonId,
+            ...(payload.destination
+              ? { destination: payload.destination }
+              : {}),
+            ...(payload.internalNotes
+              ? { internalNotes: payload.internalNotes }
+              : {}),
+          });
+        }
+
+        // Pipeline — the store ignores the destination when the candidate still
+        // holds another live application, so it is safe to pass through.
+        return rejectApp(appId, payload);
       })
     );
     setBulkActing(false);
     setBulkRejectOpen(false);
-    setBulkRejectReason('');
     clearSelection();
     const ok = results.filter(r => r.status === 'fulfilled').length;
     if (ok === ids.length) {
@@ -2568,41 +2593,14 @@ export function CandidatesTable() {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Reject Dialog */}
-      <Dialog open={bulkRejectOpen} onOpenChange={setBulkRejectOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Reject Candidates</DialogTitle>
-            <DialogDescription>
-              Reject {selectedCount} selected{' '}
-              {selectedCount === 1 ? 'candidate' : 'candidates'}?
-              {activeTab === 'approved'
-                ? ' They will be removed from the pipeline.'
-                : ' Their pending application will be rejected.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Reason (optional)</Label>
-            <Input
-              value={bulkRejectReason}
-              onChange={e => setBulkRejectReason(e.target.value)}
-              placeholder="e.g. Not a fit"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkRejectOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleBulkReject}
-              disabled={bulkActing}
-            >
-              {bulkActing ? 'Rejecting…' : 'Reject'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Bulk Reject — same reason + destination dialog as the single flow */}
+      <RejectDialog
+        open={bulkRejectOpen}
+        onOpenChange={setBulkRejectOpen}
+        candidateName={`${selectedCount} selected ${selectedCount === 1 ? 'candidate' : 'candidates'}`}
+        submitting={bulkActing}
+        onConfirm={handleBulkReject}
+      />
 
       <CandidateDetailSheet
         candidate={selected}

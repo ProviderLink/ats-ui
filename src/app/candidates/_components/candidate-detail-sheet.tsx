@@ -1697,9 +1697,7 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
 
   useEffect(() => {
     setLoading(true);
-    getJson<TransitionEntry[]>(
-      `/shared/activity-logs/candidate/${candidateId}`
-    )
+    getJson<TransitionEntry[]>(`/shared/activity-logs/candidate/${candidateId}`)
       .then(all => {
         const transitions = (all ?? []).filter(entry =>
           TRANSITION_ACTIONS.has(entry.action)
