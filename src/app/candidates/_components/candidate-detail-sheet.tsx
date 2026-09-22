@@ -1667,18 +1667,49 @@ function CandidateCrmButton({
  * `includeRelated=true` adds entries that merely reference the candidate — so
  * the whole journey appears in one place.
  *
- * Actions covered: rejected, disposition, job_changed, eligibility_changed,
- * talent_pool added/removed, and hired.
+ * `disposition` is deliberately absent: it duplicates the application-level
+ * `rejected` entry, which already carries the destination and reason.
+ * Secondary rows that a reject writes as side effects (the talent-pool and
+ * eligibility flips) are collapsed below, so one action reads as one entry.
  */
 const TRANSITION_ACTIONS = new Set([
   'rejected',
-  'disposition',
   'job_changed',
   'eligibility_changed',
   'talent_pool_added',
   'talent_pool_removed',
   'hired',
 ]);
+
+/** Actions a reject performs as a side effect rather than by user choice. */
+const REJECT_SIDE_EFFECTS = new Set([
+  'talent_pool_added',
+  'talent_pool_removed',
+  'eligibility_changed',
+]);
+
+/**
+ * Collapse the rows a single operation writes.
+ *
+ * A final reject writes an application-level `rejected` row plus candidate-level
+ * talent-pool / eligibility rows, all at the same instant. Keep the primary row
+ * and drop the side effects that share its second, so the log is not padded with
+ * one click appearing three times. A genuine standalone talent-pool change
+ * happens at a different time and is therefore preserved.
+ */
+function collapseSideEffects<T extends { action: string; createdAt: string }>(
+  entries: T[]
+): T[] {
+  const primarySeconds = new Set(
+    entries
+      .filter(e => !REJECT_SIDE_EFFECTS.has(e.action))
+      .map(e => Math.floor(new Date(e.createdAt).getTime() / 1000))
+  );
+  return entries.filter(e => {
+    if (!REJECT_SIDE_EFFECTS.has(e.action)) return true;
+    return !primarySeconds.has(Math.floor(new Date(e.createdAt).getTime() / 1000));
+  });
+}
 
 function RejectionHistory({
   candidateId,
@@ -1716,7 +1747,7 @@ function RejectionHistory({
         const transitions = (all ?? []).filter(entry =>
           TRANSITION_ACTIONS.has(entry.action)
         );
-        setItems(transitions);
+        setItems(collapseSideEffects(transitions));
       })
       .catch(() => {
         // silently fail — the activity timeline above shows the full log
@@ -1792,8 +1823,8 @@ function RejectionHistory({
                     : destination === 'permanently_ineligible'
                       ? 'Ineligible'
                       : destination === 'candidate_pool'
-                      ? 'Talent Pool'
-                      : 'Rejected';
+                        ? 'Talent Pool'
+                        : 'Rejected';
 
             const tone =
               label === 'Ineligible'

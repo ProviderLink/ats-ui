@@ -849,7 +849,8 @@ export function buildActivitySentence(
 
   switch (key) {
     // ── Pipeline / application lifecycle ─────────────────────────────
-    case 'stage_changed': {      // Two key generations exist in the data: `{ from, to }` and
+    case 'stage_changed': {
+      // Two key generations exist in the data: `{ from, to }` and
       // `{ fromStageName, toStageName }`. Accept both.
       const from = pick(metadata, 'from', 'fromStage', 'fromStageName');
       const to = pick(
