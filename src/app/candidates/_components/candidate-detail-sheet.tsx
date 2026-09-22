@@ -4302,11 +4302,9 @@ export function CandidateDetailSheet({
                 </span>{' '}
                 from the talent pool.
               </p>
-              <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs">
-                <strong>Warning:</strong> If this candidate has no active job
-                assignments, they will be permanently deleted from the ATS
-                platform, and all associated data will be erased. This action{' '}
-                <em>cannot</em> be undone.
+              <p className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground text-xs">
+                They will no longer appear in saved candidates. Nothing else
+                changes — their profile and history are kept.
               </p>
             </DialogDescription>
           </DialogHeader>
