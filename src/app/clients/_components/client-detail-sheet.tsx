@@ -1154,11 +1154,14 @@ function JobsTab({ clientId }: { clientId: string }) {
   const navigate = useNavigate();
   const jobs = useJobStore(s => s.items);
   const apps = useApplicationStore(s => s.items);
-  const fetchApps = useApplicationStore(s => s.fetch);
+  const fetchAppsMerge = useApplicationStore(s => s.fetchScopedMerge);
   const clientJobs = jobs.filter(j => j.clientId === clientId);
 
   useEffect(() => {
-    void fetchApps({ clientId, limit: 9999 });
+    // Merge this client's applications into the shared list instead of
+    // replacing it, so jobs/app counts stay correct without emptying screens
+    // that read the full dataset.
+    void fetchAppsMerge({ clientId, limit: 9999 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
@@ -1650,7 +1653,7 @@ export function ClientDetailSheet({
   const { provisionClient, revokeCrmAccess } = useUserStore();
   const allUsers = useUserStore(s => s.items);
   const apps = useApplicationStore(s => s.items);
-  const fetchApps = useApplicationStore(s => s.fetch);
+  const fetchAppsMerge = useApplicationStore(s => s.fetchScopedMerge);
   const [provisioning, setProvisioning] = useState(false);
 
   // Determine CRM provision status for this client
@@ -1659,10 +1662,12 @@ export function ClientDetailSheet({
   );
   const hasCrmAccess = !!crmUser;
 
-  // Fetch applications for this client when the sheet opens, so we can check hires
+  // Fetch applications for this client when the sheet opens, so we can check
+  // hires. Merges into the shared list rather than replacing it, so screens
+  // that depend on the full dataset are unaffected.
   useEffect(() => {
-    if (open) void fetchApps({ clientId: client._id, limit: 9999 });
-  }, [open, client._id, fetchApps]);
+    if (open) void fetchAppsMerge({ clientId: client._id, limit: 9999 });
+  }, [open, client._id, fetchAppsMerge]);
 
   // Only show provision button if this client has ≥1 hired candidate
   const hasHiredCandidate = apps.some(

@@ -419,14 +419,24 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           s.error = null;
         });
         try {
-          const c = await postJson<Candidate>(
-            `/ats/candidates/${id}/change-job`,
-            payload
-          );
+          // The endpoint returns a summary ({ candidateId, applicationId,
+          // closedApplicationId, jobId, changed }) rather than the candidate,
+          // so it must NOT be written into items/detail — doing so replaces the
+          // row with an object missing firstName/email/status and crashes the
+          // table. Refetch the candidate instead.
+          await postJson<{
+            candidateId: string;
+            applicationId: string;
+            closedApplicationId: string;
+            jobId: string;
+            changed: boolean;
+          }>(`/ats/candidates/${id}/change-job`, payload);
+
+          const fresh = await getJson<Candidate>(`/ats/candidates/${id}`);
           set(s => {
             const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = c;
-            if (s.detail[id]) s.detail[id] = c;
+            if (idx !== -1) s.items[idx] = fresh;
+            if (s.detail[id]) s.detail[id] = fresh;
             s.mutating = false;
           });
         } catch (e) {

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { Candidate, Job } from '@/store';
+import type { Application, Candidate, Job } from '@/store';
 import { useApplicationStore, useCandidateStore } from '@/store';
 import { CheckIcon, SearchIcon, UserPlusIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -31,25 +31,28 @@ export function AssignCandidateDialog({ job, open, onOpenChange }: Props) {
     assignJob,
     mutating,
   } = useCandidateStore();
-  const { items: applications, fetch: fetchApplications } =
-    useApplicationStore();
+  const { fetchScoped: fetchApplications } = useApplicationStore();
 
+  const [scopedApps, setScopedApps] = useState<Application[]>([]);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       void fetchCandidates();
-      void fetchApplications({ jobId: job._id });
+      // Scoped read — must not replace the shared applications list.
+      fetchApplications({ jobId: job._id })
+        .then(setScopedApps)
+        .catch(() => setScopedApps([]));
     }
   }, [open, job._id]);
 
   const assignedIds = useMemo(
     () =>
       new Set(
-        applications.filter(a => a.jobId === job._id).map(a => a.candidateId)
+        scopedApps.filter(a => a.jobId === job._id).map(a => a.candidateId)
       ),
-    [applications, job._id]
+    [scopedApps, job._id]
   );
 
   const filtered = useMemo(() => {
@@ -67,7 +70,6 @@ export function AssignCandidateDialog({ job, open, onOpenChange }: Props) {
   async function handleAssign() {
     if (!selectedId) return;
     await assignJob(selectedId, job._id);
-    void fetchApplications({ jobId: job._id });
     onOpenChange(false);
     setSelectedId(null);
     setQuery('');

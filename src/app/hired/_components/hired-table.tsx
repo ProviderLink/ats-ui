@@ -52,7 +52,7 @@ import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
-import type { Candidate, Tag } from '@/store/types';
+import type { Application, Candidate, Tag } from '@/store/types';
 import {
   flexRender,
   getCoreRowModel,
@@ -100,7 +100,7 @@ export function HiredTable() {
   const fetchClients = useClientStore(s => s.fetch);
 
   const applications = useApplicationStore(s => s.items);
-  const fetchApps = useApplicationStore(s => s.fetch);
+  const fetchAppsScoped = useApplicationStore(s => s.fetchScoped);
 
   useSocketRoom('candidates');
   useSocketRoom('applications');
@@ -141,6 +141,30 @@ export function HiredTable() {
     if (clients.length === 0) fetchClients({ page: 1, limit: 9999 });
   }, [clients.length, fetchClients]);
 
+  // The Hired list is application-derived, so the shared applications list must
+  // hold the full dataset. Other screens issue filtered fetches; this page
+  // therefore takes its own unfiltered copy so it can never render empty
+  // because of what another page happened to load.
+  const [scopedApps, setScopedApps] = useState<Application[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchAppsScoped({ limit: 9999 })
+      .then(rows => {
+        if (alive) setScopedApps(rows);
+      })
+      .catch(() => {
+        if (alive) setScopedApps([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [fetchAppsScoped]);
+
+  // Prefer the shared list when it looks complete, otherwise fall back to the
+  // page's own fetch. The shared list is the same data, so either works — this
+  // only guards against it being a filtered subset.
+  const apps = scopedApps.length > 0 ? scopedApps : applications;
+
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   // ── Hire records ─────────────────────────────────────────────────
@@ -156,7 +180,7 @@ export function HiredTable() {
         hiredAt: string;
       }[]
     >();
-    for (const a of applications) {
+    for (const a of apps) {
       if (a.phase !== 'hired') continue;
       const job = jobById.get(a.jobId);
       const infos = map.get(a.candidateId) ?? [];
@@ -168,7 +192,7 @@ export function HiredTable() {
       map.set(a.candidateId, infos);
     }
     return map;
-  }, [applications, jobs, clients]);
+  }, [apps, jobs, clients]);
 
   // candidateId -> active pipeline apps + talent pool flag, shown as a
   // compact "other activity" column so a hired candidate's additional jobs
@@ -178,7 +202,7 @@ export function HiredTable() {
       string,
       { inPipeline: number; inTalentPool: boolean }
     >();
-    for (const a of applications) {
+    for (const a of apps) {
       if (a.phase !== 'approved') continue;
       const e = map.get(a.candidateId) ?? {
         inPipeline: 0,
@@ -192,7 +216,7 @@ export function HiredTable() {
       if (e) e.inTalentPool = c.inTalentPool;
     }
     return map;
-  }, [applications, items]);
+  }, [apps, items]);
 
   const openJobs = useMemo(() => {
     const clientMap = new Map(clients.map(c => [c._id, c.companyName]));
@@ -287,7 +311,7 @@ export function HiredTable() {
     if (!assignTarget) return;
     try {
       await assignJob(assignTarget._id, jobId, startStageId);
-      await fetchApps({ limit: 9999 });
+      await fetchAppsScoped({ limit: 9999 }).then(setScopedApps);
       toast.success(
         `${assignTarget.firstName} ${assignTarget.lastName} assigned to job`
       );

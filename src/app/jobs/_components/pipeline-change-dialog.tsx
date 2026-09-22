@@ -43,7 +43,8 @@ export function PipelineChangeDialog({
   loading,
   onConfirm,
 }: Props) {
-  const { fetch: fetchApps, items: applications } = useApplicationStore();
+  const { fetchScoped: fetchApps } = useApplicationStore();
+  const [scopedApps, setScopedApps] = useState<Application[]>([]);
   const [appLoading, setAppLoading] = useState(false);
   const [showRemapper, setShowRemapper] = useState(false);
 
@@ -51,11 +52,16 @@ export function PipelineChangeDialog({
     if (open && job._id) {
       setAppLoading(true);
       setShowRemapper(false);
-      fetchApps({ jobId: job._id, limit: 9999 }).finally(() =>
-        setAppLoading(false)
-      );
+      // Scoped read — this dialog needs one job's applications and must not
+      // replace the shared list other screens depend on.
+      fetchApps({ jobId: job._id, limit: 9999 })
+        .then(setScopedApps)
+        .catch(() => setScopedApps([]))
+        .finally(() => setAppLoading(false));
     }
   }, [open, job._id, fetchApps]);
+
+  const applications = scopedApps;
 
   const oldStages = job.pipeline?.stages ?? [];
   const newStages = newTemplate.stages;

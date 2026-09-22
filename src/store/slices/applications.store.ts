@@ -18,6 +18,24 @@ interface ApplicationState {
 
 interface ApplicationActions {
   fetch: (params?: ApplicationFilters) => Promise<void>;
+  /**
+   * Fetch applications matching a filter WITHOUT touching `items`.
+   *
+   * `items` holds the full post-boot dataset that several screens read
+   * (`/ats/hired`, the In Pipeline tab, the clients table). Transient callers —
+   * dialogs that need one job's or one client's applications — must use this
+   * instead of `fetch`, otherwise they replace the shared list with a subset
+   * and those screens silently render empty.
+   */
+  fetchScoped: (params: ApplicationFilters) => Promise<Application[]>;
+  /**
+   * Fetch matching applications and UNION them into `items` by id.
+   *
+   * Used by sheets that need a scoped slice (one client's applications) while
+   * still showing rows the shared list already holds. Never removes anything,
+   * so it cannot blank out screens that depend on the full dataset.
+   */
+  fetchScopedMerge: (params: ApplicationFilters) => Promise<void>;
   fetchOne: (id: string) => Promise<void>;
   approve: (id: string) => Promise<void>;
   moveStage: (id: string, stageId: string) => Promise<void>;
@@ -125,6 +143,38 @@ export const useApplicationStore = create<
         } catch (e) {
           set(s => {
             s.loading = false;
+            s.isRefreshing = false;
+            s.error = (e as Error).message;
+          });
+        }
+      },
+
+      fetchScoped: async params => {
+        const res = await getJson<
+          Application[] | ({ data: Application[] } & Pagination)
+        >('/ats/applications', {
+          ...params,
+          page: params.page ?? 1,
+          limit: params.limit ?? 9999,
+        } as Record<string, unknown>);
+        return Array.isArray(res) ? res : (res.data ?? []);
+      },
+
+      fetchScopedMerge: async params => {
+        set(s => {
+          s.isRefreshing = true;
+          s.error = null;
+        });
+        try {
+          const rows = await get().fetchScoped(params);
+          set(s => {
+            const byId = new Map(s.items.map(a => [a._id, a]));
+            for (const a of rows) byId.set(a._id, a);
+            s.items = [...byId.values()];
+            s.isRefreshing = false;
+          });
+        } catch (e) {
+          set(s => {
             s.isRefreshing = false;
             s.error = (e as Error).message;
           });

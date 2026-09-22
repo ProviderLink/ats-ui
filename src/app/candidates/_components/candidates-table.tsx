@@ -1548,6 +1548,27 @@ export function CandidatesTable() {
     return map;
   }, [allApps]);
 
+  /**
+   * candidateId → id of ANY live application (pending or approved).
+   *
+   * Used to decide the reject endpoint. Keyed on phase rather than on having a
+   * stage, because an approved application can have a null `currentStage` — and
+   * routing that candidate to the candidate-level endpoint would be rejected
+   * (they still hold a live application), producing a silent bulk failure.
+   */
+  const liveApplicationByCandidateId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of allApps) {
+      if (
+        (a.phase === 'pending' || a.phase === 'approved') &&
+        !map.has(a.candidateId)
+      ) {
+        map.set(a.candidateId, a._id);
+      }
+    }
+    return map;
+  }, [allApps]);
+
   // candidateId → { jobTitle, clientName, hiredAt, hiredBy } for Hired tab.
   const hireInfoByCandidateId = useMemo(() => {
     const jobById = new Map(allJobs.map(j => [j._id, j]));
@@ -1895,12 +1916,17 @@ export function CandidatesTable() {
     const ids = [...selectedIds];
     const results = await runAllWithConcurrency(
       ids.map(id => () => {
+        // Prefer the live application whenever one exists. Falling back to a
+        // stage-derived id would miss approved applications with a null
+        // currentStage and wrongly route them to the candidate endpoint.
         const appId =
-          activeTab === 'approved'
+          liveApplicationByCandidateId.get(id) ??
+          (activeTab === 'approved'
             ? stageInfoByCandidateId.get(id)?.applicationId
-            : pendingApplicationByCandidateId.get(id);
+            : pendingApplicationByCandidateId.get(id));
 
-        // In Review — no application exists, reject the candidate directly.
+        // No application at all — a genuine In Review candidate. Reject at
+        // candidate level, which is what moves them to Talent Pool/Ineligible.
         if (!appId) {
           return rejectCandidateStore(id, {
             rejectionReasonId: payload.rejectionReasonId,
@@ -1913,8 +1939,8 @@ export function CandidatesTable() {
           });
         }
 
-        // Pipeline — the store ignores the destination when the candidate still
-        // holds another live application, so it is safe to pass through.
+        // Pipeline — the backend ignores the destination when the candidate
+        // still holds another live application, so it is safe to pass through.
         return rejectApp(appId, payload);
       })
     );

@@ -685,7 +685,7 @@ function CreateForm({
   const jobs = useJobStore(s => s.items);
   const fetchJobs = useJobStore(s => s.fetch);
   const applications = useApplicationStore(s => s.items);
-  const fetchApplications = useApplicationStore(s => s.fetch);
+  const fetchApplicationsScoped = useApplicationStore(s => s.fetchScoped);
   const users = useUserStore(s => s.items);
   const fetchUsers = useUserStore(s => s.fetch);
   const clients = useClientStore(s => s.items);
@@ -727,26 +727,26 @@ function CreateForm({
   useEffect(() => {
     if (!form.jobId) return;
     setCandidatesLoading(true);
-    fetchApplications({ jobId: form.jobId, limit: 200 })
-      .then(() => {
+    // Scoped read — this sheet must not replace the shared applications list.
+    fetchApplicationsScoped({ jobId: form.jobId, limit: 200 })
+      .then(appItems => {
         // After applications load, backfill any candidates not yet in the store
         const currentCandidates = useCandidateStore.getState().items;
         const currentIds = new Set(currentCandidates.map(c => c._id));
-        const appItems = useApplicationStore.getState().items;
-        const missingIds = appItems
+        const scopedIds = appItems
           .filter(a => a.jobId === form.jobId)
           .map(a => a.candidateId)
           .filter(id => !currentIds.has(id));
-        if (missingIds.length > 0) {
+        if (scopedIds.length > 0) {
           return Promise.allSettled(
-            missingIds.map(id => fetchCandidateOne(id))
+            scopedIds.map(id => fetchCandidateOne(id))
           );
         }
       })
       .finally(() => {
         setCandidatesLoading(false);
       });
-  }, [form.jobId, fetchApplications, fetchCandidateOne]);
+  }, [form.jobId, fetchApplicationsScoped, fetchCandidateOne]);
 
   const openJobs = useMemo(() => jobs.filter(j => j.status === 'open'), [jobs]);
 

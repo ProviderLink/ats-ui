@@ -2309,9 +2309,13 @@ export function CandidateDetailSheet({
   }
 
   /**
-   * Candidate-level reject (In Review). Public-apply candidates have no
-   * application yet, so this goes through the candidate endpoint and routes
-   * them to Talent Pool or Permanently Ineligible.
+   * Reject a candidate who is still In Review.
+   *
+   * Normally they hold no application, so this goes through the
+   * candidate-level endpoint. If they DO hold a live application (possible
+   * after an eligibility flip and restore), the candidate endpoint would
+   * refuse — so route to that application instead, which removes them from
+   * just that job.
    */
   async function handleRejectConfirm(payload: RejectPayload) {
     if (!candidate) {
@@ -2320,7 +2324,16 @@ export function CandidateDetailSheet({
     }
     setActionLoading(true);
     try {
-      await rejectCandidateStore(candidate._id, payload);
+      const liveApp = candidateApplications.find(
+        a => a.phase === 'pending' || a.phase === 'approved'
+      );
+
+      if (liveApp) {
+        await rejectApp(liveApp._id, payload);
+      } else {
+        await rejectCandidateStore(candidate._id, payload);
+      }
+
       logOptimisticActivity(
         'candidate',
         candidate._id,
@@ -2332,9 +2345,12 @@ export function CandidateDetailSheet({
         }
       );
       toast.success(
-        payload.destination === 'permanently_ineligible'
-          ? `${fullName} rejected and marked permanently ineligible`
-          : `${fullName} rejected and moved to Talent Pool`
+        `${fullName} rejected` +
+          (payload.destination === 'permanently_ineligible'
+            ? ' and marked permanently ineligible'
+            : payload.destination === 'candidate_pool'
+              ? ' and moved to Talent Pool'
+              : '')
       );
       setRejectOpen(false);
     } catch (e) {
@@ -2380,19 +2396,23 @@ export function CandidateDetailSheet({
   );
 
   /**
-   * How many OTHER applications the candidate still has open. When this is
-   * non-zero a reject must not ban or pool them — that would silently destroy
-   * the other job's pipeline. The destination options are hidden in that case.
+   * How many OTHER applications the candidate still has open, excluding the
+   * one currently being acted on. When this is non-zero a reject must not ban
+   * or pool them — that would silently destroy the other job's pipeline, so
+   * the destination options are hidden.
+   *
+   * When there is no active pipeline application, the "current" one is the
+   * first live application (the one handleRejectConfirm will act on), so it is
+   * excluded explicitly rather than by comparing against `undefined`.
    */
-  const otherLiveApplicationCount = useMemo(
-    () =>
-      candidateApplications.filter(
-        a =>
-          a._id !== activePipelineApp?._id &&
-          (a.phase === 'pending' || a.phase === 'approved')
-      ).length,
-    [candidateApplications, activePipelineApp]
-  );
+  const otherLiveApplicationCount = useMemo(() => {
+    const live = candidateApplications.filter(
+      a => a.phase === 'pending' || a.phase === 'approved'
+    );
+    const current = activePipelineApp ?? live[0];
+    if (!current) return 0;
+    return live.filter(a => a._id !== current._id).length;
+  }, [candidateApplications, activePipelineApp]);
   const pipelineJob = useMemo(
     () =>
       activePipelineApp
@@ -4170,12 +4190,14 @@ export function CandidateDetailSheet({
       </ConfirmDialog>
 
       {/* Reject (In Review) — structured reason + destination.
-          No application exists yet, so this rejects at candidate level. */}
+          No application normally exists, so this rejects at candidate level;
+          if one does, handleRejectConfirm routes to it instead. */}
       <RejectDialog
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         candidateName={fullName}
         jobTitle={appliedJobTitle ?? undefined}
+        hasOtherLiveApplication={otherLiveApplicationCount > 0}
         submitting={actionLoading}
         onConfirm={handleRejectConfirm}
       />
@@ -4186,6 +4208,7 @@ export function CandidateDetailSheet({
         onOpenChange={setRejectEmailOpen}
         candidateName={fullName}
         jobTitle={appliedJobTitle ?? undefined}
+        hasOtherLiveApplication={otherLiveApplicationCount > 0}
         submitting={actionLoading}
         onConfirm={handleRejectAndEmailConfirm}
       />
