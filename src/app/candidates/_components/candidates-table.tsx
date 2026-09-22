@@ -1,5 +1,5 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
-import { DispositionDialog } from '@/components/disposition-dialog';
+import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -928,7 +928,7 @@ function PipelineActionsMenu({
 
   const [stageOpen, setStageOpen] = useState(false);
   const [hireOpen, setHireOpen] = useState(false);
-  const [disposeOpen, setDisposeOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [appDeleteOpen, setAppDeleteOpen] = useState(false);
@@ -951,6 +951,17 @@ function PipelineActionsMenu({
   const hasHired = allCandidateApps.some(a => a.phase === 'hired');
   const isDeletable =
     !hasActivePipeline && !hasHired && !candidate.inTalentPool;
+
+  /**
+   * Live applications the candidate holds on other jobs. When non-zero the
+   * reject dialog hides the destination options, because banning or pooling
+   * them here would silently destroy that other job's pipeline.
+   */
+  const otherLiveApplicationCount = allCandidateApps.filter(
+    a =>
+      a._id !== application?._id &&
+      (a.phase === 'pending' || a.phase === 'approved')
+  ).length;
 
   // Compose email prefill for this candidate
   function buildComposeMode() {
@@ -1027,6 +1038,27 @@ function PipelineActionsMenu({
           ? `${name} removed from talent pool`
           : `${name} added to talent pool`
       );
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleReject(payload: RejectPayload) {
+    if (!application) return;
+    setActing(true);
+    try {
+      await appStore.reject(application._id, payload);
+      toast.success(
+        `${name} rejected` +
+          (payload.destination === 'permanently_ineligible'
+            ? ' and marked permanently ineligible'
+            : payload.destination === 'candidate_pool'
+              ? ' and moved to Talent Pool'
+              : '')
+      );
+      setRejectOpen(false);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -1132,15 +1164,15 @@ function PipelineActionsMenu({
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={!application}
-            onClick={() => setDisposeOpen(true)}
+            onClick={() => setRejectOpen(true)}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
               <BanIcon className="size-3.5 text-red-600 dark:text-red-400" />
             </span>
             <span className="flex flex-col">
-              <span className="text-sm">Disposition</span>
+              <span className="text-sm">Reject</span>
               <span className="text-[11px] text-muted-foreground">
-                Set disposition &amp; close application
+                Reject &amp; close this application
               </span>
             </span>
           </DropdownMenuItem>
@@ -1309,12 +1341,16 @@ function PipelineActionsMenu({
         </DialogContent>
       </Dialog>
 
-      {/* Dispose Dialog */}
-      <DispositionDialog
-        open={disposeOpen}
-        onOpenChange={setDisposeOpen}
-        applicationId={application?._id ?? ''}
+      {/* Reject Dialog — structured reason + destination */}
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        candidateName={name}
+        jobTitle={job?.title}
         currentStageName={application?.currentStage?.stageName}
+        hasOtherLiveApplication={otherLiveApplicationCount > 0}
+        submitting={acting}
+        onConfirm={handleReject}
       />
 
       {/* Reassign Dialog */}
@@ -1903,7 +1939,8 @@ export function CandidatesTable() {
     }
 
     // Then apply search
-    const q = query.trim().toLowerCase();    if (q) {
+    const q = query.trim().toLowerCase();
+    if (q) {
       result = result.filter(c => {
         const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
         if (fullName.includes(q)) return true;

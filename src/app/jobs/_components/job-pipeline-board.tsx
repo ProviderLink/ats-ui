@@ -1,5 +1,5 @@
 import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
-import { DispositionDialog } from '@/components/disposition-dialog';
+import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { getJson } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import type { Application, Candidate, Job } from '@/store';
@@ -20,6 +20,7 @@ import { BanIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type AppWithCandidate = { application: Application; candidate: Candidate };
 
@@ -102,7 +103,7 @@ function CardContent({
         </div>
       </div>
 
-      {/* Footer: experience, salary, disposition */}
+      {/* Footer: experience, salary, reject */}
       {(yearsExp || salaryUsd || onDelete) && (
         <div className="flex items-center gap-1.5 pt-2 mt-2 border-t">
           <span className="text-[11px] text-muted-foreground truncate flex-1 min-w-0">
@@ -111,8 +112,8 @@ function CardContent({
           {onDelete && (
             <button
               type="button"
-              title="Set disposition"
-              aria-label="Set disposition for this candidate"
+              title="Reject from this job"
+              aria-label="Reject this candidate from the job"
               className="shrink-0 inline-flex items-center justify-center size-7 rounded-md border border-red-200 bg-red-50 text-red-500 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 hover:bg-red-100 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/40 dark:hover:text-red-300 focus-visible:ring-2 focus-visible:ring-ring transition-colors"
               onClick={e => {
                 e.stopPropagation();
@@ -283,6 +284,7 @@ function DroppableColumn({
 export function JobPipelineBoard({ job }: { job: Job }) {
   const navigate = useNavigate();
   const moveStage = useApplicationStore(s => s.moveStage);
+  const rejectApp = useApplicationStore(s => s.reject);
 
   // Direct API fetches to avoid race conditions with other components
   // that share the application/candidate stores.
@@ -301,8 +303,10 @@ export function JobPipelineBoard({ job }: { job: Job }) {
     let alive = true;
 
     Promise.all([
+      // All applications for every job, filtered locally. The board needs the
+      // full set so it can tell whether a candidate still holds another live
+      // application — rejecting them here must not silently affect that job.
       getJson<Application[] | { data: Application[] }>('/ats/applications', {
-        jobId: job._id,
         limit: 9999,
       } as Record<string, unknown>),
       getJson<Candidate[] | { data: Candidate[] }>('/ats/candidates', {
@@ -427,9 +431,56 @@ export function JobPipelineBoard({ job }: { job: Job }) {
     buildStageMap(pairs, firstStageId)
   );
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [disposeTarget, setDisposeTarget] = useState<AppWithCandidate | null>(
+  const [rejectTarget, setRejectTarget] = useState<AppWithCandidate | null>(
     null
   );
+  const [rejecting, setRejecting] = useState(false);
+
+  /**
+   * Live applications the reject target holds on OTHER jobs. When non-zero the
+   * dialog hides the destination options, because banning or pooling them would
+   * silently destroy that other job's pipeline.
+   */
+  const otherLiveApplicationCount = useMemo(() => {
+    if (!rejectTarget) return 0;
+    return applications.filter(
+      a =>
+        a.candidateId === rejectTarget.candidate._id &&
+        a._id !== rejectTarget.application._id &&
+        (a.phase === 'pending' || a.phase === 'approved')
+    ).length;
+  }, [applications, rejectTarget]);
+
+  /**
+   * Reject the card's application. A board card belongs to this job, so the
+   * candidate may still hold other live applications — the dialog hides the
+   * destination options in that case and only removes them from this job.
+   *
+   * The card automatically moves to the Rejected column because that column is
+   * derived from `phase === 'rejected'` on the local applications list, and the
+   * reject store action patches the item in place.
+   */
+  async function handleReject(payload: RejectPayload) {
+    if (!rejectTarget) return;
+    setRejecting(true);
+    try {
+      await rejectApp(rejectTarget.application._id, payload);
+      const name = `${rejectTarget.candidate.firstName} ${rejectTarget.candidate.lastName}`;
+      toast.success(
+        `${name} rejected` +
+          (payload.destination === 'permanently_ineligible'
+            ? ' and marked permanently ineligible'
+            : payload.destination === 'candidate_pool'
+              ? ' and moved to Talent Pool'
+              : '')
+      );
+      setRejectTarget(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRejecting(false);
+    }
+  }
 
   // Re-sync the local stage map when the underlying data changes
   // (server-side stage moves, job switch, approving a new candidate, etc).
@@ -498,7 +549,7 @@ export function JobPipelineBoard({ job }: { job: Job }) {
                 onOpen={c => navigate(`/ats/candidates/${c._id}`)}
                 onDelete={(pair, e) => {
                   e.stopPropagation();
-                  setDisposeTarget(pair);
+                  setRejectTarget(pair);
                 }}
               />
             );
@@ -547,13 +598,21 @@ export function JobPipelineBoard({ job }: { job: Job }) {
         </DragOverlay>
       </DndContext>
 
-      <DispositionDialog
-        open={!!disposeTarget}
+      <RejectDialog
+        open={!!rejectTarget}
         onOpenChange={open => {
-          if (!open) setDisposeTarget(null);
+          if (!open) setRejectTarget(null);
         }}
-        applicationId={disposeTarget?.application._id ?? ''}
-        currentStageName={disposeTarget?.application.currentStage?.stageName}
+        candidateName={
+          rejectTarget
+            ? `${rejectTarget.candidate.firstName} ${rejectTarget.candidate.lastName}`
+            : undefined
+        }
+        jobTitle={job.title}
+        currentStageName={rejectTarget?.application.currentStage?.stageName}
+        hasOtherLiveApplication={otherLiveApplicationCount > 0}
+        submitting={rejecting}
+        onConfirm={handleReject}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { NavLink } from 'react-router-dom';
 const NAV_ITEMS = [
   { label: 'General', href: '/ats/settings/general', icon: Settings2Icon },
   {
-    label: 'Disposition Reasons',
+    label: 'Rejection Reasons',
     href: '/ats/settings/disposition-reasons',
     icon: ListFilterIcon,
   },

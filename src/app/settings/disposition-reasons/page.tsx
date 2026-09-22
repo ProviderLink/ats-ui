@@ -147,10 +147,10 @@ function DispositionReasonSheet({
       };
       if (isEdit) {
         await patchJson(`/ats/disposition-reasons/${reason!._id}`, payload);
-        toast.success('Disposition reason updated');
+        toast.success('Rejection reason updated');
       } else {
         await postJson('/ats/disposition-reasons', payload);
-        toast.success('Disposition reason created');
+        toast.success('Rejection reason created');
       }
       onSaved();
       onClose();
@@ -169,12 +169,12 @@ function DispositionReasonSheet({
       >
         <SheetHeader>
           <SheetTitle>
-            {isEdit ? 'Edit Disposition Reason' : 'New Disposition Reason'}
+            {isEdit ? 'Edit Rejection Reason' : 'New Rejection Reason'}
           </SheetTitle>
           <SheetDescription>
             {isEdit
-              ? 'Update the reason that recruiters can select during candidate disposition.'
-              : 'Add a new reason for candidate disposition.'}
+              ? 'Update the reason that recruiters can select when rejecting a candidate.'
+              : 'Add a new reason for rejecting a candidate.'}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 py-4">
@@ -211,7 +211,7 @@ function DispositionReasonSheet({
             <div>
               <p className="text-sm font-medium">Active</p>
               <p className="text-xs text-muted-foreground">
-                Inactive reasons won't appear in the disposition dialog
+                Inactive reasons won&apos;t appear in the reject dialog
               </p>
             </div>
             <Switch
@@ -340,7 +340,7 @@ export default function DispositionReasonsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ListFilterIcon className="size-4 text-muted-foreground" />
-            Disposition Reasons
+            Rejection Reasons
           </CardTitle>
           <CardDescription>
             Manage reasons recruiters can select when disposing candidates from
@@ -447,7 +447,7 @@ export default function DispositionReasonsPage() {
               ))}
               {reasons.length === 0 && !loading && (
                 <div className="px-6 py-8 text-sm text-muted-foreground text-center">
-                  No disposition reasons configured.{' '}
+                  No rejections reasons configured.{' '}
                   <button
                     className="underline hover:text-foreground"
                     onClick={handleNew}

@@ -1,7 +1,6 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { ActivityTimeline } from '@/components/activity-timeline';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { DispositionDialog } from '@/components/disposition-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { ResumeViewer } from '@/components/resume-viewer';
 import { TagsSelector } from '@/components/tags-selector';
@@ -1658,29 +1657,31 @@ function CandidateCrmButton({
   );
 }
 
-function DispositionHistory({ candidateId }: { candidateId: string }) {
-  interface DispositionEntry {
+function RejectionHistory({ candidateId }: { candidateId: string }) {
+  interface RejectionEntry {
     _id: string;
     action: string;
     createdAt: string;
     performedBy?: string | null;
     metadata?: Record<string, unknown>;
   }
-  const [items, setItems] = useState<DispositionEntry[]>([]);
+  const [items, setItems] = useState<RejectionEntry[]>([]);
   const [loading, setLoading] = useState(false);
   // Resolves the raw `performedBy` ObjectId into a display name/avatar.
   const allUsers = useUserStore(s => s.items);
 
   useEffect(() => {
     setLoading(true);
-    getJson<DispositionEntry[]>(
+    getJson<RejectionEntry[]>(
       `/shared/activity-logs/candidate/${candidateId}`
     )
       .then(all => {
-        const dispositions = (all ?? []).filter(
-          entry => entry.action === 'disposition'
+        // Rejections surface as `disposition` entries (application-level) or
+        // `rejected` entries (candidate-level, when no application exists yet).
+        const rejections = (all ?? []).filter(
+          entry => entry.action === 'disposition' || entry.action === 'rejected'
         );
-        setItems(dispositions);
+        setItems(rejections);
       })
       .catch(() => {
         // silently fail — activity timeline already shows full history
@@ -1706,7 +1707,7 @@ function DispositionHistory({ candidateId }: { candidateId: string }) {
       <Separator />
       <div className="flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Disposition History
+          Rejection History
         </p>
         <div className="flex flex-col gap-2">
           {items.map((entry, i) => {
@@ -1798,7 +1799,6 @@ export function CandidateDetailSheet({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [disposeOpen, setDisposeOpen] = useState(false);
   const [talentPoolConfirmOpen, setTalentPoolConfirmOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -3635,9 +3635,9 @@ export function CandidateDetailSheet({
                 />
               </div>
 
-              {/* Disposition history — filtered from the same ActivityLog,
-                  shown as a compact summary when disposition events exist */}
-              <DispositionHistory candidateId={c._id} />
+      {/* Rejection history — filtered from the same ActivityLog,
+          shown as a compact summary when reject events exist */}
+      <RejectionHistory candidateId={c._id} />
             </div>
           </div>
 
@@ -3724,17 +3724,6 @@ export function CandidateDetailSheet({
                 >
                   <BanIcon className="size-3.5" />
                   Reject
-                </Button>
-                {/* Disposition */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading || !activePipelineApp}
-                  className="h-8 gap-1.5"
-                  onClick={() => setDisposeOpen(true)}
-                >
-                  <XCircleIcon className="size-3.5" />
-                  Disposition
                 </Button>
                 {/* Email */}
                 <Button
@@ -4316,14 +4305,6 @@ export function CandidateDetailSheet({
         hasOtherLiveApplication={otherLiveApplicationCount > 0}
         submitting={pipelineLoading}
         onConfirm={handleRejectPipeline}
-      />
-
-      {/* Pipeline: Disposition */}
-      <DispositionDialog
-        open={disposeOpen}
-        onOpenChange={setDisposeOpen}
-        applicationId={activePipelineApp?._id ?? ''}
-        currentStageName={activePipelineApp?.currentStage?.stageName}
       />
 
       {/* Pipeline: Reassign to Job */}

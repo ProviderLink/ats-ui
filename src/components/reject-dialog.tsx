@@ -145,7 +145,10 @@ function RejectForm({
     return map;
   }, [activeReasons]);
 
-  const canSubmit = selectedReasonId.length > 0 && (!notesRequired || internalNotes.trim().length > 0) && !submitting;
+  const canSubmit =
+    selectedReasonId.length > 0 &&
+    (!notesRequired || internalNotes.trim().length > 0) &&
+    !submitting;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -175,116 +178,110 @@ function RejectForm({
         </DialogDescription>
       </DialogHeader>
 
-        <div className="space-y-5 py-2">
-            {/* Destination — hidden while another live application remains */}
-            {showDestination ? (
-              <div className="space-y-2">
-                <Label>Final Destination</Label>
-                <Select
-                  value={effectiveDestination}
-                  onValueChange={v =>
-                    setDestination(
-                      v as 'candidate_pool' | 'permanently_ineligible'
-                    )
-                  }
-                  disabled={destinationLocked}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="candidate_pool">
-                      Talent Pool — keep for future roles
-                    </SelectItem>
-                    <SelectItem value="permanently_ineligible">
-                      Permanently Ineligible — never hire again
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {destinationLocked && (
-                  <p className="text-xs text-muted-foreground">
-                    Destination locked to Permanently Ineligible due to the
-                    selected reason.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                {candidateName ?? 'This candidate'} is still in the pipeline for
-                another job. This reject removes them from{' '}
-                <span className="font-medium">
-                  {jobTitle ?? 'this job'}
-                </span>{' '}
-                only — Talent Pool and Ineligible are not offered because
-                either would affect their other applications.
+      <div className="space-y-5 py-2">
+        {/* Destination — hidden while another live application remains */}
+        {showDestination ? (
+          <div className="space-y-2">
+            <Label>Final Destination</Label>
+            <Select
+              value={effectiveDestination}
+              onValueChange={v =>
+                setDestination(v as 'candidate_pool' | 'permanently_ineligible')
+              }
+              disabled={destinationLocked}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="candidate_pool">
+                  Talent Pool — keep for future roles
+                </SelectItem>
+                <SelectItem value="permanently_ineligible">
+                  Permanently Ineligible — never hire again
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {destinationLocked && (
+              <p className="text-xs text-muted-foreground">
+                Destination locked to Permanently Ineligible due to the selected
+                reason.
               </p>
             )}
+          </div>
+        ) : (
+          <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {candidateName ?? 'This candidate'} is still in the pipeline for
+            another job. This reject removes them from{' '}
+            <span className="font-medium">{jobTitle ?? 'this job'}</span> only —
+            Talent Pool and Ineligible are not offered because either would
+            affect their other applications.
+          </p>
+        )}
 
-            {/* Structured reason */}
-            <div className="space-y-2">
-              <Label>Rejection Reason *</Label>
-              <Select
-                value={selectedReasonId}
-                onValueChange={setSelectedReasonId}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a reason..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-75">
-                  {Array.from(grouped.entries()).map(([category, reasons]) => (
-                    <SelectGroup key={category}>
-                      <SelectLabel>{CATEGORY_LABELS[category]}</SelectLabel>
-                      {reasons.map(r => (
-                        <SelectItem key={r._id} value={r._id}>
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
+        {/* Structured reason */}
+        <div className="space-y-2">
+          <Label>Rejection Reason *</Label>
+          <Select
+            value={selectedReasonId}
+            onValueChange={setSelectedReasonId}
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a reason..." />
+            </SelectTrigger>
+            <SelectContent className="max-h-75">
+              {Array.from(grouped.entries()).map(([category, reasons]) => (
+                <SelectGroup key={category}>
+                  <SelectLabel>{CATEGORY_LABELS[category]}</SelectLabel>
+                  {reasons.map(r => (
+                    <SelectItem key={r._id} value={r._id}>
+                      {r.label}
+                    </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-              {!loading && activeReasons.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No rejection reasons configured. Add them under Settings →
-                  Rejection Reasons.
-                </p>
-              )}
-            </div>
-
-            {/* Internal notes */}
-            <div className="space-y-2">
-              <Label>
-                Internal Notes
-                {notesRequired && (
-                  <span className="text-destructive ml-1">*</span>
-                )}
-              </Label>
-              <Textarea
-                value={internalNotes}
-                onChange={e => setInternalNotes(e.target.value)}
-                placeholder={
-                  notesRequired
-                    ? 'Required for this reason'
-                    : 'Optional notes about this rejection'
-                }
-                rows={3}
-              />
-            </div>
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          {!loading && activeReasons.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No rejection reasons configured. Add them under Settings →
+              Rejection Reasons.
+            </p>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleSubmit}
-            disabled={submitting || !canSubmit}
-          >
-            {submitting ? 'Rejecting…' : 'Reject'}
-          </Button>
-        </DialogFooter>
+        {/* Internal notes */}
+        <div className="space-y-2">
+          <Label>
+            Internal Notes
+            {notesRequired && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          <Textarea
+            value={internalNotes}
+            onChange={e => setInternalNotes(e.target.value)}
+            placeholder={
+              notesRequired
+                ? 'Required for this reason'
+                : 'Optional notes about this rejection'
+            }
+            rows={3}
+          />
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={handleSubmit}
+          disabled={submitting || !canSubmit}
+        >
+          {submitting ? 'Rejecting…' : 'Reject'}
+        </Button>
+      </DialogFooter>
     </>
   );
 }
