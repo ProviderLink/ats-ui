@@ -74,10 +74,7 @@ interface CandidateActions {
    * with pending-only rows and the post-boot guard would then block any
    * recovery, emptying the In Pipeline tab.
    */
-  restoreCandidate: (
-    id: string,
-    payload: { jobId: string }
-  ) => Promise<void>;
+  restoreCandidate: (id: string, payload: { jobId: string }) => Promise<void>;
   approve: (
     id: string,
     jobId: string

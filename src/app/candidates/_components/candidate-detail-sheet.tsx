@@ -1661,30 +1661,40 @@ function CandidateCrmButton({
 /**
  * Candidate transition history.
  *
- * Rejection and job-change events live on the application, while talent pool
- * and eligibility changes live on the candidate. This panel merges both so a
- * recruiter can see the whole journey in one place: which job a candidate was
- * rejected from, where they were sent, and who did it.
+ * Rejections and job changes are logged against the application (with the
+ * candidate as `relatedType`/`relatedId`), while talent pool and eligibility
+ * changes are logged against the candidate. This panel asks the API for both —
+ * `includeRelated=true` adds entries that merely reference the candidate — so
+ * the whole journey appears in one place.
  *
- * Actions covered: rejected, disposition, eligibility_changed, talent_pool
- * added/removed, hired, and job moves.
+ * Actions covered: rejected, disposition, job_changed, eligibility_changed,
+ * talent_pool added/removed, and hired.
  */
 const TRANSITION_ACTIONS = new Set([
   'rejected',
   'disposition',
+  'job_changed',
   'eligibility_changed',
   'talent_pool_added',
   'talent_pool_removed',
   'hired',
 ]);
 
-function RejectionHistory({ candidateId }: { candidateId: string }) {
+function RejectionHistory({
+  candidateId,
+  refreshKey,
+}: {
+  candidateId: string;
+  /** Changes after an in-sheet action so the list re-fetches. */
+  refreshKey?: string;
+}) {
   interface TransitionEntry {
     _id: string;
     action: string;
     createdAt: string;
     performedBy?: string | null;
     relatedId?: string | null;
+    resourceType?: string | null;
     metadata?: Record<string, unknown>;
   }
   const [items, setItems] = useState<TransitionEntry[]>([]);
@@ -1697,7 +1707,11 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
 
   useEffect(() => {
     setLoading(true);
-    getJson<TransitionEntry[]>(`/shared/activity-logs/candidate/${candidateId}`)
+    // includeRelated pulls in application-scoped rows that point at this
+    // candidate, which is where rejections and hires are recorded.
+    getJson<TransitionEntry[]>(
+      `/shared/activity-logs/candidate/${candidateId}?includeRelated=true&limit=100`
+    )
       .then(all => {
         const transitions = (all ?? []).filter(entry =>
           TRANSITION_ACTIONS.has(entry.action)
@@ -1708,7 +1722,7 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
         // silently fail — the activity timeline above shows the full log
       })
       .finally(() => setLoading(false));
-  }, [candidateId]);
+  }, [candidateId, refreshKey]);
 
   const performerName = useCallback(
     (performedBy: string | null | undefined) => {
@@ -1760,6 +1774,8 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
             const isTalentPool =
               entry.action === 'talent_pool_added' ||
               entry.action === 'talent_pool_removed';
+            // A move closes the old application, but it is not a rejection.
+            const isJobChange = entry.action === 'job_changed';
 
             const label = isEligibility
               ? m.to === 'permanently_ineligible'
@@ -1769,11 +1785,13 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
                 ? entry.action === 'talent_pool_added'
                   ? 'Talent Pool'
                   : 'Left Talent Pool'
-                : entry.action === 'hired'
-                  ? 'Hired'
-                  : destination === 'permanently_ineligible'
-                    ? 'Ineligible'
-                    : destination === 'candidate_pool'
+                : isJobChange
+                  ? 'Job Changed'
+                  : entry.action === 'hired'
+                    ? 'Hired'
+                    : destination === 'permanently_ineligible'
+                      ? 'Ineligible'
+                      : destination === 'candidate_pool'
                       ? 'Talent Pool'
                       : 'Rejected';
 
@@ -1784,7 +1802,9 @@ function RejectionHistory({ candidateId }: { candidateId: string }) {
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                   : label === 'Restored'
                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
+                    : label === 'Job Changed'
+                      ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                      : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
 
             return (
               <div
@@ -3745,7 +3765,7 @@ export function CandidateDetailSheet({
 
               {/* Rejection history — filtered from the same ActivityLog,
           shown as a compact summary when reject events exist */}
-              <RejectionHistory candidateId={c._id} />
+              <RejectionHistory candidateId={c._id} refreshKey={c.updatedAt} />
             </div>
           </div>
 

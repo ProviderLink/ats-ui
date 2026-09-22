@@ -22,10 +22,10 @@ import {
 } from '@/components/ui/tooltip';
 import { deleteJson, patchJson } from '@/lib/api-client';
 import { cn, formatDate } from '@/lib/utils';
+import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
-import { useApplicationStore } from '@/store/slices/applications.store';
 import type { Candidate } from '@/store/types';
 import {
   flexRender,
@@ -624,8 +624,8 @@ function RestoreForm({
         )}
         {jobs.length > 0 && jobs.every(j => blockedJobIds.has(j._id)) && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            This candidate already has an application for every open job, so none
-            are available for restore.
+            This candidate already has an application for every open job, so
+            none are available for restore.
           </p>
         )}
       </div>

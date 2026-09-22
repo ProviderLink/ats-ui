@@ -475,6 +475,7 @@ const ICON_BY_ACTION: Record<string, ActivityIconName> = {
   notes_updated: 'notes',
   status_changed: 'swap',
   stage_changed: 'arrow-right',
+  job_changed: 'branch',
   pipeline_changed: 'branch',
   eligibility_changed: 'alert',
   legal_hold_toggled: 'lock',
@@ -848,8 +849,7 @@ export function buildActivitySentence(
 
   switch (key) {
     // ── Pipeline / application lifecycle ─────────────────────────────
-    case 'stage_changed': {
-      // Two key generations exist in the data: `{ from, to }` and
+    case 'stage_changed': {      // Two key generations exist in the data: `{ from, to }` and
       // `{ fromStageName, toStageName }`. Accept both.
       const from = pick(metadata, 'from', 'fromStage', 'fromStageName');
       const to = pick(
@@ -920,6 +920,23 @@ export function buildActivitySentence(
       ].filter(Boolean);
 
       return finish(target, parts.length > 0 ? parts.join(' \u00b7 ') : null);
+    }
+
+    case 'job_changed': {
+      // A move, not a rejection — the recruiter needs to see where the
+      // candidate went without it reading as a rejection.
+      const movedTo = pick(metadata, 'movedToJobTitle');
+      const lastStage = pick(metadata, 'lastStage');
+
+      const parts = [
+        movedTo ? `Now on: ${movedTo}` : null,
+        lastStage ? `Left at: ${lastStage}` : null,
+      ].filter(Boolean);
+
+      return finish(
+        'moved the candidate to another job',
+        parts.length > 0 ? parts.join(' \u00b7 ') : null
+      );
     }
 
     case 'hired':
