@@ -110,8 +110,22 @@ export const useClientStore = create<ClientState & ClientActions>()(
       ...initialState,
 
       fetch: async params => {
-        // No-op after boot — all data is loaded client-side via limit:9999.
-        if (useBootStore.getState().isBooted && get().items.length > 0) return;
+        // No-op after boot for an UNFILTERED refresh only. An explicit scoping
+        // filter (e.g. `{ status }`) must still reach the server; returning
+        // early made such a call silently resolve to the full list. Mirrors
+        // `hasExplicitFilter` in `candidates.store.ts`.
+        const hasExplicitFilter =
+          params &&
+          Object.keys(params).some(k => {
+            if (k === 'page' || k === 'limit') return false;
+            return (params as Record<string, unknown>)[k] !== undefined;
+          });
+        if (
+          useBootStore.getState().isBooted &&
+          get().items.length > 0 &&
+          !hasExplicitFilter
+        )
+          return;
 
         // Params are authoritative — don't inherit stale status/search.
         const base = get().filters;
