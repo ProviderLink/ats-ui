@@ -1648,8 +1648,41 @@ export function ClientDetailSheet({
   onEdit,
   onDelete,
 }: Props) {
+  // The null check deliberately sits OUTSIDE the hooks. `client` is derived from
+  // the live store array by the caller, so it can become null while the sheet is
+  // already mounted — e.g. another user deletes the client and the
+  // `client:deleted` socket event patches it out of `items`. Returning null from
+  // a component that had already mounted its hooks crashed React with
+  // "Rendered fewer hooks than expected", so the hooks live in a child that is
+  // only ever rendered with a real client.
   if (!client) return null;
 
+  return (
+    <ClientDetailSheetContent
+      client={client}
+      open={open}
+      onOpenChange={onOpenChange}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />
+  );
+}
+
+interface ContentProps {
+  client: Client;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onEdit?: (client: Client) => void;
+  onDelete?: (client: Client) => void;
+}
+
+function ClientDetailSheetContent({
+  client,
+  open,
+  onOpenChange,
+  onEdit,
+  onDelete,
+}: ContentProps) {
   const { provisionClient, revokeCrmAccess } = useUserStore();
   const allUsers = useUserStore(s => s.items);
   const apps = useApplicationStore(s => s.items);
