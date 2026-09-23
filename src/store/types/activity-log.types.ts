@@ -48,14 +48,20 @@ export interface ActivityLogFilters {
   limit?: number;
 }
 
-/** Response envelope for the activity-logs endpoints. The API may return a
- * bare array or `{ data, pagination }`; we normalise both in the store. */
+/**
+ * Response envelope for the activity-logs endpoints. The API may return a bare
+ * array or a `{ data, ...pagination }` object.
+ *
+ * The pagination fields are FLAT, not nested under a `pagination` key. The
+ * backend sends them as `meta`, and `api-client` merges `meta` onto the response
+ * for array payloads — so `res.pagination` would always be `undefined`. This
+ * previously declared a nested `pagination` object, which silently misled any
+ * caller that read it.
+ */
 export interface ActivityLogListResponse {
   data?: ActivityLog[];
-  pagination?: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
 }

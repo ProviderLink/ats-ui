@@ -7,7 +7,6 @@ import type {
   ActivityLog,
   ActivityLogListResponse,
   ActivityResourceType,
-  Pagination,
 } from '../types';
 
 /** Compound key (resourceType|resourceId) so per-entity feeds cache independently. */
@@ -46,16 +45,21 @@ const initialState: ActivityLogState = {
   error: null,
 };
 
-/** Normalise the API response into a plain array + pagination pair. */
-function normalise(res: ActivityLog[] | ActivityLogListResponse): {
-  logs: ActivityLog[];
-  pagination: Pagination | null;
-} {
-  if (Array.isArray(res)) return { logs: res, pagination: null };
-  return {
-    logs: res.data ?? [],
-    pagination: res.pagination ?? null,
-  };
+/**
+ * Normalise the API response into a plain array of logs.
+ *
+ * The endpoint can answer with either a bare array or `{ data, ...pagination }`.
+ * The pagination fields are read FLAT off the response (see
+ * `ActivityLogListResponse`); they were previously read from a nested
+ * `res.pagination`, which the wire format never supplies, so that value was
+ * always `undefined`.
+ *
+ * Only the array is returned: nothing consumes the counts, and the feed is
+ * cached whole per entity, so there is no page state to track.
+ */
+function normaliseLogs(res: ActivityLog[] | ActivityLogListResponse): ActivityLog[] {
+  if (Array.isArray(res)) return res;
+  return res.data ?? [];
 }
 
 export const useActivityLogStore = create<
@@ -90,7 +94,7 @@ export const useActivityLogStore = create<
             `/shared/activity-logs/${resourceType}/${resourceId}`,
             { page: opts?.page ?? 1, limit: opts?.limit ?? 50 }
           );
-          const { logs } = normalise(res);
+          const logs = normaliseLogs(res);
           set(s => {
             s.feeds[key] = logs;
             s.loading = false;
