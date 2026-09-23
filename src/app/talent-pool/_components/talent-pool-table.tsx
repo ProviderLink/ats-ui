@@ -853,7 +853,14 @@ export function TalentPoolTable() {
         minSize: 110,
       },
     ],
-    []
+    // `mutating` is read by the action buttons below and MUST be a dependency:
+    // with an empty array the columns were built once and the buttons stayed
+    // frozen at their mount value, so they never disabled during a mutation and
+    // a second click could fire a duplicate request. The `open*` helpers are
+    // intentionally not listed — they are plain functions recreated each render,
+    // so including them would rebuild these columns on every render for no
+    // benefit (see the note above the memo).
+    [mutating]
   );
 
   const table = useReactTable({
