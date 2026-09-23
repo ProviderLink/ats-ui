@@ -57,7 +57,9 @@ const initialState: ActivityLogState = {
  * Only the array is returned: nothing consumes the counts, and the feed is
  * cached whole per entity, so there is no page state to track.
  */
-function normaliseLogs(res: ActivityLog[] | ActivityLogListResponse): ActivityLog[] {
+function normaliseLogs(
+  res: ActivityLog[] | ActivityLogListResponse
+): ActivityLog[] {
   if (Array.isArray(res)) return res;
   return res.data ?? [];
 }
