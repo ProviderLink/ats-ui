@@ -1,5 +1,5 @@
-import * as React from 'react';
 import type { ReactNode } from 'react';
+import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 
