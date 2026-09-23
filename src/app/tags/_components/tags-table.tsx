@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useSearchWithPageRestore } from '@/hooks/use-search-with-page-restore';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { cn } from '@/lib/utils';
 import { useTagStore, useUserStore } from '@/store';
@@ -281,48 +282,31 @@ export function TagsTable() {
     useTagStore();
   const { items: users, fetch: fetchUsers } = useUserStore();
 
-  const [pagination, setPagination] = useState(() => {
-    const VALID_SIZES = [10, 15, 20, 30];
-    const rawIndex = parseInt(
-      sessionStorage.getItem('tags-page-index') ?? '',
-      10
-    );
-    const rawSize = parseInt(localStorage.getItem('tags-page-size') ?? '', 10);
-    const pageIndex = Number.isFinite(rawIndex) && rawIndex >= 0 ? rawIndex : 0;
-    const pageSize = VALID_SIZES.includes(rawSize) ? rawSize : 15;
-    return { pageIndex, pageSize };
+  // Pagination state is shared with the other list screens. The `positive`
+  // validation and the narrower `validSizes` reproduce this table's existing
+  // behaviour: 50 is not in the list but the dropdown offers it, and it was
+  // accepted, so it still is.
+  const {
+    pageIndex,
+    pageSize,
+    setPageIndex,
+    handlePaginationChange,
+  } = useTablePagination({
+    storageKey: 'tags',
+    defaultSize: 15,
+    validSizes: [10, 15, 20, 30],
+    sizeValidation: 'positive',
   });
+  const pagination = { pageIndex, pageSize };
 
   useEffect(() => {
     if (error) toast.error('Failed to load tags');
   }, [error]);
 
-  function handlePaginationChange(
-    updater:
-      | { pageIndex: number; pageSize: number }
-      | ((prev: { pageIndex: number; pageSize: number }) => {
-          pageIndex: number;
-          pageSize: number;
-        })
-  ) {
-    setPagination(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const safeIndex =
-        Number.isFinite(next.pageIndex) && next.pageIndex >= 0
-          ? next.pageIndex
-          : 0;
-      const safeSize = next.pageSize > 0 ? next.pageSize : 15;
-      sessionStorage.setItem('tags-page-index', String(safeIndex));
-      localStorage.setItem('tags-page-size', String(safeSize));
-      return { pageIndex: safeIndex, pageSize: safeSize };
-    });
-  }
-
   const { search, handleSearchChange: onSearchChange } =
     useSearchWithPageRestore({
-      pageIndex: pagination.pageIndex,
-      onPageChange: idx =>
-        handlePaginationChange(p => ({ ...p, pageIndex: idx })),
+      pageIndex,
+      onPageChange: idx => setPageIndex(idx),
     });
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'createdAt', desc: true },
@@ -396,16 +380,13 @@ export function TagsTable() {
   // so this never fires spuriously on page navigation or search restore
   useEffect(() => {
     if (filtered.length === 0) return;
-    const pageCount = Math.ceil(filtered.length / pagination.pageSize);
-    setPagination(prev => {
-      if (prev.pageIndex < pageCount) return prev; // no change, no re-render
-      const safeIndex = pageCount - 1;
-      sessionStorage.setItem('tags-page-index', String(safeIndex));
-      return { ...prev, pageIndex: safeIndex };
-    });
-    // pageIndex intentionally excluded — read via functional updater above
+    const pageCount = Math.ceil(filtered.length / pageSize);
+    if (pageIndex < pageCount) return; // no change, no re-render
+    setPageIndex(pageCount - 1);
+    // pageIndex intentionally excluded — the guard above reads it, but
+    // re-running on it would fight the clamp this effect exists to apply
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered.length, pagination.pageSize]);
+  }, [filtered.length, pageSize]);
 
   const table = useReactTable({
     data: filtered,
