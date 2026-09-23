@@ -558,13 +558,18 @@ export function JobPipelineBoard({ job }: { job: Job }) {
           {rejectedPairs.length > 0 && (
             <div className="flex flex-col w-62.5 shrink-0 h-full">
               <div
-                className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-lg border"
+                className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-lg border border-destructive/20 bg-destructive/5"
                 style={{
+                  // NOTE: `--destructive` is a COMPLETE colour (an oklch() value),
+                  // not an HSL/`r g b` triplet, so it must never be wrapped in
+                  // `hsl(var(--destructive))` — that is unparseable and the
+                  // browser silently drops the declaration. The left accent keeps
+                  // an inline override because it needs to beat the
+                  // `border-destructive/20` class; inline styles win over classes,
+                  // so there is no utility-ordering ambiguity here.
                   borderLeftWidth: 3,
-                  borderLeftColor: 'hsl(var(--destructive))',
-                  backgroundColor: 'hsl(var(--destructive) / 0.05)',
-                  borderColor: 'hsl(var(--destructive) / 0.2)',
                   borderLeftStyle: 'solid',
+                  borderLeftColor: 'var(--destructive)',
                 }}
               >
                 <span className="text-xs font-semibold tracking-wide truncate text-destructive/70">
