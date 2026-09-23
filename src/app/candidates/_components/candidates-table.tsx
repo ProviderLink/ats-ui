@@ -51,6 +51,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { zonedWallClockToUtc } from '@/lib/timezones';
 import { cn, formatDate, sortableTime, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
@@ -1493,21 +1494,11 @@ export function CandidatesTable() {
   useSocketRoom('candidates');
   useSocketRoom('applications');
 
-  const VALID_SIZES = [10, 15, 20, 30, 50];
-  const [pageIndex, setPageIndex] = useState(() => {
-    const raw = parseInt(
-      sessionStorage.getItem('candidates-page-index') ?? '',
-      10
-    );
-    return Number.isFinite(raw) && raw >= 0 ? raw : 0;
-  });
-  const [pageSize, setPageSize] = useState(() => {
-    const raw = parseInt(
-      localStorage.getItem('candidates-page-size') ?? '',
-      10
-    );
-    return VALID_SIZES.includes(raw) ? raw : 20;
-  });
+  // Shared pagination state (see use-table-pagination). Behaviour is identical
+  // to the per-table implementation it replaces: 20-row default, same size list,
+  // `sessionStorage` index and `localStorage` size.
+  const { pageIndex, pageSize, handlePaginationChange, resetPage } =
+    useTablePagination({ storageKey: 'candidates', defaultSize: 20 });
 
   // Debounced search ref
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -1614,8 +1605,7 @@ export function CandidatesTable() {
 
   function handleTabChange(tab: TabValue) {
     setActiveTab(tab);
-    setPageIndex(0);
-    sessionStorage.setItem('candidates-page-index', '0');
+    resetPage();
     setSorting([{ id: 'createdAt', desc: true }]);
     const defaultSort: CandidateSortOption = 'newest';
     setSortBy(defaultSort);
@@ -1625,8 +1615,7 @@ export function CandidatesTable() {
   function handleSortChange(opt: CandidateSortOption) {
     setSortBy(opt);
     localStorage.setItem('candidates-sort-by', opt);
-    setPageIndex(0);
-    sessionStorage.setItem('candidates-page-index', '0');
+    resetPage();
   }
 
   function handleSearchChange(q: string) {
@@ -1634,8 +1623,7 @@ export function CandidatesTable() {
     setInputValue(q);
     // Debounce the actual search query to avoid hammering the server
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    setPageIndex(0);
-    sessionStorage.setItem('candidates-page-index', '0');
+    resetPage();
     searchTimer.current = setTimeout(() => {
       setQuery(q);
     }, 300);
@@ -1645,29 +1633,6 @@ export function CandidatesTable() {
     setInputValue('');
     setQuery('');
     if (searchTimer.current) clearTimeout(searchTimer.current);
-  }
-
-  function handlePaginationChange(
-    updater:
-      | { pageIndex: number; pageSize: number }
-      | ((prev: { pageIndex: number; pageSize: number }) => {
-          pageIndex: number;
-          pageSize: number;
-        })
-  ) {
-    const next =
-      typeof updater === 'function'
-        ? updater({ pageIndex, pageSize })
-        : updater;
-    const safeIndex =
-      Number.isFinite(next.pageIndex) && next.pageIndex >= 0
-        ? next.pageIndex
-        : 0;
-    const safeSize = VALID_SIZES.includes(next.pageSize) ? next.pageSize : 20;
-    setPageIndex(safeIndex);
-    setPageSize(safeSize);
-    sessionStorage.setItem('candidates-page-index', String(safeIndex));
-    localStorage.setItem('candidates-page-size', String(safeSize));
   }
 
   function openDetail(candidate: Candidate) {

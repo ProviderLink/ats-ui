@@ -12,8 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useSearchWithPageRestore } from '@/hooks/use-search-with-page-restore';
-import { useTablePagination } from '@/hooks/use-table-pagination';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn } from '@/lib/utils';
 import { useTagStore, useUserStore } from '@/store';
 import type { Tag } from '@/store/types';
@@ -286,17 +286,13 @@ export function TagsTable() {
   // validation and the narrower `validSizes` reproduce this table's existing
   // behaviour: 50 is not in the list but the dropdown offers it, and it was
   // accepted, so it still is.
-  const {
-    pageIndex,
-    pageSize,
-    setPageIndex,
-    handlePaginationChange,
-  } = useTablePagination({
-    storageKey: 'tags',
-    defaultSize: 15,
-    validSizes: [10, 15, 20, 30],
-    sizeValidation: 'positive',
-  });
+  const { pageIndex, pageSize, setPageIndex, handlePaginationChange } =
+    useTablePagination({
+      storageKey: 'tags',
+      defaultSize: 15,
+      validSizes: [10, 15, 20, 30],
+      sizeValidation: 'positive',
+    });
   const pagination = { pageIndex, pageSize };
 
   useEffect(() => {

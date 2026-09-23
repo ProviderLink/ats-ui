@@ -46,6 +46,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { getTagId } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
@@ -505,21 +506,8 @@ export function TalentPoolTable() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTarget, setComposeTarget] = useState<Candidate | null>(null);
 
-  const VALID_PAGE_SIZES = [10, 15, 20, 30, 50];
-  const [pageIndex, setPageIndex] = useState(() => {
-    const raw = parseInt(
-      sessionStorage.getItem('talent-pool-page-index') ?? '',
-      10
-    );
-    return Number.isFinite(raw) && raw >= 0 ? raw : 0;
-  });
-  const [pageSize, setPageSize] = useState(() => {
-    const raw = parseInt(
-      localStorage.getItem('talent-pool-page-size') ?? '',
-      10
-    );
-    return VALID_PAGE_SIZES.includes(raw) ? raw : 20;
-  });
+  const { pageIndex, pageSize, handlePaginationChange, resetPage } =
+    useTablePagination({ storageKey: 'talent-pool', defaultSize: 20 });
 
   // Fetch tags & jobs once on mount (no-op after boot — data already loaded)
   useEffect(() => {
@@ -594,18 +582,12 @@ export function TalentPoolTable() {
 
   const totalRows = data.length;
 
-  function persistPagination(pIndex: number, pSize: number) {
-    sessionStorage.setItem('talent-pool-page-index', String(pIndex));
-    localStorage.setItem('talent-pool-page-size', String(pSize));
-  }
-
   function handleSearchChange(q: string) {
     // Update input immediately for responsive typing
     setInputValue(q);
     // Debounce the actual search query to avoid re-filtering on every keystroke
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    setPageIndex(0);
-    sessionStorage.setItem('talent-pool-page-index', '0');
+    resetPage();
     searchTimer.current = setTimeout(() => {
       setQuery(q);
     }, 300);
@@ -619,32 +601,7 @@ export function TalentPoolTable() {
 
   function handleTagsChange(tags: string[]) {
     setTagFilter(tags);
-    setPageIndex(0);
-    sessionStorage.setItem('talent-pool-page-index', '0');
-  }
-
-  function handlePaginationChange(
-    updater:
-      | { pageIndex: number; pageSize: number }
-      | ((prev: { pageIndex: number; pageSize: number }) => {
-          pageIndex: number;
-          pageSize: number;
-        })
-  ) {
-    const next =
-      typeof updater === 'function'
-        ? updater({ pageIndex, pageSize })
-        : updater;
-    const safeIndex =
-      Number.isFinite(next.pageIndex) && next.pageIndex >= 0
-        ? next.pageIndex
-        : 0;
-    const safeSize = VALID_PAGE_SIZES.includes(next.pageSize)
-      ? next.pageSize
-      : 20;
-    setPageIndex(safeIndex);
-    setPageSize(safeSize);
-    persistPagination(safeIndex, safeSize);
+    resetPage();
   }
 
   async function handleRemoveFromPool() {

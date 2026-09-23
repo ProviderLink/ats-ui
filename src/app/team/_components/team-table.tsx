@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn, formatDate } from '@/lib/utils';
 import { useUserStore } from '@/store/slices/users.store';
 import { UserRole as UserRoleEnum } from '@/store/types/enums';
@@ -369,38 +370,18 @@ export function TeamTable({ members, loading }: Props) {
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
-  const [pagination, setPagination] = useState(() => {
-    const VALID_SIZES = [10, 15, 20, 30, 50];
-    const rawIndex = parseInt(
-      sessionStorage.getItem('team-page-index') ?? '',
-      10
-    );
-    const rawSize = parseInt(localStorage.getItem('team-page-size') ?? '', 10);
-    const pageIndex = Number.isFinite(rawIndex) && rawIndex >= 0 ? rawIndex : 0;
-    const pageSize = VALID_SIZES.includes(rawSize) ? rawSize : 15;
-    return { pageIndex, pageSize };
+  // `positive` reproduces this table's existing `> 0` rule on change, which
+  // accepts 50 from the dropdown even though it is not in `validSizes`.
+  const {
+    pageIndex,
+    pageSize,
+    handlePaginationChange,
+  } = useTablePagination({
+    storageKey: 'team',
+    defaultSize: 15,
+    sizeValidation: 'positive',
   });
-
-  function handlePaginationChange(
-    updater:
-      | { pageIndex: number; pageSize: number }
-      | ((prev: { pageIndex: number; pageSize: number }) => {
-          pageIndex: number;
-          pageSize: number;
-        })
-  ) {
-    setPagination(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const safeIndex =
-        Number.isFinite(next.pageIndex) && next.pageIndex >= 0
-          ? next.pageIndex
-          : 0;
-      const safeSize = next.pageSize > 0 ? next.pageSize : 15;
-      sessionStorage.setItem('team-page-index', String(safeIndex));
-      localStorage.setItem('team-page-size', String(safeSize));
-      return { pageIndex: safeIndex, pageSize: safeSize };
-    });
-  }
+  const pagination = { pageIndex, pageSize };
 
   function openEdit(member: User) {
     setEditMember(member);

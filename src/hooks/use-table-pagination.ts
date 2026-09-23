@@ -107,9 +107,7 @@ export function useTablePagination({
 
   const isValidSize = useCallback(
     (size: number) =>
-      sizeValidation === 'positive'
-        ? size > 0
-        : validSizes.includes(size),
+      sizeValidation === 'positive' ? size > 0 : validSizes.includes(size),
     [sizeValidation, validSizes]
   );
 

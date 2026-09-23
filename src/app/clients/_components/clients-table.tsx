@@ -35,6 +35,7 @@ import {
 import { usePermission } from '@/hooks/use-permission';
 import { useSearchWithPageRestore } from '@/hooks/use-search-with-page-restore';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn } from '@/lib/utils';
 import { useApplicationStore, useClientStore, useJobStore } from '@/store';
 import { useUserStore } from '@/store/slices/users.store';
@@ -423,33 +424,14 @@ export function ClientsTable() {
 
   const data = items;
 
-  // Persisted pagination (page index in sessionStorage, page size in localStorage)
-  const VALID_PAGE_SIZES = [10, 15, 20, 30, 50];
-  const [pageIndex, setPageIndex] = useState(() => {
-    const raw = parseInt(
-      sessionStorage.getItem('clients-page-index') ?? '',
-      10
-    );
-    return Number.isFinite(raw) && raw >= 0 ? raw : 0;
-  });
-  const [pageSize, setPageSize] = useState(() => {
-    const raw = parseInt(localStorage.getItem('clients-page-size') ?? '', 10);
-    return VALID_PAGE_SIZES.includes(raw) ? raw : 10;
-  });
-
-  function handlePaginationIndex(idx: number) {
-    const safe = Number.isFinite(idx) && idx >= 0 ? idx : 0;
-    sessionStorage.setItem('clients-page-index', String(safe));
-    setPageIndex(safe);
-  }
-
-  function handlePaginationSize(size: number) {
-    const safe = VALID_PAGE_SIZES.includes(size) ? size : 10;
-    localStorage.setItem('clients-page-size', String(safe));
-    sessionStorage.setItem('clients-page-index', '0');
-    setPageSize(safe);
-    setPageIndex(0);
-  }
+  // Shared pagination state. `setPageIndex` / `setPageSize` are stable
+  // (useCallback) so they are safe to use as effect and memo dependencies.
+  const {
+    pageIndex,
+    pageSize,
+    setPageIndex: handlePaginationIndex,
+    setPageSize: handlePaginationSize,
+  } = useTablePagination({ storageKey: 'clients', defaultSize: 10 });
 
   const [query, setQuery] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>(
@@ -500,7 +482,7 @@ export function ClientsTable() {
         // No server call — search is fully client-side
       }, 300);
     },
-    [onSearchChange, setFilters]
+    [onSearchChange, setFilters, handlePaginationIndex]
   );
 
   const handleStatusFilterChange = useCallback(
@@ -510,7 +492,7 @@ export function ClientsTable() {
       setFilters({ status });
       handlePaginationIndex(0);
     },
-    [setFilters]
+    [setFilters, handlePaginationIndex]
   );
 
   const selectedClient = selectedClientId
@@ -824,12 +806,12 @@ export function ClientsTable() {
 
   const handlePageChange = useCallback(
     (index: number) => handlePaginationIndex(index),
-    []
+    [handlePaginationIndex]
   );
 
   const handlePageSizeChange = useCallback(
     (size: number) => handlePaginationSize(size),
-    []
+    [handlePaginationSize]
   );
 
   return (

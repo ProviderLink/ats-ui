@@ -46,6 +46,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn, formatDate } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -119,15 +120,8 @@ export function HiredTable() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTarget, setComposeTarget] = useState<Candidate | null>(null);
 
-  const VALID_PAGE_SIZES = [10, 15, 20, 30, 50];
-  const [pageIndex, setPageIndex] = useState(() => {
-    const raw = parseInt(sessionStorage.getItem('hired-page-index') ?? '', 10);
-    return Number.isFinite(raw) && raw >= 0 ? raw : 0;
-  });
-  const [pageSize, setPageSize] = useState(() => {
-    const raw = parseInt(localStorage.getItem('hired-page-size') ?? '', 10);
-    return VALID_PAGE_SIZES.includes(raw) ? raw : 20;
-  });
+  const { pageIndex, pageSize, handlePaginationChange, resetPage } =
+    useTablePagination({ storageKey: 'hired', defaultSize: 20 });
 
   useEffect(() => {
     if (allTags.length === 0) fetchTags();
@@ -264,16 +258,10 @@ export function HiredTable() {
 
   const totalRows = data.length;
 
-  function persistPagination(pIndex: number, pSize: number) {
-    sessionStorage.setItem('hired-page-index', String(pIndex));
-    localStorage.setItem('hired-page-size', String(pSize));
-  }
-
   function handleSearchChange(q: string) {
     setInputValue(q);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    setPageIndex(0);
-    sessionStorage.setItem('hired-page-index', '0');
+    resetPage();
     searchTimer.current = setTimeout(() => setQuery(q), 300);
   }
 
@@ -281,30 +269,6 @@ export function HiredTable() {
     setInputValue('');
     setQuery('');
     if (searchTimer.current) clearTimeout(searchTimer.current);
-  }
-
-  function handlePaginationChange(
-    updater:
-      | { pageIndex: number; pageSize: number }
-      | ((prev: { pageIndex: number; pageSize: number }) => {
-          pageIndex: number;
-          pageSize: number;
-        })
-  ) {
-    const next =
-      typeof updater === 'function'
-        ? updater({ pageIndex, pageSize })
-        : updater;
-    const safeIndex =
-      Number.isFinite(next.pageIndex) && next.pageIndex >= 0
-        ? next.pageIndex
-        : 0;
-    const safeSize = VALID_PAGE_SIZES.includes(next.pageSize)
-      ? next.pageSize
-      : 20;
-    setPageIndex(safeIndex);
-    setPageSize(safeSize);
-    persistPagination(safeIndex, safeSize);
   }
 
   async function handleAssignToJob(jobId: string, startStageId?: string) {
@@ -670,7 +634,7 @@ export function HiredTable() {
             selected={tagFilter}
             onChange={ids => {
               setTagFilter(ids);
-              setPageIndex(0);
+              resetPage();
             }}
           />
         </div>
