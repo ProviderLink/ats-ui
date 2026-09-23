@@ -171,6 +171,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       reset: () => {
         setAuthToken(null);
+        // Also clear the api-client's refresh gate. `_refreshFailed` latches to
+        // true after one failed token refresh and makes EVERY subsequent request
+        // throw "Session expired. Please log in again." without hitting the
+        // server. Previously only `login()` cleared it, so any session that was
+        // torn down (and not immediately re-established through `login()`) left
+        // the gate slammed shut. Clearing it here guarantees that whenever we
+        // tear a session down we do so from a clean state.
+        resetRefreshState();
         set(s => {
           Object.assign(s, initialState);
           s.isInitialized = true;
