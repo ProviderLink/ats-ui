@@ -168,53 +168,21 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             s.loading = false;
             s.isRefreshing = false;
           });
-          // The list endpoint may return lightweight objects without
-          // parsedData / aiValidation / aiScore. Fetch full detail for any
-          // items that are missing those fields so the table columns populate.
-          // Also enrich rows where parsedData exists but has empty experience
-          // and skills — the list may ship a hollow stub that the detail
-          // endpoint fills with real parsed data.
-          const needsEnrich = data.filter(c => {
-            if (!c.parsedData) return true;
-            const p = c.parsedData;
-            const hasEmptyRole = !p.experience || p.experience.length === 0;
-            const hasEmptySkills = !p.skills || p.skills.length === 0;
-            const missingValidation = !c.aiValidation;
-            return (hasEmptyRole && hasEmptySkills) || missingValidation;
-          });
-          if (needsEnrich.length > 0) {
-            const results = await Promise.allSettled(
-              needsEnrich.map(c =>
-                getJson<Candidate>(`/ats/candidates/${c._id}`)
-              )
-            );
-            const enriched = new Map<string, Candidate>();
-            results.forEach((r, i) => {
-              if (r.status === 'fulfilled' && r.value) {
-                enriched.set(needsEnrich[i]._id, r.value);
-              }
-            });
-            if (enriched.size > 0) {
-              set(s => {
-                s.items = s.items.map(item => {
-                  const e = enriched.get(item._id);
-                  if (!e) return item;
-                  // Per-field merge: preserve heavy fields the list already
-                  // supplied when the detail response omits them, so the
-                  // Job Applied / Current Role / Skills columns never blank
-                  // out after enrichment completes.
-                  return {
-                    ...item,
-                    ...e,
-                    parsedData: e.parsedData ?? item.parsedData,
-                    aiScore: e.aiScore ?? item.aiScore,
-                    aiValidation: e.aiValidation ?? item.aiValidation,
-                    appliedJobId: e.appliedJobId ?? item.appliedJobId,
-                  } as Candidate;
-                });
-              });
-            }
-          }
+          // NOTE: this used to fetch `/ats/candidates/:id` for every row whose
+          // `aiValidation` was absent or whose `parsedData` looked empty, on the
+          // assumption the list endpoint returned "hollow" records.
+          //
+          // It does not. `getAllCandidates` applies no field projection — it is
+          // `Candidate.find(query)` mapped through the same `toSafeObject()` that
+          // `getCandidateById` uses, and the detail route only additionally strips
+          // `resumeRawText`. Both payloads are identical, so an enrichment
+          // request could never add a field the list had not already supplied.
+          //
+          // The cost was real: at boot the list is fetched with `limit: 9999`, so
+          // a row permanently lacking AI data (a file type that is never parsed,
+          // a failed parse) re-requested itself on EVERY load, unbounded and
+          // uncancellable. A candidate's AI state now arrives via the
+          // `candidate:updated` socket event the backend emits on scoring.
         } catch (e) {
           set(s => {
             s.loading = false;
