@@ -54,14 +54,48 @@ async function parseError(res: Response): Promise<string> {
   return baseMsg;
 }
 
-/** Exchange the httpOnly refresh cookie for a new access token. */
-async function silentRefresh(): Promise<void> {
+/**
+ * Distinguishes a server decision from a transport problem.
+ *
+ * "Definitive" means the refresh endpoint answered and REJECTED us — so the
+ * refresh cookie is genuinely gone and the session cannot be recovered. A 5xx or
+ * a thrown fetch (offline, DNS, a redeploy mid-flight) is NOT definitive: the
+ * session may still be valid, so we must not sign the user out.
+ */
+export class RefreshFailedError extends Error {
+  readonly definitive: boolean;
+  /** The 401 from the endpoint that triggered the refresh attempt. */
+  readonly original401?: Response;
+  constructor(definitive: boolean, original401?: Response) {
+    super('Refresh failed');
+    this.name = 'RefreshFailedError';
+    this.definitive = definitive;
+    this.original401 = original401;
+  }
+}
+
+/**
+ * Exchange the httpOnly refresh cookie for a new access token.
+ *
+ * `original401` is the response that triggered this attempt; it is carried so
+ * the caller can report the real server error rather than a generic
+ * "Refresh failed".
+ */
+async function silentRefresh(original401?: Response): Promise<void> {
   const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Refresh failed');
+  if (!res.ok) {
+    // 401/403 = the server actively rejected the refresh cookie → the session is
+    // over. Anything else (5xx, 429, …) is transient and must NOT end the
+    // session, otherwise a backend restart logs every user out.
+    throw new RefreshFailedError(
+      res.status === 401 || res.status === 403,
+      original401
+    );
+  }
   const body = (await res.json()) as {
     success?: boolean;
     data?: { accessToken?: string };
@@ -69,7 +103,7 @@ async function silentRefresh(): Promise<void> {
   };
   // Support both envelope-wrapped and flat response shapes
   const token = body.data?.accessToken ?? body.accessToken;
-  if (!token) throw new Error('Refresh response missing access token');
+  if (!token) throw new RefreshFailedError(false, original401);
   setAuthToken(token);
 }
 
@@ -91,8 +125,19 @@ async function withRefresh<T>(
   if (_refreshPromise && !silent) {
     try {
       await _refreshPromise;
-    } catch {
-      throw new Error('Session expired. Please log in again.');
+    } catch (err) {
+      // Only claim the session expired if it actually did. A transient refresh
+      // failure must not tell the user to log in again — the session is intact.
+      // (`_refreshFailed` may already have been re-opened by the logout that the
+      // first caller triggered, so the error itself is checked as well.)
+      const sessionEnded =
+        _refreshFailed || (err instanceof RefreshFailedError && err.definitive);
+      throw new Error(
+        sessionEnded
+          ? 'Session expired. Please log in again.'
+          : (err as Error).message,
+        { cause: err }
+      );
     }
   }
 
@@ -101,18 +146,35 @@ async function withRefresh<T>(
   if (res.status === 401 && !silent && !_refreshFailed) {
     // Deduplicate: if a refresh is already in flight, wait for it
     if (!_refreshPromise) {
-      _refreshPromise = silentRefresh().finally(() => {
+      _refreshPromise = silentRefresh(res).finally(() => {
         _refreshPromise = null;
       });
     }
     try {
       await _refreshPromise;
-    } catch {
-      if (!_refreshFailed) {
+    } catch (err) {
+      // Only end the session when the server DEFINITIVELY rejected the refresh
+      // cookie. On a transient failure we leave the session intact and surface
+      // the original request's error so the caller can retry later.
+      const definitive = err instanceof RefreshFailedError && err.definitive;
+      if (definitive && !_refreshFailed) {
         _refreshFailed = true;
+        // Clear the stale token FIRST: the onUnauthorized handler only tears the
+        // session down when there is no token, and until now the old access token
+        // was still in place — so the handler could never fire and an expired
+        // session was never ended. Clearing it here also stops the app from
+        // sending a token we know is dead.
+        setAuthToken(null);
         _onUnauthorized?.();
       }
-      throw new Error(await parseError(res));
+      // Report the real server error where we have it, not a generic message.
+      const asRefreshError = err instanceof RefreshFailedError;
+      throw new Error(
+        asRefreshError && err.original401
+          ? await parseError(err.original401)
+          : (err as Error).message,
+        { cause: err }
+      );
     }
     // Retry original request with the new token
     res = await factory();
