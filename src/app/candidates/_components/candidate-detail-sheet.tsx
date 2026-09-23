@@ -1703,11 +1703,18 @@ export function CandidateDetailSheet({
     }
   }, [open, emailTemplates.length, fetchEmailTemplates]);
 
-  // Interviews & users for pipeline detail view
+  // Interviews & users for pipeline detail view.
+  //
+  // Two sources on purpose: `interviews` is the shared store list the calendar
+  // owns, while `interviewsByApplication` is an application-scoped slice kept in
+  // its own map. Reading the shared list here would be wrong (it holds every
+  // job's interviews) and writing to it — which this sheet used to do — reduced
+  // the calendar to a single candidate's interviews.
   const interviews = useInterviewStore(s => s.items);
+  const interviewsByApplication = useInterviewStore(s => s.byApplication);
   const fetchInterviews = useInterviewStore(s => s.fetch);
-  const fetchInterviewsByApplication = useInterviewStore(
-    s => s.fetchByApplication
+  const fetchScopedInterviewsByApplication = useInterviewStore(
+    s => s.fetchScopedByApplication
   );
   // Interview Scorecards (new feature) — gated to approved candidates
   // in the JSX below; fetch is candidate-scoped and lazy.
@@ -2288,10 +2295,27 @@ export function CandidateDetailSheet({
     [jobs, activePipelineApp]
   );
 
+  /**
+   * Interviews belonging to the currently active application.
+   *
+   * Prefers the application-scoped slice, which only `fetchScoped…` populates.
+   * Falls back to filtering the shared list for anything it has not loaded
+   * (e.g. a socket update that arrived for an application never opened here) so
+   * the section is never emptier than before.
+   */
+  const activeApplicationInterviews = useMemo(() => {
+    if (!activePipelineApp) return [];
+    const scoped = interviewsByApplication[activePipelineApp._id];
+    if (scoped) return scoped;
+    return interviews.filter(iv => iv.applicationId === activePipelineApp._id);
+  }, [interviewsByApplication, interviews, activePipelineApp]);
+
   useEffect(() => {
     if (open && candidate) {
       if (activePipelineApp) {
-        fetchInterviewsByApplication(activePipelineApp._id, { limit: 50 });
+        fetchScopedInterviewsByApplication(activePipelineApp._id, {
+          limit: 50,
+        });
       } else {
         fetchInterviews({ candidateId: candidate._id, limit: 50 });
       }
@@ -2301,7 +2325,7 @@ export function CandidateDetailSheet({
     candidate,
     activePipelineApp,
     fetchInterviews,
-    fetchInterviewsByApplication,
+    fetchScopedInterviewsByApplication,
   ]);
 
   // Interview Scorecards fetch — mirrors the interviews fetch effect
@@ -2534,7 +2558,7 @@ export function CandidateDetailSheet({
           address: data.address || null,
         },
       });
-      fetchInterviewsByApplication(activePipelineApp._id, { limit: 50 });
+      fetchScopedInterviewsByApplication(activePipelineApp._id, { limit: 50 });
       const typeLabel =
         INTERVIEW_MEETING_TYPE_LABELS[data.interviewType] ?? data.interviewType;
       const jobTitle =
@@ -3100,10 +3124,11 @@ export function CandidateDetailSheet({
 
                   {/* Interviews */}
                   {(() => {
+                    // An approved candidate always has an active application
+                    // here; the candidate-wide filter is a fallback for the
+                    // brief window before one is resolved.
                     const candidateInterviews = activePipelineApp
-                      ? interviews.filter(
-                          iv => iv.applicationId === activePipelineApp._id
-                        )
+                      ? activeApplicationInterviews
                       : interviews.filter(iv => iv.candidateId === c._id);
                     return (
                       <div className="flex flex-col gap-3">
@@ -3269,7 +3294,7 @@ export function CandidateDetailSheet({
                                           activePipelineApp?._id
                                         );
                                         if (activePipelineApp) {
-                                          fetchInterviewsByApplication(
+                                          fetchScopedInterviewsByApplication(
                                             activePipelineApp._id,
                                             { limit: 50 }
                                           );
@@ -3304,7 +3329,7 @@ export function CandidateDetailSheet({
                                           activePipelineApp?._id
                                         );
                                         if (activePipelineApp) {
-                                          fetchInterviewsByApplication(
+                                          fetchScopedInterviewsByApplication(
                                             activePipelineApp._id,
                                             { limit: 50 }
                                           );
@@ -4207,7 +4232,9 @@ export function CandidateDetailSheet({
             activePipelineApp?._id
           );
           if (activePipelineApp) {
-            fetchInterviewsByApplication(activePipelineApp._id, { limit: 50 });
+            fetchScopedInterviewsByApplication(activePipelineApp._id, {
+              limit: 50,
+            });
           } else {
             fetchInterviews({ candidateId: c._id, limit: 50 });
           }

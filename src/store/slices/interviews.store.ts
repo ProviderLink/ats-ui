@@ -18,6 +18,14 @@ import { useBootStore } from './boot.store';
 interface InterviewState {
   items: Interview[];
   detail: Record<string, Interview>;
+  /**
+   * Interviews scoped to one application, keyed by application id.
+   *
+   * Kept SEPARATE from `items` so a scoped read can never shrink the shared
+   * list. `items` is the calendar's dataset; `byApplication[appId]` is what a
+   * candidate detail sheet renders. See `fetchScopedByApplication`.
+   */
+  byApplication: Record<string, Interview[]>;
   loading: boolean;
   isRefreshing: boolean;
   mutating: boolean;
@@ -34,6 +42,15 @@ interface InterviewActions {
     applicationId: string,
     params?: InterviewFilters
   ) => Promise<void>;
+  /**
+   * Read-only fetch for a scoped view: stores into `byApplication` only and
+   * never touches `items`. Preferred over `fetchByApplication` for screens
+   * that exist to show one application's interviews.
+   */
+  fetchScopedByApplication: (
+    applicationId: string,
+    params?: InterviewFilters
+  ) => Promise<Interview[]>;
   create: (data: CreateInterviewDto) => Promise<Interview>;
   createForApplication: (
     applicationId: string,
@@ -64,6 +81,7 @@ interface InterviewActions {
 const initialState: InterviewState = {
   items: [],
   detail: {},
+  byApplication: {},
   loading: false,
   isRefreshing: false,
   mutating: false,
@@ -152,6 +170,19 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
         }
       },
 
+      /**
+       * Fetch interviews for one application and UNION them into `items` by id.
+       *
+       * Additive on purpose. This used to assign `s.items = res.data`, which
+       * REPLACED the shared array with one application's interviews. Opening any
+       * candidate detail sheet calls this, so the calendar — which reads
+       * `items` — then rendered that single candidate's interviews as the whole
+       * workspace. The calendar could not repair it either: its fetch carries
+       * no scoping filter, and after boot such a fetch is a deliberate no-op.
+       *
+       * Never removes anything, mirroring `fetchScopedMerge` in
+       * `applications.store.ts`, so a scoped read cannot blank a broad one.
+       */
       fetchByApplication: async (applicationId, params) => {
         set(s => {
           s.loading = true;
@@ -163,13 +194,10 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
             (params ?? {}) as Record<string, unknown>
           );
           set(s => {
-            s.items = res.data;
-            s.pagination = {
-              total: res.total,
-              page: res.page,
-              limit: res.limit,
-              totalPages: res.totalPages,
-            };
+            const byId = new Map(s.items.map(i => [i._id, i]));
+            for (const interview of res.data)
+              byId.set(interview._id, interview);
+            s.items = [...byId.values()];
             s.loading = false;
           });
         } catch (e) {
@@ -177,6 +205,32 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
             s.loading = false;
             s.error = (e as Error).message;
           });
+        }
+      },
+
+      /**
+       * Fetch one application's interviews WITHOUT touching `items`.
+       *
+       * The scoped screen gets its own slice; the calendar keeps the shared
+       * list it needs. Returns the rows so the caller can hold them directly.
+       * Errors are surfaced but do not throw, matching the other fetchers —
+       * the caller keeps whatever it already had.
+       */
+      fetchScopedByApplication: async (applicationId, params) => {
+        try {
+          const res = await getJson<{ data: Interview[] } & Pagination>(
+            `/ats/applications/${applicationId}/interviews`,
+            (params ?? {}) as Record<string, unknown>
+          );
+          set(s => {
+            s.byApplication[applicationId] = res.data;
+          });
+          return res.data;
+        } catch (e) {
+          set(s => {
+            s.error = (e as Error).message;
+          });
+          return [];
         }
       },
 
