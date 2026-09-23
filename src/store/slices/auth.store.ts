@@ -134,10 +134,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // Reset the boot state so next login triggers a fresh data load.
           // Dynamic import avoids a circular dependency with boot-data.ts.
           import('@/lib/boot-data').then(m => m.resetBoot()).catch(() => {});
-          // Clear the persisted dashboard store so the next user never sees
-          // the previous user's cached dashboard data.
-          import('@/store/slices/dashboard.store')
-            .then(m => m.useDashboardStore.getState().reset())
+          // Drop every other session-scoped store and its persisted cache, so
+          // the next user on this browser never sees this user's clients, team
+          // members, or candidate records. Dynamic import for the same reason as
+          // above — a static one would close the auth → session-reset → users →
+          // auth cycle.
+          import('@/lib/session-reset')
+            .then(m => m.resetSessionScopedStores())
             .catch(() => {});
         }
       },
@@ -183,6 +186,15 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           Object.assign(s, initialState);
           s.isInitialized = true;
         });
+        // This is the single teardown path, so every session-scoped store must
+        // be cleared here too — including the 401 path wired up in
+        // `onUnauthorized`, not just an explicit logout. Otherwise a browser
+        // that simply hit an expired session keeps the previous user's cached
+        // data on disk. Dynamic import to avoid the auth → session-reset →
+        // users → auth import cycle.
+        import('@/lib/session-reset')
+          .then(m => m.resetSessionScopedStores())
+          .catch(() => {});
       },
     })),
     {
