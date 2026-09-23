@@ -489,9 +489,14 @@ export function ClientsTable() {
       setQuery(q);
       clearTimeout(searchDebounce.current);
       searchDebounce.current = setTimeout(() => {
+        // `onSearchChange` owns the page transition: it jumps to page 0 when a
+        // search starts and RESTORES the previous page when the search is
+        // cleared. Forcing page 0 here as well overwrote that restore, so
+        // clearing the search always dropped the user back to page 1 instead of
+        // where they were.
         onSearchChange(q);
         setFilters({ search: q || undefined });
-        handlePaginationIndex(0);
+        if (q) handlePaginationIndex(0);
         // No server call — search is fully client-side
       }, 300);
     },
