@@ -45,7 +45,7 @@ export async function bootAllData(): Promise<void> {
     if (failed.length) {
       console.warn(
         '[Boot] Partial failures:',
-        failed.map(x => String((x as any).reason))
+        failed.map(x => String(x.reason))
       );
     }
 

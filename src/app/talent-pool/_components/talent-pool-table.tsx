@@ -46,6 +46,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { getTagId } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -582,8 +583,8 @@ export function TalentPoolTable() {
     if (tagFilter.length > 0) {
       result = result.filter(c =>
         c.tags?.some(t => {
-          const tagId = typeof t === 'string' ? t : (t as any)?._id;
-          return tagId && tagFilter.includes(tagId);
+          const tagId = getTagId(t);
+          return !!tagId && tagFilter.includes(tagId);
         })
       );
     }

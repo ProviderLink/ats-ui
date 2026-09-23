@@ -1,4 +1,5 @@
 import * as React from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 
@@ -72,11 +73,17 @@ export function DashHiringTrend() {
   const tickFormatter = (value: string) =>
     new Date(value).toLocaleDateString('en-US', { month: 'short' });
 
-  const labelFormatter = (value: string) =>
-    new Date(value).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
-    });
+  // Recharts types the tooltip `label` as a ReactNode (so it includes
+  // undefined), while we only ever feed it the date string from the data.
+  // Widening the parameter and guarding keeps the types honest without an
+  // `any` cast, which previously hid this mismatch.
+  const labelFormatter = (value: ReactNode) =>
+    typeof value === 'string'
+      ? new Date(value).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        })
+      : '';
 
   return (
     <Card className="h-full flex flex-col rounded-md shadow-none border border-border/50 bg-card py-0">
@@ -133,7 +140,7 @@ export function DashHiringTrend() {
                   <ChartTooltipContent
                     className="w-40"
                     nameKey="hires"
-                    labelFormatter={labelFormatter as any}
+                    labelFormatter={labelFormatter}
                   />
                 }
               />

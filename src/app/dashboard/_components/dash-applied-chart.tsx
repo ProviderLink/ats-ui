@@ -1,4 +1,5 @@
 import * as React from 'react';
+import type { ReactNode } from 'react';
 import { CartesianGrid, Line, LineChart, XAxis } from 'recharts';
 
 import {
@@ -112,7 +113,12 @@ export function DashAppliedChart() {
     return d.toLocaleDateString('en-US', { month: 'short' });
   };
 
-  const labelFormatter = (value: string) => {
+  // Recharts types the tooltip `label` as a ReactNode (so it includes
+  // undefined), while we only ever feed it the date string from the data.
+  // Widening the parameter and guarding keeps the types honest without an
+  // `any` cast, which previously hid this mismatch.
+  const labelFormatter = (value: ReactNode) => {
+    if (typeof value !== 'string') return '';
     const d = new Date(value);
     if (activeRange === '30d') {
       return d.toLocaleDateString('en-US', {
@@ -180,7 +186,7 @@ export function DashAppliedChart() {
                   <ChartTooltipContent
                     className="w-40"
                     nameKey="applied"
-                    labelFormatter={labelFormatter as any}
+                    labelFormatter={labelFormatter}
                   />
                 }
               />
