@@ -18,5 +18,25 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // `typescript-eslint/recommended` enables this rule without the two
+      // options below, which the codebase already relies on:
+      //
+      //  - `argsIgnorePattern` / `varsIgnorePattern`: bindings renamed to a
+      //    leading underscore are deliberate placeholders, e.g. a required
+      //    prop a component intentionally does not read
+      //    (`onSlotClick: _onSlotClick`).
+      //  - `ignoreRestSiblings`: `const { drop, ...rest } = obj` names `drop`
+      //    only to EXCLUDE it, so it is never read. Flagging it pushes authors
+      //    toward a delete-and-mutate alternative for no benefit.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
   },
 ])
