@@ -518,7 +518,12 @@ For selects, replace `<Input>` with `<Select>`. Always pair `Label` with its con
 
 ## Data Table Pattern
 
-Source: `src/components/data-table.tsx`
+Reference implementations, in preference order:
+
+- `src/components/table-pagination.tsx` — the shared `TablePagination` used by
+  every list screen.
+- `src/app/candidates/_components/candidates-table.tsx` — a full list screen,
+  including row selection, the actions `DropdownMenu` and persisted pagination.
 
 - Sticky header: `sticky top-0 z-10 bg-muted`
 - Row selection: `Checkbox` in first column
