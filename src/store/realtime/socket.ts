@@ -1,4 +1,3 @@
-import { incrementUnreadCount } from '@/hooks/use-unread-emails';
 import { getAuthToken } from '@/lib/api-client';
 import { io, Socket } from 'socket.io-client';
 import type {
@@ -307,15 +306,9 @@ class SocketManager {
         break;
       case 'email':
         this.dispatchers.email?._patch(msg.data as Email);
-        // When a new email arrives in real-time, increment the unread count
-        // so the sidebar badge updates instantly without a server round-trip.
-        if (action === 'created') {
-          const email = msg.data as Email;
-          // Only count inbound emails that aren't read yet
-          if (email.direction === 'inbound' && email.isRead !== true) {
-            incrementUnreadCount();
-          }
-        }
+        // No manual unread increment here. The count is DERIVED from the email
+        // store, and `_patch` above already inserts the arriving message — so
+        // incrementing as well added two to the badge for every live email.
         break;
     }
   }

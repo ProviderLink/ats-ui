@@ -50,15 +50,10 @@ export function NavMain({
     return pathname.split('/').filter(Boolean)[1] === segment;
   }
 
-  const [unreadCount, setUnreadCount] = React.useState(0);
-
-  // Use the centralized real-time unread count instead of polling
-  const { unreadCount: liveUnreadCount } = useUnreadEmailCount();
-
-  // Sync live count to local state
-  React.useEffect(() => {
-    setUnreadCount(liveUnreadCount);
-  }, [liveUnreadCount]);
+  // Live unread count, derived from the email store. This used to be copied into
+  // local state by an effect, which just added a render pass without changing
+  // the value — the hook is already reactive.
+  const { unreadCount } = useUnreadEmailCount();
 
   const emailsActive = pathname.split('/').filter(Boolean)[1] === 'emails';
   const quickImportActive = pathname === '/ats/candidates/quick-import';

@@ -1,75 +1,59 @@
 /**
  * Unread emails notification system.
  *
- * Counts unread emails from the local email store — no server round-trip needed.
- * The count updates reactively via socket events (incrementUnreadCount) and
- * whenever the email store items change.
+ * The count is DERIVED from the email store, which is the single source of
+ * truth — there is no separate counter to keep in step.
+ *
+ * This replaces a module-level counter plus three effects that mirrored it into
+ * `useState`. Besides setting state synchronously on mount, that design
+ * double-counted: the socket handler inserts the arriving email into the store
+ * (`_patch`) *and* incremented the counter, so each live email added one to the
+ * derived total and then one more on top.
  */
 
 import { useEmailStore } from '@/store/slices/emails.store';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-// Global module-level state so the count survives component remounts
-let _unreadCount = 0;
-const _listeners = new Set<(count: number) => void>();
-
-function notifyListeners() {
-  _listeners.forEach(fn => fn(_unreadCount));
+/** Unread emails currently in the store. */
+function countUnread(): number {
+  return useEmailStore.getState().items.filter(e => e.isRead !== true).length;
 }
 
-/** Recompute unread count from the email store. */
-function recomputeFromStore(): number {
-  const items = useEmailStore.getState().items;
-  return items.filter(e => e.isRead !== true).length;
+// `useSyncExternalStore` requires a stable snapshot, and React compares it on
+// every store notification, so the value is cached and only recomputed when the
+// store actually changes.
+let cachedCount = countUnread();
+
+function getSnapshot(): number {
+  return cachedCount;
 }
 
-/** Update the global unread count. */
-export function setUnreadCount(count: number): void {
-  _unreadCount = count;
-  notifyListeners();
+function getServerSnapshot(): number {
+  return 0;
 }
 
-/** Increment the global unread count by 1 (called when a new email arrives via socket). */
-export function incrementUnreadCount(): void {
-  _unreadCount += 1;
-  notifyListeners();
+function subscribe(onChange: () => void): () => void {
+  return useEmailStore.subscribe(() => {
+    const next = countUnread();
+    if (next !== cachedCount) {
+      cachedCount = next;
+      onChange();
+    }
+  });
 }
 
 /**
  * React hook to subscribe to the unread email count.
  * Derived from the local email store — no API call needed.
+ *
+ * A socket arrival updates the badge because it patches the store; no manual
+ * increment is required or wanted.
  */
-export function useUnreadEmailCount(): {
-  unreadCount: number;
-} {
-  const [count, setCount] = useState(() => recomputeFromStore());
-
-  // Subscribe to global count changes (from socket events)
-  useEffect(() => {
-    const handler = (c: number) => setCount(c);
-    _listeners.add(handler);
-    return () => {
-      _listeners.delete(handler);
-    };
-  }, []);
-
-  // Recompute when store items change (emails loaded, read status toggled, etc.)
-  useEffect(() => {
-    const unsub = useEmailStore.subscribe(() => {
-      const c = recomputeFromStore();
-      _unreadCount = c;
-      setCount(c);
-      notifyListeners();
-    });
-    return unsub;
-  }, []);
-
-  // Initial recompute on mount (in case store was populated during boot)
-  useEffect(() => {
-    const c = recomputeFromStore();
-    _unreadCount = c;
-    setCount(c);
-  }, []);
-
-  return { unreadCount: count };
+export function useUnreadEmailCount(): { unreadCount: number } {
+  const unreadCount = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot
+  );
+  return { unreadCount };
 }
