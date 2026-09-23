@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { DEFAULT_TIMEZONE } from '@/lib/timezones';
+import { DEFAULT_TIMEZONE, getZonedDate, getZonedTime } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/store/slices/settings.store';
 import {
@@ -50,16 +50,26 @@ export interface ScheduleInterviewInput {
 }
 
 /**
- * Default start: the next whole hour. Computed as initial state rather than
- * assigned in an effect so the form is correct on first paint.
+ * Default start: the next whole hour **on the wall clock of `timezone`**.
+ *
+ * Two traps this avoids:
+ * 1. Deriving the date from `toISOString()` mixed a UTC day with a local clock,
+ *    so west of UTC the form pre-filled TOMORROW (e.g. Chicago 19:30 → 01:00Z
+ *    the next day).
+ * 2. The defaults are submitted through `zonedWallClockToUtc(..., timezone)`,
+ *    which reads them as a wall clock in the SELECTED zone — not in the
+ *    browser's. Building them from browser-local getters therefore shifted the
+ *    time by the difference between the two zones.
  */
-function nextHourDefaults() {
-  const now = new Date();
-  now.setMinutes(0, 0, 0);
-  now.setHours(now.getHours() + 1);
+function nextHourDefaults(timezone: string) {
+  const nextHour = new Date(Date.now() + 60 * 60 * 1000);
+  const date = getZonedDate(nextHour.toISOString(), timezone);
+  const time = getZonedTime(nextHour.toISOString(), timezone);
   return {
-    date: now.toISOString().slice(0, 10),
-    time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+    date,
+    // Round down to the hour, keeping the zone's own date (so 23:xx local in a
+    // zone that has already rolled over still gets that zone's next day).
+    time: time ? `${time.slice(0, 2)}:00` : '',
   };
 }
 
@@ -100,11 +110,13 @@ export function ScheduleInterviewDialog({
     useState<InterviewMeetingType>('initial_screening');
   const [jobId, setJobId] = useState(() => job?._id ?? '');
   const [round, setRound] = useState(1);
-  const [date, setDate] = useState(() => nextHourDefaults().date);
-  const [time, setTime] = useState(() => nextHourDefaults().time);
-  const [duration, setDuration] = useState(45);
   const settings = useSettingsStore(s => s.settings);
   const defaultTz = settings?.companyTimezone || DEFAULT_TIMEZONE;
+  // Seed the date/time from the SAME instant for both fields, in the zone the
+  // form will submit in — see `nextHourDefaults`.
+  const [date, setDate] = useState(() => nextHourDefaults(defaultTz).date);
+  const [time, setTime] = useState(() => nextHourDefaults(defaultTz).time);
+  const [duration, setDuration] = useState(45);
   const [timezone, setTimezone] = useState(defaultTz);
   const [interviewerIds, setInterviewerIds] = useState<string[]>([]);
   const [meetingLink, setMeetingLink] = useState('');
