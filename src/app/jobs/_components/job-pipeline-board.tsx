@@ -320,45 +320,6 @@ export function JobPipelineBoard({ job }: { job: Job }) {
           ? candsRes
           : (candsRes.data ?? []);
 
-        console.log(
-          '[PipelineBoard] apps=%d cands=%d jobId=%s pipeline=%s',
-          apps.length,
-          cands.length,
-          job._id,
-          job.pipeline ? `${job.pipeline.stages.length} stages` : 'none'
-        );
-        const approved = apps.filter(
-          a => a.jobId === job._id && a.phase === 'approved'
-        );
-        console.log('[PipelineBoard] approved apps:', approved.length);
-        if (approved.length > 0) {
-          console.log(
-            '[PipelineBoard] sample approved app:',
-            JSON.stringify({
-              _id: approved[0]._id,
-              candidateId: approved[0].candidateId,
-              phase: approved[0].phase,
-              currentStage: approved[0].currentStage,
-            })
-          );
-          // Check join
-          const candIds = new Set(cands.map(c => c._id));
-          const joinable = approved.filter(a => candIds.has(a.candidateId));
-          console.log(
-            '[PipelineBoard] joinable: %d/%d',
-            joinable.length,
-            approved.length
-          );
-          if (joinable.length === 0) {
-            console.warn(
-              '[PipelineBoard] candidateId mismatch! app candidateIds sample:',
-              approved.slice(0, 3).map(a => a.candidateId),
-              'cand _ids sample:',
-              cands.slice(0, 3).map(c => c._id)
-            );
-          }
-        }
-
         cache.set(job._id, {
           applications: apps,
           candidates: cands,
@@ -370,7 +331,9 @@ export function JobPipelineBoard({ job }: { job: Job }) {
       })
       .catch((err: unknown) => {
         if (!alive || hadCache) return;
-        console.error('[PipelineBoard] fetch FAILED:', err);
+        // Kept as a genuine error path: if this fails with no cache the board
+        // renders empty columns and the user gets no other signal.
+        console.error('[PipelineBoard] fetch failed:', err);
       });
 
     return () => {
