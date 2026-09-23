@@ -140,8 +140,21 @@ async function runAllWithConcurrency<T>(
   return results;
 }
 
-export function ColHeader({ children }: { children: React.ReactNode }) {
-  return <span className={HEADER_CLS}>{children}</span>;
+export function ColHeader({
+  children,
+  label,
+  icon,
+}: {
+  children?: React.ReactNode;
+  label?: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <span className={HEADER_CLS}>
+      {icon}
+      {children ?? label}
+    </span>
+  );
 }
 
 export function SortHeader({
@@ -501,15 +514,18 @@ function PipelineStageSelectCell({
 function ReviewActionsDropdown({
   candidate,
   allJobs,
+  allApps,
   onMutated,
 }: {
   candidate: Candidate;
   allJobs: Job[];
+  allApps: Application[];
   onMutated?: () => void;
 }) {
   const candStore = useCandidateStore();
   const appStore = useApplicationStore();
   const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
+  const rejectApp = useApplicationStore(s => s.reject);
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -525,6 +541,44 @@ function ReviewActionsDropdown({
     [allJobs]
   );
 
+  // The candidate's applications, for both the reject routing below and the
+  // "another job" flag on the reject dialog.
+  const candidateApplications = useMemo(
+    () => allApps.filter(a => a.candidateId === candidate._id),
+    [allApps, candidate._id]
+  );
+
+  /**
+   * The application a reject should act on, or null when the candidate holds
+   * none.
+   *
+   * Keyed on PHASE rather than on having a stage: an approved application can
+   * have a null `currentStage`, and routing such a candidate to the
+   * candidate-level endpoint would be refused (they still hold a live
+   * application).
+   */
+  const liveApplication = useMemo(
+    () =>
+      candidateApplications.find(
+        a => a.phase === 'pending' || a.phase === 'approved'
+      ) ?? null,
+    [candidateApplications]
+  );
+
+  /**
+   * How many OTHER applications the candidate still has open. When this is
+   * non-zero a reject must not ban or pool them — that would silently destroy
+   * the other job's pipeline — so the dialog hides the destination options.
+   */
+  const otherLiveApplicationCount = useMemo(() => {
+    const current = liveApplication;
+    const live = candidateApplications.filter(
+      a => a.phase === 'pending' || a.phase === 'approved'
+    );
+    if (!current) return 0;
+    return live.filter(a => a._id !== current._id).length;
+  }, [candidateApplications, liveApplication]);
+
   async function handleApprove() {
     const jobId = hasJobApplied ? candidate.appliedJobId! : selectedJobId;
     if (!jobId) {
@@ -537,8 +591,12 @@ function ReviewActionsDropdown({
       toast.success(`${name} approved`);
       setApproveOpen(false);
       setSelectedJobId('');
-      await candStore.fetch();
-      await appStore.fetch({ limit: 9999 });
+      // Re-read applications so the new application reaches the store (and
+      // therefore the In Pipeline tab's derived id set) without waiting for the
+      // `application:created` socket event. `fetchScopedMerge` is the one that
+      // writes: `appStore.fetch({limit: 9999})` carries no explicit filter and
+      // the post-boot guard makes it a no-op.
+      await appStore.fetchScopedMerge({ limit: 9999 });
       onMutated?.();
     } catch (e) {
       toast.error((e as Error).message);
@@ -548,21 +606,31 @@ function ReviewActionsDropdown({
   }
 
   /**
-   * Reject an In Review candidate (candidate-level).
+   * Reject an In Review candidate.
    *
-   * Spec §4.8: the destination is always offered here — this candidate has no
-   * application yet, so a reject is always the decisive, platform-wide one.
+   * Normally they hold no application, so this goes through the
+   * candidate-level endpoint. If they DO hold a live application they are
+   * really a pipeline candidate — the candidate endpoint refuses with a 409
+   * ("still has an active application") because applying a destination there
+   * would ban or pool them platform-wide and destroy every other job's
+   * pipeline. Route to that application instead, which removes them from just
+   * that job. Same rule the detail sheet applies. Reachable when a candidate
+   * is restored from Ineligible while a previous application is still live.
    */
   async function handleReject(payload: RejectPayload) {
     setActing(true);
     try {
-      await rejectCandidateStore(candidate._id, {
-        rejectionReasonId: payload.rejectionReasonId,
-        ...(payload.destination ? { destination: payload.destination } : {}),
-        ...(payload.internalNotes
-          ? { internalNotes: payload.internalNotes }
-          : {}),
-      });
+      if (liveApplication) {
+        await rejectApp(liveApplication._id, payload);
+      } else {
+        await rejectCandidateStore(candidate._id, {
+          rejectionReasonId: payload.rejectionReasonId,
+          ...(payload.destination ? { destination: payload.destination } : {}),
+          ...(payload.internalNotes
+            ? { internalNotes: payload.internalNotes }
+            : {}),
+        });
+      }
       toast.success(
         `${name} rejected` +
           (payload.destination === 'permanently_ineligible'
@@ -606,6 +674,7 @@ function ReviewActionsDropdown({
           <Button
             variant="ghost"
             size="icon-sm"
+            aria-label={`Actions for ${name}`}
             className="hover:bg-silver-200 dark:hover:bg-white/10 data-[state=open]:bg-silver-200 dark:data-[state=open]:bg-white/10"
           >
             <EllipsisVerticalIcon />
@@ -636,17 +705,20 @@ function ReviewActionsDropdown({
             </span>
           </DropdownMenuItem>
           <DropdownMenuItem
+            variant="destructive"
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={acting}
             onClick={() => setRejectOpen(true)}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
-              <BanIcon className="size-3.5 text-red-600 dark:text-red-400" />
+              <XIcon className="size-3.5 text-red-600 dark:text-red-400" />
             </span>
             <span className="flex flex-col">
               <span className="text-sm">Reject</span>
               <span className="text-[11px] text-muted-foreground">
-                Choose a reason and destination
+                {liveApplication
+                  ? 'Remove from this job only'
+                  : 'Choose a reason and destination'}
               </span>
             </span>
           </DropdownMenuItem>
@@ -660,7 +732,7 @@ function ReviewActionsDropdown({
             onClick={handleTalentPool}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 shrink-0">
-              <StarIcon className="size-3.5 text-amber-500" />
+              <StarIcon className="size-3.5 text-amber-700 dark:text-amber-400" />
             </span>
             <span className="flex flex-col">
               <span className="text-sm">
@@ -772,18 +844,24 @@ function ReviewActionsDropdown({
         </DialogContent>
       </Dialog>
 
-      {/* Reject — candidate-level. Destination is always offered: they hold no
-          application yet, so this reject is always the decisive one. */}
+      {/* Reject — routes by scope. A candidate with no live application is
+          rejected at candidate level (the destination is always offered, spec
+          §4.8). One that still holds a live application is rejected at
+          application level, which removes them from that job only — the dialog
+          then hides the destination options. */}
       <RejectDialog
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         candidateName={name}
         jobTitle={
-          candidate.appliedJobId
-            ? allJobs.find(j => j._id === candidate.appliedJobId)?.title
-            : undefined
+          liveApplication
+            ? allJobs.find(j => j._id === liveApplication.jobId)?.title
+            : candidate.appliedJobId
+              ? allJobs.find(j => j._id === candidate.appliedJobId)?.title
+              : undefined
         }
-        hasOtherLiveApplication={false}
+        currentStageName={liveApplication?.currentStage?.stageName}
+        hasOtherLiveApplication={otherLiveApplicationCount > 0}
         submitting={acting}
         onConfirm={handleReject}
       />
@@ -921,6 +999,15 @@ function PipelineActionsMenu({
 
   async function handleMoveStage() {
     if (!application || !selectedStageId) return;
+    // Defensive: the dialog pre-selects the current stage, and re-sending it
+    // would rewrite `currentStage.assignedAt` (resetting the stage age shown in
+    // the Stage column) while logging a `from === to` activity row. The confirm
+    // button is disabled for this case; this guard covers a race where the
+    // application moves underneath an open dialog.
+    if (selectedStageId === application.currentStage?.stageId) {
+      setStageOpen(false);
+      return;
+    }
     setActing(true);
     try {
       await appStore.moveStage(application._id, selectedStageId);
@@ -1086,6 +1173,7 @@ function PipelineActionsMenu({
             variant="ghost"
             size="icon-sm"
             disabled={acting}
+            aria-label={`Actions for ${name}`}
             className="hover:bg-silver-200 dark:hover:bg-white/10 data-[state=open]:bg-silver-200 dark:data-[state=open]:bg-white/10"
           >
             <EllipsisVerticalIcon />
@@ -1116,6 +1204,9 @@ function PipelineActionsMenu({
             </span>
           </DropdownMenuItem>
           <div className="mx-2 my-2 h-px bg-border" />
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 pb-1.5 pt-0.5">
+            Hiring
+          </div>
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={!application}
@@ -1147,17 +1238,20 @@ function PipelineActionsMenu({
             </span>
           </DropdownMenuItem>
           <DropdownMenuItem
+            variant="destructive"
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={!application}
             onClick={() => setRejectOpen(true)}
           >
             <span className="flex items-center justify-center size-7 rounded-md bg-red-100 dark:bg-red-900/30 shrink-0">
-              <BanIcon className="size-3.5 text-red-600 dark:text-red-400" />
+              <XIcon className="size-3.5 text-red-600 dark:text-red-400" />
             </span>
             <span className="flex flex-col">
               <span className="text-sm">Reject</span>
               <span className="text-[11px] text-muted-foreground">
-                Reject &amp; close this application
+                {otherLiveApplicationCount > 0
+                  ? 'Remove from this job only'
+                  : 'Reject & close this application'}
               </span>
             </span>
           </DropdownMenuItem>
@@ -1179,26 +1273,10 @@ function PipelineActionsMenu({
               </span>
             </span>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
-            onClick={() => setTalentPoolConfirmOpen(true)}
-          >
-            <span className="flex items-center justify-center size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 shrink-0">
-              <StarIcon className="size-3.5 text-amber-500" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm">
-                {candidate.inTalentPool
-                  ? 'Remove from Talent Pool'
-                  : 'Add to Talent Pool'}
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                {candidate.inTalentPool
-                  ? 'Remove from saved candidates'
-                  : 'Save for future opportunities'}
-              </span>
-            </span>
-          </DropdownMenuItem>
+          <div className="mx-2 my-2 h-px bg-border" />
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 pb-1.5 pt-0.5">
+            Jobs &amp; Pool
+          </div>
           <DropdownMenuItem
             className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
             disabled={openJobs.length === 0 || acting}
@@ -1226,6 +1304,26 @@ function PipelineActionsMenu({
               <span className="text-sm">Add to Another Job</span>
               <span className="text-[11px] text-muted-foreground">
                 Add another job alongside the current one
+              </span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="gap-2.5 rounded-md px-2.5 py-2 cursor-pointer"
+            onClick={() => setTalentPoolConfirmOpen(true)}
+          >
+            <span className="flex items-center justify-center size-7 rounded-md bg-amber-100 dark:bg-amber-900/30 shrink-0">
+              <StarIcon className="size-3.5 text-amber-700 dark:text-amber-400" />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-sm">
+                {candidate.inTalentPool
+                  ? 'Remove from Talent Pool'
+                  : 'Add to Talent Pool'}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {candidate.inTalentPool
+                  ? 'Remove from saved candidates'
+                  : 'Save for future opportunities'}
               </span>
             </span>
           </DropdownMenuItem>
@@ -1278,7 +1376,11 @@ function PipelineActionsMenu({
             </Button>
             <Button
               onClick={handleMoveStage}
-              disabled={!selectedStageId || acting}
+              disabled={
+                !selectedStageId ||
+                acting ||
+                selectedStageId === application?.currentStage?.stageId
+              }
             >
               {acting ? 'Moving…' : 'Move Stage'}
             </Button>
@@ -2114,10 +2216,11 @@ export function CandidatesTable() {
       },
       {
         id: 'actions',
+        // Icon only, but LEFT-aligned to match the trigger button in the cell
+        // below. The previous centred glyph sat roughly 16px to the right of
+        // the button, so the header and its column did not read as one unit.
         header: () => (
-          <div className="flex justify-center">
-            <EllipsisIcon className="size-3.5 text-muted-foreground" />
-          </div>
+          <ColHeader icon={<EllipsisIcon className="size-3.5" />} />
         ),
         cell: ({ row }) => (
           <div onClick={e => e.stopPropagation()}>
@@ -2132,6 +2235,7 @@ export function CandidatesTable() {
               <ReviewActionsDropdown
                 candidate={row.original}
                 allJobs={allJobs}
+                allApps={allApps}
               />
             )}
           </div>

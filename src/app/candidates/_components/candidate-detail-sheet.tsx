@@ -31,6 +31,12 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getJson, patchJson } from '@/lib/api-client';
 import { getTagIds } from '@/lib/tags';
@@ -81,11 +87,9 @@ import {
   MailIcon,
   MapPinIcon,
   MoveRightIcon,
-  PencilIcon,
   PhoneIcon,
   PlayIcon,
   PlusIcon,
-  SearchIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
   ShieldOffIcon,
@@ -130,85 +134,6 @@ function defaultSubject(
     default:
       return '';
   }
-}
-
-function TalentPoolNotesEditor({
-  notes,
-  mutating,
-  onSave,
-}: {
-  notes: string;
-  mutating: boolean;
-  onSave: (notes: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(notes);
-
-  if (editing) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        <Textarea
-          rows={4}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          className="resize-none text-sm"
-          placeholder="Add a note about this candidate…"
-          disabled={mutating}
-        />
-        <div className="flex items-center gap-1.5">
-          <Button
-            size="xs"
-            variant="outline"
-            className="h-7 text-xs"
-            onClick={() => {
-              setEditing(false);
-              setDraft(notes);
-            }}
-            disabled={mutating}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="xs"
-            className="h-7 text-xs"
-            onClick={() => {
-              onSave(draft);
-              setEditing(false);
-            }}
-            disabled={mutating}
-          >
-            Save
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative">
-      {notes.trim() ? (
-        <p className="text-sm text-muted-foreground leading-relaxed italic whitespace-pre-wrap pr-6">
-          "{notes}"
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground/50 italic">
-          No notes added
-        </p>
-      )}
-      <Button
-        variant="outline"
-        size="icon-xs"
-        className="absolute top-0 right-0 bg-background/60 backdrop-blur-sm hover:bg-background/80"
-        onClick={() => {
-          setDraft(notes);
-          setEditing(true);
-        }}
-        title="Edit notes"
-      >
-        <PencilIcon className="size-3.5" />
-      </Button>
-    </div>
-  );
 }
 
 function IntroVideo({
@@ -840,96 +765,6 @@ function TalentPoolDialog({
   );
 }
 
-function AssignJobDialog({
-  open,
-  onClose,
-  onConfirm,
-  jobs,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (jobId: string) => void;
-  jobs: { _id: string; title: string }[];
-}) {
-  const [selected, setSelected] = useState('');
-  const [search, setSearch] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return jobs;
-    const q = search.toLowerCase();
-    return jobs.filter(j => j.title.toLowerCase().includes(q));
-  }, [jobs, search]);
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Assign to a new job</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search jobs…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
-          </div>
-          <div className="max-h-56 overflow-y-auto rounded-md border">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-                No jobs found
-              </p>
-            ) : (
-              <div className="flex flex-col">
-                {filtered.map(j => (
-                  <button
-                    key={j._id}
-                    type="button"
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
-                      selected === j._id && 'bg-muted font-medium'
-                    )}
-                    onClick={() => setSelected(j._id)}
-                  >
-                    <span
-                      className={cn(
-                        'size-4 rounded-full border flex items-center justify-center shrink-0',
-                        selected === j._id
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted-foreground/30'
-                      )}
-                    >
-                      {selected === j._id && <CheckIcon className="size-3" />}
-                    </span>
-                    {j.title}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!selected}
-            onClick={() => {
-              onConfirm(selected);
-              setSelected('');
-              setSearch('');
-            }}
-          >
-            Assign
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function ApplicationCard({
   app,
   jobTitle,
@@ -1249,7 +1084,6 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   mutating?: boolean;
-  hideAiScore?: boolean;
 };
 
 /**
@@ -1615,11 +1449,8 @@ export function CandidateDetailSheet({
   open,
   onOpenChange,
   mutating = false,
-  hideAiScore = false,
 }: Props) {
   const [talentPoolOpen, setTalentPoolOpen] = useState(false);
-  const [assignJobOpen, setAssignJobOpen] = useState(false);
-  const [removePoolConfirmOpen, setRemovePoolConfirmOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
   const [approveEmailOpen, setApproveEmailOpen] = useState(false);
   const [approveEmailPoolOpen, setApproveEmailPoolOpen] = useState(false);
@@ -1678,18 +1509,10 @@ export function CandidateDetailSheet({
   const fetchEmailTemplates = useEmailTemplateStore(s => s.fetch);
 
   const jobs = useJobStore(s => s.items);
-  const fetchJobs = useJobStore(s => s.fetch);
   const clients = useClientStore(s => s.items);
 
   // Applications are loaded by the candidates table into the shared store.
   // The detail sheet reads from the same store — no separate fetch needed.
-
-  // Fetch jobs for the assign-to-job dialog
-  useEffect(() => {
-    if (hideAiScore && open && jobs.length === 0) {
-      fetchJobs({ page: 1, limit: 9999 });
-    }
-  }, [hideAiScore, open, jobs.length, fetchJobs]);
 
   useEffect(() => {
     if (open) void fetchTags();
@@ -1809,39 +1632,6 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleRemoveFromTalentPool() {
-    if (!candidate) return;
-    try {
-      await updateTalentPool(candidate._id, 'remove');
-      logOptimisticActivity(
-        'candidate',
-        candidate._id,
-        'talent_pool_removed',
-        `${fullName} removed from talent pool`
-      );
-      toast.success('Removed from Talent Pool');
-      setRemovePoolConfirmOpen(false);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
-
-  async function handleUpdatePoolNotes(notes: string) {
-    if (!candidate) return;
-    try {
-      await updateTalentPool(candidate._id, 'add', notes);
-      logOptimisticActivity(
-        'candidate',
-        candidate._id,
-        'note_updated',
-        `Talent pool notes updated for ${fullName}`
-      );
-      toast.success('Notes saved');
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
-
   /**
    * Restore a permanently ineligible candidate. A job is required — they return
    * to **In Review** and must be approved normally; no application is created.
@@ -1901,23 +1691,6 @@ export function CandidateDetailSheet({
       toast.error((e as Error).message || 'Failed to toggle legal hold');
     } finally {
       setIneligibleLoading(false);
-    }
-  }
-
-  async function handleAssignToJob(jobId: string) {
-    if (!candidate) return;
-    try {
-      await assignJob(candidate._id, jobId);
-      logOptimisticActivity(
-        'candidate',
-        candidate._id,
-        'created',
-        `Applied to job`
-      );
-      toast.success('Assigned to job');
-      setAssignJobOpen(false);
-    } catch (e) {
-      toast.error((e as Error).message);
     }
   }
 
@@ -2241,7 +2014,20 @@ export function CandidateDetailSheet({
     }
     setActionLoading(true);
     try {
-      await rejectCandidateStore(candidate._id, payload);
+      // Same routing rule as `handleRejectConfirm`. These two buttons sit side
+      // by side, so they must not diverge: a candidate holding a live
+      // application has to be rejected at application level, because the
+      // candidate-level endpoint refuses with a 409.
+      const liveApp = candidateApplications.find(
+        a => a.phase === 'pending' || a.phase === 'approved'
+      );
+
+      if (liveApp) {
+        await rejectApp(liveApp._id, payload);
+      } else {
+        await rejectCandidateStore(candidate._id, payload);
+      }
+
       logOptimisticActivity(
         'candidate',
         candidate._id,
@@ -2344,6 +2130,15 @@ export function CandidateDetailSheet({
 
   async function handleMoveStage() {
     if (!activePipelineApp || !selectedStageId) return;
+    // Defensive: the dialog pre-selects the current stage, and re-sending it
+    // would rewrite `currentStage.assignedAt` (resetting the stage age shown
+    // on the pipeline board) while logging a `from === to` activity row. The
+    // confirm button is disabled for this case; this guard covers a race where
+    // the application moves underneath an open dialog.
+    if (selectedStageId === activePipelineApp.currentStage?.stageId) {
+      setStageOpen(false);
+      return;
+    }
     setPipelineLoading(true);
     try {
       const targetStage = pipelineJob?.pipeline?.stages?.find(
@@ -2680,13 +2475,13 @@ export function CandidateDetailSheet({
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {!hideAiScore && fitLabel && (
+                  {fitLabel && (
                     <Badge className={cn('bg-transparent font-medium', fitCls)}>
                       <SparklesIcon className="size-3" />
                       {fitLabel}
                     </Badge>
                   )}
-                  {!hideAiScore && !fitLabel && hasValidation && (
+                  {!fitLabel && hasValidation && (
                     <Badge
                       className={cn(
                         'bg-transparent font-medium',
@@ -2699,7 +2494,7 @@ export function CandidateDetailSheet({
                       {aiValidation!.isValid ? 'Valid' : 'Invalid'}
                     </Badge>
                   )}
-                  {!hideAiScore && c.inTalentPool && (
+                  {c.inTalentPool && (
                     <Badge className="border-violet-400 bg-transparent font-medium text-violet-700 dark:border-violet-400 dark:text-violet-300">
                       <StarIcon className="size-3" />
                       Talent Pool
@@ -2714,7 +2509,7 @@ export function CandidateDetailSheet({
                 </div>
               </div>
 
-              {!hideAiScore && (aiScore || hasValidation) && (
+              {(aiScore || hasValidation) && (
                 <div className="shrink-0 text-right">
                   <p
                     className={cn(
@@ -2742,110 +2537,74 @@ export function CandidateDetailSheet({
                   </div>
                 </div>
               )}
-
-              {hideAiScore && c.inTalentPool && (
-                <div className="shrink-0 flex flex-col items-end gap-2 w-72">
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    className="gap-1 text-xs text-destructive hover:text-destructive"
-                    disabled={mutating}
-                    onClick={() => setRemovePoolConfirmOpen(true)}
-                  >
-                    <XIcon className="size-3" /> Remove from talent pool
-                  </Button>
-                  <div className="w-full rounded-md border bg-muted/30 px-3 py-3 min-h-24">
-                    <TalentPoolNotesEditor
-                      notes={c.talentPoolNotes ?? ''}
-                      mutating={mutating}
-                      onSave={handleUpdatePoolNotes}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
-
-            {hideAiScore && (
-              <div className="mt-2 flex items-center gap-2">
-                <Button
-                  className="gap-1.5 px-4"
-                  onClick={() => setAssignJobOpen(true)}
-                >
-                  <BriefcaseIcon className="size-3.5" />
-                  Assign to a new job
-                </Button>
-              </div>
-            )}
           </SheetHeader>
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-6">
               {/* AI Validation — candidacy authenticity check */}
-              {!hideAiScore &&
-                c.status === 'pending' &&
-                hasValidation &&
-                !hasScoring && (
-                  <div className="flex flex-col gap-3">
-                    <SectionLabel>AI Validation</SectionLabel>
-                    <div className="rounded-xl border bg-muted/30 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                          {aiValidation!.isValid ? (
-                            <CheckCircle2Icon className="size-5 text-[#3d8a5a]" />
-                          ) : (
-                            <XCircleIcon className="size-5 text-destructive" />
-                          )}
-                          <span className="text-sm font-semibold">
-                            {aiValidation!.isValid
-                              ? 'Candidacy Valid'
-                              : 'Candidacy Invalid'}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            'text-sm font-semibold tabular-nums',
-                            scoreTextColor(aiValidation!.score)
-                          )}
-                        >
-                          {aiValidation!.score} / 100
+              {c.status === 'pending' && hasValidation && !hasScoring && (
+                <div className="flex flex-col gap-3">
+                  <SectionLabel>AI Validation</SectionLabel>
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        {aiValidation!.isValid ? (
+                          <CheckCircle2Icon className="size-5 text-[#3d8a5a]" />
+                        ) : (
+                          <XCircleIcon className="size-5 text-destructive" />
+                        )}
+                        <span className="text-sm font-semibold">
+                          {aiValidation!.isValid
+                            ? 'Candidacy Valid'
+                            : 'Candidacy Invalid'}
                         </span>
-                        <Badge
-                          className={cn(
-                            'bg-transparent font-medium shrink-0',
-                            aiValidation!.isValid
-                              ? 'text-green-700 dark:text-green-300 border-green-300 dark:border-green-700'
-                              : 'text-destructive border-destructive/30'
-                          )}
-                        >
-                          {aiValidation!.isValid ? 'Valid' : 'Invalid'}
-                        </Badge>
                       </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn(
-                            'h-full rounded-full transition-all',
-                            scoreBarColor(aiValidation!.score)
-                          )}
-                          style={{ width: `${aiValidation!.score}%` }}
-                        />
-                      </div>
-                      {aiValidation!.reason && (
-                        <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
-                          {aiValidation!.reason}
-                        </p>
-                      )}
-                      {aiValidation!.completedAt && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Validated {timeAgo(aiValidation!.completedAt)}
-                        </p>
-                      )}
+                      <span
+                        className={cn(
+                          'text-sm font-semibold tabular-nums',
+                          scoreTextColor(aiValidation!.score)
+                        )}
+                      >
+                        {aiValidation!.score} / 100
+                      </span>
+                      <Badge
+                        className={cn(
+                          'bg-transparent font-medium shrink-0',
+                          aiValidation!.isValid
+                            ? 'text-green-700 dark:text-green-300 border-green-300 dark:border-green-700'
+                            : 'text-destructive border-destructive/30'
+                        )}
+                      >
+                        {aiValidation!.isValid ? 'Valid' : 'Invalid'}
+                      </Badge>
                     </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          'h-full rounded-full transition-all',
+                          scoreBarColor(aiValidation!.score)
+                        )}
+                        style={{ width: `${aiValidation!.score}%` }}
+                      />
+                    </div>
+                    {aiValidation!.reason && (
+                      <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                        {aiValidation!.reason}
+                      </p>
+                    )}
+                    {aiValidation!.completedAt && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Validated {timeAgo(aiValidation!.completedAt)}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
 
               {/* AI Evaluation — job-fit scoring (pipeline candidates) */}
-              {!hideAiScore && c.status === 'approved' && aiScore && (
+              {c.status === 'approved' && aiScore && (
                 <div className="flex flex-col gap-3">
                   <SectionLabel>AI Evaluation</SectionLabel>
                   <div className="rounded-xl border bg-muted/30 p-4">
@@ -3705,52 +3464,140 @@ export function CandidateDetailSheet({
                 onAddToTalentPool={() => setTalentPoolOpen(true)}
               />
             ) : c.status === 'approved' ? (
+              // Ordered so the everyday pipeline actions lead and the two
+              // destructive/irreversible ones trail, instead of Reject sitting
+              // between Move Stage and Email. `ml-auto` on the leading group
+              // keeps the whole row right-aligned.
               <div className="flex flex-wrap items-center justify-end gap-1.5">
-                {/* Move Stage */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={
-                    pipelineLoading ||
-                    !activePipelineApp ||
-                    (pipelineJob?.pipeline?.stages?.length ?? 0) === 0
-                  }
-                  className="h-8 gap-1.5"
-                  onClick={() => {
-                    setSelectedStageId(
-                      activePipelineApp?.currentStage?.stageId ??
-                        pipelineJob?.pipeline?.stages?.[0]?._id ??
-                        ''
-                    );
-                    setStageOpen(true);
-                  }}
-                >
-                  <GitCommitHorizontalIcon className="size-3.5" />
-                  Move Stage
-                </Button>
-                {/* Schedule Interview */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading || !activePipelineApp}
-                  className="h-8 gap-1.5"
-                  onClick={() => setScheduleOpen(true)}
-                >
-                  <CalendarIcon className="size-3.5" />
-                  Schedule
-                </Button>
-                {/* Hire */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading || !activePipelineApp}
-                  className="h-8 gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300"
-                  onClick={() => setHireOpen(true)}
-                >
-                  <UserCheckIcon className="size-3.5" />
-                  Hire
-                </Button>
-                {/* Reject */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Move Stage */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      pipelineLoading ||
+                      !activePipelineApp ||
+                      (pipelineJob?.pipeline?.stages?.length ?? 0) === 0
+                    }
+                    className="h-8 gap-1.5"
+                    onClick={() => {
+                      setSelectedStageId(
+                        activePipelineApp?.currentStage?.stageId ??
+                          pipelineJob?.pipeline?.stages?.[0]?._id ??
+                          ''
+                      );
+                      setStageOpen(true);
+                    }}
+                  >
+                    <GitCommitHorizontalIcon className="size-3.5" />
+                    Move Stage
+                  </Button>
+                  {/* Schedule Interview */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pipelineLoading || !activePipelineApp}
+                    className="h-8 gap-1.5"
+                    onClick={() => setScheduleOpen(true)}
+                  >
+                    <CalendarIcon className="size-3.5" />
+                    Schedule Interview
+                  </Button>
+                  {/* Hire — the expected end state, so it carries the emerald
+                      treatment the pending footer gives Approve. */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pipelineLoading || !activePipelineApp}
+                    className="h-8 gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    onClick={() => setHireOpen(true)}
+                  >
+                    <UserCheckIcon className="size-3.5" />
+                    Hire
+                  </Button>
+                </div>
+
+                <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Email */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pipelineLoading}
+                    className="h-8 gap-1.5"
+                    onClick={() => {
+                      setPendingEmailFor(null);
+                      setComposeOpen(true);
+                    }}
+                  >
+                    <MailIcon className="size-3.5" />
+                    Email
+                  </Button>
+                  {/* Talent Pool */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pipelineLoading}
+                    className="h-8 gap-1.5"
+                    onClick={() => setTalentPoolConfirmOpen(true)}
+                  >
+                    <StarIcon className="size-3.5" />
+                    {c.inTalentPool ? 'Remove from Pool' : 'Add to Pool'}
+                  </Button>
+                  {/* Change Job — replaces the current job on this application */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      pipelineLoading ||
+                      !activePipelineApp ||
+                      openJobs.length === 0
+                    }
+                    className="h-8 gap-1.5"
+                    onClick={() => {
+                      setJobDialogMode('change');
+                      setChangeJobOpen(true);
+                    }}
+                  >
+                    <ArrowRightLeftIcon className="size-3.5" />
+                    Change Job
+                  </Button>
+                  {/* Add to Another Job — keeps the current job and adds one.
+                      Wrapped in a span because a disabled button carries
+                      `pointer-events-none`, so the tooltip would never fire on
+                      the button itself. */}
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span tabIndex={openJobs.length === 0 ? 0 : -1}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={pipelineLoading || openJobs.length === 0}
+                            className="h-8 gap-1.5"
+                            onClick={() => {
+                              setJobDialogMode('add');
+                              setChangeJobOpen(true);
+                            }}
+                          >
+                            <PlusIcon className="size-3.5" />
+                            Add to Another Job
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {openJobs.length === 0
+                          ? 'No other open jobs available'
+                          : 'Add another job alongside the current one'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+                <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+
+                {/* Reject — last, and the only destructive action here */}
                 <Button
                   size="sm"
                   variant="outline"
@@ -3762,63 +3609,6 @@ export function CandidateDetailSheet({
                 >
                   <BanIcon className="size-3.5" />
                   Reject
-                </Button>
-                {/* Email */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading}
-                  className="h-8 gap-1.5"
-                  onClick={() => {
-                    setPendingEmailFor(null);
-                    setComposeOpen(true);
-                  }}
-                >
-                  <MailIcon className="size-3.5" />
-                  Email
-                </Button>
-                {/* Talent Pool */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading}
-                  className="h-8 gap-1.5"
-                  onClick={() => setTalentPoolConfirmOpen(true)}
-                >
-                  <StarIcon className="size-3.5" />
-                  {c.inTalentPool ? 'Remove from Pool' : 'Add to Pool'}
-                </Button>
-                {/* Change Job — replaces the current job on this application */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={
-                    pipelineLoading ||
-                    !activePipelineApp ||
-                    openJobs.length === 0
-                  }
-                  className="h-8 gap-1.5"
-                  onClick={() => {
-                    setJobDialogMode('change');
-                    setChangeJobOpen(true);
-                  }}
-                >
-                  <ArrowRightLeftIcon className="size-3.5" />
-                  Change Job
-                </Button>
-                {/* Add to Job — keeps the current job and adds another */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading || openJobs.length === 0}
-                  className="h-8 gap-1.5"
-                  onClick={() => {
-                    setJobDialogMode('add');
-                    setChangeJobOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-3.5" />
-                  Add to Job
                 </Button>
               </div>
             ) : c.status === 'hired' ? (
@@ -3850,19 +3640,32 @@ export function CandidateDetailSheet({
                   candidateId={c._id}
                   candidateStatus={c.status}
                 />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pipelineLoading || openJobs.length === 0}
-                  className="h-8 gap-1.5"
-                  onClick={() => {
-                    setJobDialogMode('add');
-                    setChangeJobOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-3.5" />
-                  Add to Job
-                </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={openJobs.length === 0 ? 0 : -1}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={pipelineLoading || openJobs.length === 0}
+                          className="h-8 gap-1.5"
+                          onClick={() => {
+                            setJobDialogMode('add');
+                            setChangeJobOpen(true);
+                          }}
+                        >
+                          <PlusIcon className="size-3.5" />
+                          Add to Another Job
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {openJobs.length === 0
+                        ? 'No other open jobs available'
+                        : 'Add another job alongside the current one'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -3900,13 +3703,6 @@ export function CandidateDetailSheet({
         open={talentPoolOpen}
         onClose={() => setTalentPoolOpen(false)}
         onConfirm={handleAddToTalentPool}
-      />
-
-      <AssignJobDialog
-        open={assignJobOpen}
-        onClose={() => setAssignJobOpen(false)}
-        onConfirm={handleAssignToJob}
-        jobs={openJobs}
       />
 
       {/* Approve */}
@@ -4161,43 +3957,6 @@ export function CandidateDetailSheet({
         }
       />
 
-      {/* Remove from talent pool confirmation */}
-      <Dialog
-        open={removePoolConfirmOpen}
-        onOpenChange={v => !v && setRemovePoolConfirmOpen(false)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Remove from Talent Pool</DialogTitle>
-            <DialogDescription className="flex flex-col gap-3 pt-2">
-              <p>
-                You are about to remove{' '}
-                <span className="font-medium text-foreground">
-                  {candidate
-                    ? `${c.firstName} ${c.lastName}`
-                    : 'this candidate'}
-                </span>{' '}
-                from the talent pool.
-              </p>
-              <p className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground text-xs">
-                They will no longer appear in saved candidates. Nothing else
-                changes — their profile and history are kept.
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRemovePoolConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleRemoveFromTalentPool}>
-              Remove from pool
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       {/* Schedule Interview */}
       <ScheduleInterviewDialog
         open={scheduleOpen}
@@ -4299,7 +4058,11 @@ export function CandidateDetailSheet({
               </Button>
               <Button
                 onClick={handleMoveStage}
-                disabled={!selectedStageId || pipelineLoading}
+                disabled={
+                  !selectedStageId ||
+                  pipelineLoading ||
+                  selectedStageId === activePipelineApp?.currentStage?.stageId
+                }
               >
                 {pipelineLoading ? 'Moving…' : 'Move Stage'}
               </Button>
