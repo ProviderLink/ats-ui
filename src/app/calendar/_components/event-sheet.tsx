@@ -527,6 +527,13 @@ function EditForm({
         timezone: form.timezone,
         interviewerIds: form.interviewerIds,
         meetingDetails,
+        // Type and Round are not accepted by the update schema yet, so zod
+        // strips them and saving cannot change them. They are still sent so the
+        // fields start persisting the moment the schema allows them; the form
+        // currently renders both read-only so the UI does not promise an edit
+        // that cannot happen.
+        type: form.type,
+        round: Number(form.round) || 1,
       });
       onSave();
     } catch {
@@ -560,30 +567,28 @@ function EditForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           <Label htmlFor="ed-type">Type</Label>
-          <Select
-            value={form.type}
-            onValueChange={v => set('type', v as InterviewType)}
+          {/*
+            Read-only: the interview UPDATE schema does not accept `type` or
+            `round`, so zod strips them and a save cannot change them. Showing
+            live controls made "Save Changes" look like it worked while nothing
+            changed. Re-enable both (plain Select/Input) once the backend
+            update schema accepts them — the client already sends the values.
+          */}
+          <div
+            id="ed-type"
+            className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
           >
-            <SelectTrigger id="ed-type">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="zoom">Zoom</SelectItem>
-              <SelectItem value="google_meet">Google Meet</SelectItem>
-              <SelectItem value="phone_call">Phone Call</SelectItem>
-              <SelectItem value="in_person">In Person</SelectItem>
-            </SelectContent>
-          </Select>
+            {TYPE_LABELS[form.type] ?? form.type}
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="ed-round">Round</Label>
-          <Input
+          <div
             id="ed-round"
-            type="number"
-            min={1}
-            value={form.round}
-            onChange={e => set('round', e.target.value)}
-          />
+            className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
+          >
+            {form.round}
+          </div>
         </div>
       </div>
 

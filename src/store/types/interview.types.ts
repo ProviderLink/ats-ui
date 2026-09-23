@@ -84,6 +84,14 @@ export interface UpdateInterviewDto {
   interviewerIds?: string[];
   meetingDetails?: MeetingDetails;
   status?: InterviewStatus;
+  /**
+   * Sent by the calendar edit form but NOT yet accepted by the backend's
+   * `updateInterviewSchema`, so zod currently strips both. Declared here so the
+   * payload is typed; the form renders them read-only until the schema allows
+   * them (see `event-sheet.tsx`).
+   */
+  type?: InterviewType;
+  round?: number;
 }
 
 export interface CreateFeedbackDto {
