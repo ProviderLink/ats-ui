@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { escapeHtml } from '@/lib/html';
 import { cn } from '@/lib/utils';
 import type { EmailTemplate, EmailTemplateType } from '@/store/types';
 import { Loader2Icon } from 'lucide-react';
@@ -68,10 +69,12 @@ export function EmailTemplateSheet({
     const usedVars = EMAIL_VARIABLES.filter(v =>
       trimmedBody.includes(`{{${v}}}`)
     );
+    // Each paragraph is plain text being wrapped as HTML — escape it, or the
+    // raw `<` reaches the recipient as markup.
     const bodyHtml = trimmedBody
       ? trimmedBody
           .split('\n\n')
-          .map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`)
+          .map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
           .join('')
       : '';
     setSubmitting(true);

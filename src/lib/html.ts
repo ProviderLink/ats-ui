@@ -5,6 +5,28 @@
 
 const HTML_TAG_RE = /<[a-zA-Z][^>]*>/;
 
+/**
+ * Escape `&`, `<`, `>` and quotes so a value can be embedded in HTML text or an
+ * attribute without being parsed as markup.
+ *
+ * Used before interpolating raw USER text into the HTML bodies this app sends:
+ * the email composer and the template editor both build `bodyHtml` from plain
+ * text, and the substitution above those stores (`substituteVariables`) is a
+ * bare string replace. Without escaping, `<` in a typed message — or in a
+ * candidate name substituted into a template — is sent to the recipient as
+ * markup.
+ *
+ * `&` is escaped first so already-escaped input is not double-decoded.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /** True when the string already contains HTML markup. */
 export function looksLikeHtml(value: string): boolean {
   return HTML_TAG_RE.test(value);

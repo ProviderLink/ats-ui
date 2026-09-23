@@ -9,6 +9,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { escapeHtml } from '@/lib/html';
 import { useEmailStore, useEmailTemplateStore } from '@/store';
 import type { Email, EmailAttachment } from '@/store/types';
 import {
@@ -246,7 +247,9 @@ export function ComposeEmailSheet({
         cc: parseEmails(cc).length ? parseEmails(cc) : undefined,
         bcc: parseEmails(bcc).length ? parseEmails(bcc) : undefined,
         subject: subject.trim(),
-        bodyHtml: `<pre style="font-family:inherit">${body}</pre>`,
+        // Escape the body: it is plain text being wrapped as HTML, so `<` must
+        // not be sent to the recipient as markup.
+        bodyHtml: `<pre style="font-family:inherit">${escapeHtml(body)}</pre>`,
         bodyText: body,
         templateId,
         context: prefill?.context,
