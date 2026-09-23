@@ -34,7 +34,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getJson, patchJson } from '@/lib/api-client';
 import { getTagIds } from '@/lib/tags';
-import { getZonedDate, getZonedTime, zonedWallClockToUtc } from '@/lib/timezones';
+import {
+  getZonedDate,
+  getZonedTime,
+  zonedWallClockToUtc,
+} from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';

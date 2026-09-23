@@ -255,7 +255,10 @@ function wallClockFormatter(timezone: string): Intl.DateTimeFormat {
   return f;
 }
 
-function wallClockPartsIn(instant: Date, timezone: string): {
+function wallClockPartsIn(
+  instant: Date,
+  timezone: string
+): {
   date: string;
   time: string;
 } {
@@ -292,7 +295,8 @@ export function getZonedDate(
   fallbackTimezone = DEFAULT_TIMEZONE
 ): string {
   if (!scheduledAt) return '';
-  const tz = timezone && isValidTimezone(timezone) ? timezone : fallbackTimezone;
+  const tz =
+    timezone && isValidTimezone(timezone) ? timezone : fallbackTimezone;
   const d = new Date(scheduledAt);
   if (Number.isNaN(d.getTime()) || !isValidTimezone(tz)) {
     return scheduledAt.slice(0, 10);
@@ -310,7 +314,8 @@ export function getZonedTime(
   fallbackTimezone = DEFAULT_TIMEZONE
 ): string {
   if (!scheduledAt) return '';
-  const tz = timezone && isValidTimezone(timezone) ? timezone : fallbackTimezone;
+  const tz =
+    timezone && isValidTimezone(timezone) ? timezone : fallbackTimezone;
   const d = new Date(scheduledAt);
   if (Number.isNaN(d.getTime()) || !isValidTimezone(tz)) {
     return scheduledAt.slice(11, 16);
@@ -344,7 +349,8 @@ export function zonedWallClockToUtc(
   timezone: string,
   fallbackTimezone = DEFAULT_TIMEZONE
 ): string {
-  const tz = timezone && isValidTimezone(timezone) ? timezone : fallbackTimezone;
+  const tz =
+    timezone && isValidTimezone(timezone) ? timezone : fallbackTimezone;
   // Validate the SHAPE first. `Date.parse` is lenient — it happily accepts
   // "T:00Z" and returns a year-2000 date — so a NaN check alone would let an
   // empty or half-filled form through and silently save a bogus interview.
@@ -363,4 +369,3 @@ export function zonedWallClockToUtc(
   if (secondOffset !== firstOffset) resolved = naive - secondOffset;
   return new Date(resolved).toISOString();
 }
-

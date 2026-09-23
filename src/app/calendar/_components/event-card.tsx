@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { InterviewType } from '@/store/types';
-import type { Interview } from '@/store/types';
+import type { Interview, InterviewType } from '@/store/types';
 import { getInterviewStartTime } from '../_utils/calendar-helpers';
 
 const TYPE_STYLES: Record<InterviewType, string> = {
@@ -33,9 +32,7 @@ export function EventCard({ event, onClick, compact }: EventCardProps) {
         event.status !== 'scheduled' && 'opacity-50'
       )}
     >
-      {!compact && (
-        <span className="opacity-70 mr-0.5">{startTime} </span>
-      )}
+      {!compact && <span className="opacity-70 mr-0.5">{startTime} </span>}
       {event.title}
     </button>
   );

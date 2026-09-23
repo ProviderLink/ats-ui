@@ -1,5 +1,9 @@
-import { getZonedDate, getZonedTime, isValidTimezone } from '@/lib/timezones';
-import { DEFAULT_TIMEZONE } from '@/lib/timezones';
+import {
+  DEFAULT_TIMEZONE,
+  getZonedDate,
+  getZonedTime,
+  isValidTimezone,
+} from '@/lib/timezones';
 import type { Interview } from '@/store/types';
 
 export function toISO(date: Date): string {
@@ -58,7 +62,8 @@ export function formatScheduledAt(
   timezone?: string | null
 ): string {
   const date = new Date(scheduledAt);
-  const tz = timezone && isValidTimezone(timezone) ? timezone : DEFAULT_TIMEZONE;
+  const tz =
+    timezone && isValidTimezone(timezone) ? timezone : DEFAULT_TIMEZONE;
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',

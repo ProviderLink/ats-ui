@@ -759,9 +759,7 @@ function CreateForm({
           .map(a => a.candidateId)
           .filter(id => !currentIds.has(id));
         if (scopedIds.length > 0) {
-          return Promise.allSettled(
-            scopedIds.map(id => fetchCandidateOne(id))
-          );
+          return Promise.allSettled(scopedIds.map(id => fetchCandidateOne(id)));
         }
       })
       .finally(() => {
