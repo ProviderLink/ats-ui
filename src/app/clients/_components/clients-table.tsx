@@ -166,9 +166,9 @@ function CompanyCell({ client }: { client: Client }) {
           {client.companyName}
         </p>
         <p className="text-[11px] text-muted-foreground truncate">
-          {client.address
-            ? `${client.address.city}, ${client.address.country}`
-            : '—'}
+          {[client.address?.city, client.address?.state]
+            .filter(Boolean)
+            .join(', ') || '—'}
         </p>
       </div>
       <CrmIndicator clientId={client._id} />
