@@ -51,6 +51,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { zonedWallClockToUtc } from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
@@ -1040,13 +1041,24 @@ function PipelineActionsMenu({
     }
     setActing(true);
     try {
+      // `data.scheduledAt` is a wall clock from the dialog; interpret it in the
+      // zone the user picked, not in the browser's zone.
+      const scheduledAt = zonedWallClockToUtc(
+        data.scheduledAt.slice(0, 10),
+        data.scheduledAt.slice(11, 16),
+        data.timezone
+      );
+      if (!scheduledAt) {
+        toast.error('Please enter a valid date and time');
+        return;
+      }
       await createInterviewForApplication(application._id, {
         title: data.title,
         type: data.type as Interview['type'],
         interviewType: data.interviewType,
         jobId: data.jobId || undefined,
         round: data.round,
-        scheduledAt: new Date(data.scheduledAt).toISOString(),
+        scheduledAt,
         duration: data.duration,
         timezone: data.timezone,
         interviewerIds: data.interviewerIds,

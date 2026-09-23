@@ -25,7 +25,12 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
-import { DEFAULT_TIMEZONE } from '@/lib/timezones';
+import {
+  DEFAULT_TIMEZONE,
+  getZonedDate,
+  getZonedTime,
+  zonedWallClockToUtc,
+} from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -61,7 +66,6 @@ import {
   getInterviewEndTime,
   getInterviewStartTime,
 } from '../_utils/calendar-helpers';
-
 const TYPE_STYLES: Record<InterviewType, string> = {
   zoom: 'bg-primary/10 text-primary border-primary/20',
   google_meet:
@@ -121,8 +125,12 @@ function EventDetail({
   const cancelInterview = useInterviewStore(s => s.cancel);
   const submitFeedback = useInterviewStore(s => s.submitFeedback);
   const updateInterview = useInterviewStore(s => s.update);
-  const startTime = getInterviewStartTime(event.scheduledAt);
-  const endTime = getInterviewEndTime(event.scheduledAt, event.duration);
+  const startTime = getInterviewStartTime(event.scheduledAt, event.timezone);
+  const endTime = getInterviewEndTime(
+    event.scheduledAt,
+    event.duration,
+    event.timezone
+  );
   const m = event.meetingDetails;
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [rating, setRating] = useState(0);
@@ -230,7 +238,9 @@ function EventDetail({
       <div className="flex items-start gap-3 text-sm">
         <ClockIcon className="size-4 text-muted-foreground mt-0.5 shrink-0" />
         <div>
-          <p className="font-medium">{formatScheduledAt(event.scheduledAt)}</p>
+          <p className="font-medium">
+            {formatScheduledAt(event.scheduledAt, event.timezone)}
+          </p>
           <p className="text-muted-foreground">
             {startTime} – {endTime} · {event.duration} min · {event.timezone}
           </p>
@@ -463,8 +473,8 @@ function EditForm({
     title: event.title,
     type: event.type,
     round: String(event.round),
-    scheduledDate: event.scheduledAt.slice(0, 10),
-    scheduledTime: event.scheduledAt.slice(11, 16),
+    scheduledDate: getZonedDate(event.scheduledAt, event.timezone),
+    scheduledTime: getZonedTime(event.scheduledAt, event.timezone),
     duration: String(event.duration),
     timezone:
       event.timezone ||
@@ -486,9 +496,20 @@ function EditForm({
     if (!form.title || !form.scheduledDate) return;
     setSaving(true);
     try {
-      const scheduledAt = new Date(
-        `${form.scheduledDate}T${form.scheduledTime}:00`
-      ).toISOString();
+      // Interpret the typed date/time in the SELECTED zone, not the browser's.
+      // `new Date("...").toISOString()` reads the wall clock as browser-local,
+      // which is what made the timezone picker have no effect on the stored
+      // instant.
+      const scheduledAt = zonedWallClockToUtc(
+        form.scheduledDate,
+        form.scheduledTime,
+        form.timezone
+      );
+      if (!scheduledAt) {
+        toast.error('Please enter a valid date and time');
+        setSaving(false);
+        return;
+      }
 
       const meetingDetails =
         form.meetingLink || form.phoneNumber || form.address
@@ -842,9 +863,17 @@ function CreateForm({
 
     setSaving(true);
     try {
-      const scheduledAt = new Date(
-        `${form.scheduledDate}T${form.scheduledTime}:00`
-      ).toISOString();
+      // See the edit path above — the wall clock belongs to the selected zone.
+      const scheduledAt = zonedWallClockToUtc(
+        form.scheduledDate,
+        form.scheduledTime,
+        form.timezone
+      );
+      if (!scheduledAt) {
+        toast.error('Please enter a valid date and time');
+        setSaving(false);
+        return;
+      }
 
       const meetingDetails =
         form.meetingLink || form.phoneNumber || form.address
@@ -1282,8 +1311,8 @@ export function EventSheet({
           <SheetTitle>{title}</SheetTitle>
           {event && !editing && (
             <SheetDescription>
-              {getInterviewStartTime(event.scheduledAt)} · {event.duration} min
-              · Round {event.round}
+              {getInterviewStartTime(event.scheduledAt, event.timezone)} ·{' '}
+              {event.duration} min · Round {event.round}
             </SheetDescription>
           )}
         </SheetHeader>

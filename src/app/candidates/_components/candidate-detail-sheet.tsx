@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getJson, patchJson } from '@/lib/api-client';
 import { getTagIds } from '@/lib/tags';
+import { getZonedDate, getZonedTime, zonedWallClockToUtc } from '@/lib/timezones';
 import { cn, formatDate, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
@@ -445,6 +446,7 @@ function RescheduleDialog({
   interviewTitle,
   currentDate,
   currentDuration,
+  currentTimezone,
   loading,
 }: {
   open: boolean;
@@ -453,6 +455,9 @@ function RescheduleDialog({
   interviewTitle: string;
   currentDate: string;
   currentDuration: number;
+  /** IANA zone the interview was scheduled in; the wall clock is shown and
+   *  re-interpreted in this zone so rescheduling never shifts the time. */
+  currentTimezone?: string | null;
   loading?: boolean;
 }) {
   // Only mounted while open, so the form below is seeded from initial state
@@ -466,6 +471,7 @@ function RescheduleDialog({
       interviewTitle={interviewTitle}
       currentDate={currentDate}
       currentDuration={currentDuration}
+      currentTimezone={currentTimezone}
       loading={loading}
     />
   );
@@ -477,6 +483,7 @@ function RescheduleForm({
   interviewTitle,
   currentDate,
   currentDuration,
+  currentTimezone,
   loading,
 }: {
   onClose: () => void;
@@ -484,15 +491,19 @@ function RescheduleForm({
   interviewTitle: string;
   currentDate: string;
   currentDuration: number;
+  currentTimezone?: string | null;
   loading?: boolean;
 }) {
   const initial = useMemo(() => {
-    const d = new Date(currentDate);
+    // Both values must come from the SAME zone. Previously the date was sliced
+    // out of the UTC ISO string while the time was read with local getters, so
+    // the form opened on a mismatched date/time and then saved using the
+    // browser's zone — every reschedule silently shifted the interview.
     return {
-      date: d.toISOString().slice(0, 10),
-      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+      date: getZonedDate(currentDate, currentTimezone),
+      time: getZonedTime(currentDate, currentTimezone),
     };
-  }, [currentDate]);
+  }, [currentDate, currentTimezone]);
 
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
@@ -563,7 +574,9 @@ function RescheduleForm({
             onClick={async () => {
               if (!isValid) return;
               await onConfirm({
-                scheduledAt: new Date(`${date}T${time}`).toISOString(),
+                scheduledAt:
+                  zonedWallClockToUtc(date, time, currentTimezone ?? '') ||
+                  new Date(`${date}T${time}`).toISOString(),
                 duration,
               });
             }}
@@ -1716,6 +1729,8 @@ export function CandidateDetailSheet({
     title: string;
     scheduledAt: string;
     duration: number;
+    /** IANA zone so the form shows/edits the wall clock in the same zone. */
+    timezone?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -2488,13 +2503,24 @@ export function CandidateDetailSheet({
     }
     setPipelineLoading(true);
     try {
+      // `data.scheduledAt` is a wall clock from the dialog; interpret it in the
+      // zone the user picked, not in the browser's zone.
+      const scheduledAt = zonedWallClockToUtc(
+        data.scheduledAt.slice(0, 10),
+        data.scheduledAt.slice(11, 16),
+        data.timezone
+      );
+      if (!scheduledAt) {
+        toast.error('Please enter a valid date and time');
+        return;
+      }
       await createInterviewForApplication(activePipelineApp._id, {
         title: data.title,
         type: data.type as Interview['type'],
         interviewType: data.interviewType,
         jobId: data.jobId || undefined,
         round: data.round,
-        scheduledAt: new Date(data.scheduledAt).toISOString(),
+        scheduledAt,
         duration: data.duration,
         timezone: data.timezone,
         interviewerIds: data.interviewerIds,
@@ -3264,6 +3290,7 @@ export function CandidateDetailSheet({
                                           title: iv.title,
                                           scheduledAt: iv.scheduledAt,
                                           duration: iv.duration,
+                                          timezone: iv.timezone,
                                         });
                                         setRescheduleOpen(true);
                                       }}
@@ -4194,6 +4221,7 @@ export function CandidateDetailSheet({
         interviewTitle={rescheduleInterview?.title ?? ''}
         currentDate={rescheduleInterview?.scheduledAt ?? ''}
         currentDuration={rescheduleInterview?.duration ?? 30}
+        currentTimezone={rescheduleInterview?.timezone}
         loading={actionLoading}
       />
 

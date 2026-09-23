@@ -1,3 +1,5 @@
+import { getZonedDate, getZonedTime, isValidTimezone } from '@/lib/timezones';
+import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import type { Interview } from '@/store/types';
 
 export function toISO(date: Date): string {
@@ -7,30 +9,62 @@ export function toISO(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function getInterviewDate(scheduledAt: string): string {
-  return scheduledAt.slice(0, 10);
+/**
+ * Calendar day an interview falls on, in the zone it was scheduled in.
+ *
+ * `timezone` is optional so existing callers keep compiling, but it SHOULD be
+ * passed: `scheduledAt` is a UTC instant, so slicing it put a 23:00-UTC
+ * interview on the wrong day for anyone east of UTC.
+ */
+export function getInterviewDate(
+  scheduledAt: string,
+  timezone?: string | null
+): string {
+  return getZonedDate(scheduledAt, timezone);
 }
 
-export function getInterviewStartTime(scheduledAt: string): string {
-  return scheduledAt.slice(11, 16);
+/** Wall-clock start time in the interview's own timezone. */
+export function getInterviewStartTime(
+  scheduledAt: string,
+  timezone?: string | null
+): string {
+  return getZonedTime(scheduledAt, timezone);
 }
 
+/**
+ * Wall-clock end time in the interview's own timezone.
+ *
+ * Derives from the same `getZonedTime` as the start rather than adding minutes
+ * to UTC fields, so a 23:30 start plus 60 minutes correctly reads 00:30 instead
+ * of mixing zones.
+ */
 export function getInterviewEndTime(
   scheduledAt: string,
-  duration: number
+  duration: number,
+  timezone?: string | null
 ): string {
-  const d = new Date(scheduledAt);
-  d.setMinutes(d.getMinutes() + duration);
-  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  const start = new Date(scheduledAt);
+  if (Number.isNaN(start.getTime())) return '';
+  const end = new Date(start.getTime() + duration * 60_000);
+  return getZonedTime(end.toISOString(), timezone);
 }
 
-export function formatScheduledAt(scheduledAt: string): string {
+/**
+ * Long-form date label in the interview's own timezone, so the date shown next
+ * to a time never belongs to a different day than that time.
+ */
+export function formatScheduledAt(
+  scheduledAt: string,
+  timezone?: string | null
+): string {
   const date = new Date(scheduledAt);
+  const tz = timezone && isValidTimezone(timezone) ? timezone : DEFAULT_TIMEZONE;
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    ...(isValidTimezone(tz) ? { timeZone: tz } : {}),
   });
 }
 

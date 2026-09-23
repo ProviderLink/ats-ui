@@ -20,7 +20,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onClick, compact }: EventCardProps) {
-  const startTime = getInterviewStartTime(event.scheduledAt);
+  const startTime = getInterviewStartTime(event.scheduledAt, event.timezone);
   return (
     <button
       onClick={e => {

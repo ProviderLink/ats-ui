@@ -49,7 +49,7 @@ export function MonthView({
 
   function eventsFor(date: Date) {
     const iso = toISO(date);
-    return events.filter(e => getInterviewDate(e.scheduledAt) === iso);
+    return events.filter(e => getInterviewDate(e.scheduledAt, e.timezone) === iso);
   }
 
   function isToday(date: Date) {

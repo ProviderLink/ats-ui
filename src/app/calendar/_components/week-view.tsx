@@ -41,10 +41,10 @@ export function WeekView({
 
   function eventsFor(date: Date) {
     return events
-      .filter(e => getInterviewDate(e.scheduledAt) === toISO(date))
+      .filter(e => getInterviewDate(e.scheduledAt, e.timezone) === toISO(date))
       .sort((a, b) =>
-        getInterviewStartTime(a.scheduledAt).localeCompare(
-          getInterviewStartTime(b.scheduledAt)
+        getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
+          getInterviewStartTime(b.scheduledAt, b.timezone)
         )
       );
   }

@@ -66,11 +66,11 @@ export function AgendaView({
   const grouped = new Map<string, Interview[]>();
   events
     .filter(e => {
-      const d = getInterviewDate(e.scheduledAt);
+      const d = getInterviewDate(e.scheduledAt, e.timezone);
       return d >= startISO && d <= endISO;
     })
     .forEach(e => {
-      const d = getInterviewDate(e.scheduledAt);
+      const d = getInterviewDate(e.scheduledAt, e.timezone);
       if (!grouped.has(d)) grouped.set(d, []);
       grouped.get(d)!.push(e);
     });
@@ -92,8 +92,8 @@ export function AgendaView({
     <div className="flex flex-col flex-1 overflow-auto p-4 gap-5">
       {sortedDates.map(dateStr => {
         const dayEvents = (grouped.get(dateStr) ?? []).sort((a, b) =>
-          getInterviewStartTime(a.scheduledAt).localeCompare(
-            getInterviewStartTime(b.scheduledAt)
+          getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
+            getInterviewStartTime(b.scheduledAt, b.timezone)
           )
         );
         const isToday = dateStr === todayISO;
@@ -115,10 +115,14 @@ export function AgendaView({
 
             <div className="flex flex-col gap-2 flex-1">
               {dayEvents.map(event => {
-                const startTime = getInterviewStartTime(event.scheduledAt);
+                const startTime = getInterviewStartTime(
+                  event.scheduledAt,
+                  event.timezone
+                );
                 const endTime = getInterviewEndTime(
                   event.scheduledAt,
-                  event.duration
+                  event.duration,
+                  event.timezone
                 );
                 const location = getMeetingLocation(event);
                 return (
