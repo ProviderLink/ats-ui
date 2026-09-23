@@ -52,7 +52,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { zonedWallClockToUtc } from '@/lib/timezones';
-import { cn, formatDate, timeAgo } from '@/lib/utils';
+import { cn, formatDate, sortableTime, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -1790,8 +1790,8 @@ export function CandidatesTable() {
 
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
+      const aTime = sortableTime(a.createdAt);
+      const bTime = sortableTime(b.createdAt);
       const aName = `${a.firstName} ${a.lastName}`.toLowerCase();
       const bName = `${b.firstName} ${b.lastName}`.toLowerCase();
       const aScore = a.aiScore?.score ?? a.aiValidation?.score ?? -1;

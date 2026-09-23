@@ -43,3 +43,21 @@ const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
 export function isValidObjectId(id: string | undefined | null): boolean {
   return typeof id === 'string' && OBJECT_ID_RE.test(id);
 }
+
+/**
+ * Timestamp for sorting, safe against unparseable input.
+ *
+ * `Date.parse` returns `NaN` for a malformed value, and `NaN` comparisons are
+ * always false, so a comparator like `return tB - tA` would return `NaN` and
+ * leave the sort order implementation-defined. Some collections have
+ * historically stored timestamps as ISO strings rather than dates, so a bad
+ * value is a real possibility rather than a theoretical one.
+ *
+ * Unparseable values sort to the END (treated as `-Infinity`) when ordering
+ * newest-first, matching how a missing date is normally displayed.
+ */
+export function sortableTime(value: string | null | undefined): number {
+  if (!value) return Number.NEGATIVE_INFINITY;
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? Number.NEGATIVE_INFINITY : t;
+}

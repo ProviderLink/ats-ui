@@ -1,5 +1,6 @@
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { getJson } from '@/lib/api-client';
+import { sortableTime } from '@/lib/utils';
 import type { Client, Job, Pagination } from '@/store';
 import { useJobStore } from '@/store';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -23,8 +24,10 @@ function compareJobs(a: Job, b: Job) {
   const rankB = STATUS_RANK[b.status] ?? 99;
   if (rankA !== rankB) return rankA - rankB;
   // Within the same status, newer jobs (createdAt desc) come first.
-  const tA = a.createdAt ? Date.parse(a.createdAt) : 0;
-  const tB = b.createdAt ? Date.parse(b.createdAt) : 0;
+  // `sortableTime` guards against an unparseable `createdAt`, which would
+  // otherwise yield NaN and leave the order implementation-defined.
+  const tA = sortableTime(a.createdAt);
+  const tB = sortableTime(b.createdAt);
   if (tB !== tA) return tB - tA;
   return (b._id ?? '').localeCompare(a._id ?? '');
 }
