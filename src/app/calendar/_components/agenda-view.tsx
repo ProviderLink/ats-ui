@@ -1,7 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useUserStore } from '@/store/slices/users.store';
 import type { Interview, InterviewStatus, InterviewType } from '@/store/types';
 import { CalendarIcon, ClockIcon, MapPinIcon, UsersIcon } from 'lucide-react';
+import { useMemo } from 'react';
 import {
   formatDateLabel,
   getInterviewDate,
@@ -49,6 +51,15 @@ export function AgendaView({
   onSlotClick: _onSlotClick,
 }: AgendaViewProps) {
   const todayISO = toISO(new Date());
+
+  // `interviewerIds` holds bare User ObjectIds; the API never sends display
+  // names. Resolve them the same way `EventSheet` does, falling back to the id.
+  const users = useUserStore(s => s.items);
+  const interviewerNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const u of users) map[u._id] = `${u.firstName} ${u.lastName}`;
+    return map;
+  }, [users]);
 
   const startISO = (() => {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -182,7 +193,9 @@ export function AgendaView({
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
                         <UsersIcon className="size-3 shrink-0" />
                         <span className="truncate">
-                          {event.interviewerIds.join(', ')}
+                          {event.interviewerIds
+                            .map(id => interviewerNames[id] ?? id)
+                            .join(', ')}
                         </span>
                       </div>
                     )}

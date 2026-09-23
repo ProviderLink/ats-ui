@@ -1,6 +1,10 @@
 import { cn } from '@/lib/utils';
 import type { Interview } from '@/store/types';
-import { getInterviewDate, toISO } from '../_utils/calendar-helpers';
+import {
+  getInterviewDate,
+  getInterviewStartTime,
+  toISO,
+} from '../_utils/calendar-helpers';
 import { EventCard } from './event-card';
 
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -47,11 +51,18 @@ export function MonthView({
     cells.push({ date: new Date(year, month + 1, nextDay++), current: false });
   }
 
+  // Sorted by start time, like WeekView and AgendaView. The API returns
+  // `scheduledAt: -1`, so without this a day cell showed the day's LATEST three
+  // interviews and hid the morning ones.
   function eventsFor(date: Date) {
     const iso = toISO(date);
-    return events.filter(
-      e => getInterviewDate(e.scheduledAt, e.timezone) === iso
-    );
+    return events
+      .filter(e => getInterviewDate(e.scheduledAt, e.timezone) === iso)
+      .sort((a, b) =>
+        getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
+          getInterviewStartTime(b.scheduledAt, b.timezone)
+        )
+      );
   }
 
   function isToday(date: Date) {
@@ -118,9 +129,18 @@ export function MonthView({
                 />
               ))}
               {more > 0 && (
-                <span className="text-xs text-muted-foreground/70 px-1.5 cursor-default">
+                <button
+                  type="button"
+                  className="text-xs text-left text-muted-foreground/70 px-1.5 hover:text-foreground hover:underline"
+                  onClick={e => {
+                    // Without this the overflow was unreachable: the cell-level
+                    // handler only fires when the day is empty.
+                    e.stopPropagation();
+                    onSlotClick?.(toISO(date));
+                  }}
+                >
                   +{more} more
-                </span>
+                </button>
               )}
             </div>
           );
