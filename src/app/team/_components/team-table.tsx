@@ -372,11 +372,7 @@ export function TeamTable({ members, loading }: Props) {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   // `positive` reproduces this table's existing `> 0` rule on change, which
   // accepts 50 from the dropdown even though it is not in `validSizes`.
-  const {
-    pageIndex,
-    pageSize,
-    handlePaginationChange,
-  } = useTablePagination({
+  const { pageIndex, pageSize, handlePaginationChange } = useTablePagination({
     storageKey: 'team',
     defaultSize: 15,
     sizeValidation: 'positive',
