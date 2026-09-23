@@ -87,6 +87,7 @@ function MetricCard({
   change,
   color,
   chartType = 'bar',
+  higherIsBetter = true,
 }: {
   title: string;
   value: number;
@@ -94,8 +95,20 @@ function MetricCard({
   change: number;
   color: string;
   chartType?: 'bar' | 'line';
+  /**
+   * Which direction is good for this metric. Defaults to true (growth is good),
+   * which suits Candidates/Clients/Open Jobs. A metric where more is worse —
+   * time-to-hire, rejection rate — must pass `false`, otherwise a rise renders
+   * green. Previously the tone was derived from the sign alone, so polarity was
+   * not expressible.
+   */
+  higherIsBetter?: boolean;
 }) {
-  const isUp = change >= 0;
+  // A change of exactly 0 is neutral, not bad — it flags as "down" otherwise
+  // because `change >= 0` would make isUp true while the arrow said otherwise.
+  const isFlat = change === 0;
+  const isUp = change > 0;
+  const isGood = isFlat ? null : isUp === higherIsBetter;
 
   const config: ChartConfig = {
     count: { label: title, color },
@@ -148,10 +161,14 @@ function MetricCard({
           <div
             className={cn(
               'flex items-center gap-1 font-medium',
-              isUp ? 'text-success' : 'text-destructive'
+              isGood === null
+                ? 'text-muted-foreground'
+                : isGood
+                  ? 'text-success'
+                  : 'text-destructive'
             )}
           >
-            {isUp ? '+' : ''}
+            {change > 0 ? '+' : ''}
             {change}% vs last 3 months
             {isUp ? (
               <TrendingUp className="size-3.5" />
@@ -217,10 +234,14 @@ function MetricCard({
         <div
           className={cn(
             'flex items-center gap-1 font-medium',
-            isUp ? 'text-success' : 'text-destructive'
+            isGood === null
+              ? 'text-muted-foreground'
+              : isGood
+                ? 'text-success'
+                : 'text-destructive'
           )}
         >
-          {isUp ? '+' : ''}
+          {change > 0 ? '+' : ''}
           {change}% vs last 3 months
           {isUp ? (
             <TrendingUp className="size-3.5" />
