@@ -310,6 +310,8 @@ export function EmailsList() {
   const [selected, setSelected] = useState<Email | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  // Debounce timer for the search box (see `handleQuery`).
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [composeMode, setComposeMode] = useState<
     | { type: 'new' }
     | { type: 'reply'; email: Email }
@@ -352,6 +354,24 @@ export function EmailsList() {
       limit: pageSize,
     });
   }, [tab, statusFilter, query, pageIndex, pageSize, fetchEmails]);
+
+  /**
+   * If the page we are on no longer exists, step back to the last real one.
+   *
+   * Called after a delete. Doing this here rather than in an effect keeps the
+   * correction deterministic and out of the render/effect cycle: deleting the
+   * single row of the last page used to leave the list showing "No emails
+   * found" with no pagination to escape through, because nothing re-ran the
+   * fetch (pageIndex, pageSize, tab, status and query were all unchanged).
+   */
+  function stepBackIfPageGone(remainingTotal: number) {
+    if (pageIndex === 0) return;
+    const lastPage = Math.max(0, Math.ceil(remainingTotal / pageSize) - 1);
+    if (pageIndex <= lastPage) return;
+    const target = lastPage;
+    setPageIndex(target);
+    sessionStorage.setItem('emails-page-index', String(target));
+  }
 
   // Lightweight per-tab counts — fetched on mount and after mutations
   const [tabCounts, setTabCounts] = useState({
@@ -414,10 +434,25 @@ export function EmailsList() {
     sessionStorage.setItem('emails-page-index', '0');
   }
 
-  function handleQuery(v: string) {
+  // Keystrokes are debounced; tab/status/clear/reset changes apply at once.
+
+  /** Apply a search term to state immediately. */
+  function applyQuery(v: string) {
     setQuery(v);
     setPageIndex(0);
     sessionStorage.setItem('emails-page-index', '0');
+  }
+
+  function handleQuery(v: string) {
+    // Email search is SERVER-side, so every keystroke was a full round-trip.
+    // Debounce it like every other search box in the app (300 ms).
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => applyQuery(v), 300);
+  }
+
+  function handleQueryImmediate(v: string) {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    applyQuery(v);
   }
 
   function handlePaginationChange(
@@ -477,6 +512,9 @@ export function EmailsList() {
     if (!deleteTarget) return;
     try {
       await remove(deleteTarget._id);
+      // Step back when that was the last row on the last page, so the user is
+      // not left on an empty page.
+      stepBackIfPageGone(Math.max(0, totalRows - 1));
       setSelectedIds(prev => {
         const next = new Set(prev);
         next.delete(deleteTarget!._id);
@@ -494,6 +532,7 @@ export function EmailsList() {
     const ids = [...selectedIds];
     try {
       await Promise.all(ids.map(id => remove(id)));
+      stepBackIfPageGone(Math.max(0, totalRows - ids.length));
       setSelectedIds(new Set());
       toast.success(`${ids.length} email${ids.length > 1 ? 's' : ''} deleted`);
     } catch (e) {
@@ -716,33 +755,60 @@ export function EmailsList() {
               </div>
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="flex flex-col items-center gap-2 py-16 text-center">
-                <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                  <SearchIcon className="size-5 text-muted-foreground" />
+            <>
+              <div className="flex flex-1 items-center justify-center">
+                <div className="flex flex-col items-center gap-2 py-16 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+                    <SearchIcon className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium">No emails found</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasActiveFilters
+                      ? 'Try adjusting your filters or search query.'
+                      : 'No emails have been sent or received yet.'}
+                  </p>
+                  {hasActiveFilters && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => {
+                        handleQueryImmediate('');
+                        handleStatusFilter('all');
+                        handleTabChange('all');
+                      }}
+                    >
+                      Reset filters
+                    </Button>
+                  )}
                 </div>
-                <p className="text-sm font-medium">No emails found</p>
-                <p className="text-xs text-muted-foreground">
-                  {hasActiveFilters
-                    ? 'Try adjusting your filters or search query.'
-                    : 'No emails have been sent or received yet.'}
-                </p>
-                {hasActiveFilters && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-2"
-                    onClick={() => {
-                      handleQuery('');
-                      handleStatusFilter('all');
-                      handleTabChange('all');
-                    }}
-                  >
-                    Reset filters
-                  </Button>
-                )}
               </div>
-            </div>
+
+              {/*
+                Pagination stays mounted even when the page is empty. It used to
+                live only in the non-empty branch, so deleting the last row of a
+                page stranded the user on a dead-end "No emails found" screen.
+              */}
+              {totalRows > 0 && (
+                <div className="border-t shrink-0 bg-background">
+                  <TablePagination
+                    pageIndex={pageIndex}
+                    pageSize={pageSize}
+                    totalRows={totalRows}
+                    label="emails"
+                    onPageChange={idx =>
+                      handlePaginationChange({
+                        pageIndex: idx,
+                        pageSize,
+                      })
+                    }
+                    onPageSizeChange={size =>
+                      handlePaginationChange({ pageIndex: 0, pageSize: size })
+                    }
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

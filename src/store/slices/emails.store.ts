@@ -76,6 +76,11 @@ export const useEmailStore = create<EmailState & EmailActions>()(
           status: params?.status,
           direction: params?.direction,
           threadId: params?.threadId,
+          // Previously omitted, so the composer's search box re-fetched the
+          // SAME page on every keystroke while the list labelled the result
+          // "found" — a filter that was never sent. `EmailFilters` already
+          // declared this field; it was simply dropped by the whitelist.
+          search: params?.search,
         };
         const hasData = get().items.length > 0;
         // When the tab/direction/status filter changes, treat it as a fresh
