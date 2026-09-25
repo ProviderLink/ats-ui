@@ -96,9 +96,9 @@ by the four most recent commits.
 
 | Date       | ID    | Commit          | Summary                                                                                                                                                                                                                                                                                                          |
 | ---------- | ----- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-25 | UX-10 | _(uncommitted)_ | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
-| 2026-09-25 | UX-12 | _(uncommitted)_ | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
-| 2026-09-25 | UX-11 | _(uncommitted)_ | Accessible names on **32** unnamed icon-only buttons across 14 files (+43/−2). Found 13 sites the reported list missed, and correctly skipped 1 that already had a `title`. Scanner re-run after the edit: 56 icon buttons, **0 unnamed**. |
+| 2026-09-25 | UX-10 | `698aeca` | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
+| 2026-09-25 | UX-12 | `81e0700` | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
+| 2026-09-25 | UX-11 | `adaa249` | Accessible names on **32** unnamed icon-only buttons across 14 files (+43/−2). Found 13 sites the reported list missed, and correctly skipped 1 that already had a `title`. Scanner re-run after the edit: 56 icon buttons, **0 unnamed**.                                                                       |
 
 ---
 
@@ -469,7 +469,7 @@ this issue describes, yet was not listed. Neither were 4 "clear search" buttons,
 `Copy link`, the `DynamicList` remove buttons, or the stage-remove button — **13 unnamed sites were
 missing from the list.**
 
-**It also contained a non-issue.** `talent-pool-detail-sheet.tsx:127` ("Edit notes") *does* have an
+**It also contained a non-issue.** `talent-pool-detail-sheet.tsx:127` ("Edit notes") _does_ have an
 accessible name: a `title="Edit notes"` attribute. Since `title` is an accessible-name source in its
 own right, it was **left alone**. A naive sweep that only checks `aria-label` would have flagged it
 and added a redundant attribute.
@@ -479,15 +479,15 @@ and added a redundant attribute.
 Precision mattered because a bulk edit across 32 sites is hard to review. Two draft heuristics were
 discarded after producing provably wrong answers:
 
-| Attempt | Result | Why it was wrong |
-| --- | --- | --- |
-| v1 (tag/icon regex) | 66 "unnamed" | Counted `asChild` buttons whose child renders real text, and stripped the ternary in `{cond ? 'A' : 'B'}`, losing visible labels |
-| v2 (+ string-literal check) | 5 | Treated `className="size-4"` as a visible label, so **every real icon button passed as "named"** — a false *negative* in the dangerous direction |
-| v3 (strip attribute values, then check literals) | **32** | Matches the manual read of every site |
+| Attempt                                          | Result       | Why it was wrong                                                                                                                                 |
+| ------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| v1 (tag/icon regex)                              | 66 "unnamed" | Counted `asChild` buttons whose child renders real text, and stripped the ternary in `{cond ? 'A' : 'B'}`, losing visible labels                 |
+| v2 (+ string-literal check)                      | 5            | Treated `className="size-4"` as a visible label, so **every real icon button passed as "named"** — a false _negative_ in the dangerous direction |
+| v3 (strip attribute values, then check literals) | **32**       | Matches the manual read of every site                                                                                                            |
 
 v2 is the instructive failure: it reported the codebase as almost clean, which is exactly the result
 that would have led to closing this issue without fixing it. The corrected scanner strips all
-attribute values (so class names and handlers are not mistaken for text) *before* looking for string
+attribute values (so class names and handlers are not mistaken for text) _before_ looking for string
 literals.
 
 #### Names are contextual, not generic
@@ -510,22 +510,22 @@ the very fix for UX-11.
 
 #### Site-by-site
 
-| File | Sites | Names added |
-| --- | --- | --- |
-| `clients/_components/client-detail-sheet.tsx` | 5 | Email/Edit/Delete contact (each naming the contact), Edit/Delete note |
-| `clients/_components/clients-table.tsx` | 3 | Edit/Delete/View jobs, each naming the company |
-| `hired/_components/hired-table.tsx` | 4 | Assign/Email/More actions (named), Clear search |
-| `talent-pool/_components/talent-pool-table.tsx` | 4 | Remove/Assign/Email (named), Clear search |
-| `jobs/_components/job-panel.tsx` | 3 | Delete job/Edit job (named), Copy link |
-| `jobs/_components/job-list.tsx` | 2 | Close search, Search jobs |
-| `candidates/quick-import/page.tsx` | 3 | Remove experience/education N, Back to candidates |
-| `careers/[id]/apply/page.tsx` | 2 | Remove experience/education N (public form) |
-| `candidates/_components/candidates-table.tsx` | 1 | Clear search |
-| `candidates/page.tsx` | 1 | Clear job filter |
-| `permanently-ineligible` table | 1 | Clear search |
-| `settings/_components/pipeline-template-sheet.tsx` | 1 | Remove stage N |
-| `jobs/_components/new-job-sheet.tsx` | 1 | Remove item N |
-| `emails/[id]/page.tsx` | 1 | Download attachment |
+| File                                               | Sites | Names added                                                           |
+| -------------------------------------------------- | ----- | --------------------------------------------------------------------- |
+| `clients/_components/client-detail-sheet.tsx`      | 5     | Email/Edit/Delete contact (each naming the contact), Edit/Delete note |
+| `clients/_components/clients-table.tsx`            | 3     | Edit/Delete/View jobs, each naming the company                        |
+| `hired/_components/hired-table.tsx`                | 4     | Assign/Email/More actions (named), Clear search                       |
+| `talent-pool/_components/talent-pool-table.tsx`    | 4     | Remove/Assign/Email (named), Clear search                             |
+| `jobs/_components/job-panel.tsx`                   | 3     | Delete job/Edit job (named), Copy link                                |
+| `jobs/_components/job-list.tsx`                    | 2     | Close search, Search jobs                                             |
+| `candidates/quick-import/page.tsx`                 | 3     | Remove experience/education N, Back to candidates                     |
+| `careers/[id]/apply/page.tsx`                      | 2     | Remove experience/education N (public form)                           |
+| `candidates/_components/candidates-table.tsx`      | 1     | Clear search                                                          |
+| `candidates/page.tsx`                              | 1     | Clear job filter                                                      |
+| `permanently-ineligible` table                     | 1     | Clear search                                                          |
+| `settings/_components/pipeline-template-sheet.tsx` | 1     | Remove stage N                                                        |
+| `jobs/_components/new-job-sheet.tsx`               | 1     | Remove item N                                                         |
+| `emails/[id]/page.tsx`                             | 1     | Download attachment                                                   |
 
 #### Completeness proof
 
