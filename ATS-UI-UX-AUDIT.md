@@ -53,7 +53,7 @@ by the four most recent commits.
 | UX-13 | HIGH   | A11y        | Labels not associated with their controls (many forms)    | Open   |
 | UX-14 | HIGH   | A11y        | Clickable rows and pipeline cards unreachable by keyboard | Open   |
 | UX-15 | MEDIUM | A11y        | Duplicated `aria-label` values with no row context        | Fixed  |
-| UX-16 | HIGH   | A11y        | Star-rating buttons unnamed and unlabelled (2 files)      | Open   |
+| UX-16 | HIGH   | A11y        | Star-rating buttons unnamed and unlabelled (2 files)      | Fixed  |
 | UX-17 | MEDIUM | A11y        | Status conveyed by colour alone                           | Open   |
 | UX-18 | MEDIUM | A11y        | `outline-none` search inputs with no focus replacement    | Open   |
 | UX-19 | MEDIUM | A11y        | Password visibility toggles removed from the tab order    | Open   |
@@ -90,7 +90,7 @@ by the four most recent commits.
 
 **Totals: 17 HIGH · 25 MEDIUM · 7 LOW = 49 findings.**
 
-**Progress: 4 fixed · 45 open.** (See the `### Fix applied` section under each fixed issue.)
+**Progress: 5 fixed · 44 open.** (See the `### Fix applied` section under each fixed issue.)
 
 ### Fix log
 
@@ -98,6 +98,7 @@ by the four most recent commits.
 | ---------- | ----- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-25 | UX-10 | `698aeca` | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
 | 2026-09-25 | UX-12 | `81e0700` | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
+| 2026-09-25 | UX-16 | _(pending)_ | `role="group"` + `aria-label` per star and `aria-pressed` on the selected star, in the candidate interview feedback and calendar feedback forms (+14/−2). |
 | 2026-09-25 | UX-15 | _(pending)_ | Row-context labels on **8** controls across 5 files (+16/−8). Grep confirms 0 remaining context-free labels. |
 | 2026-09-25 | UX-11 | `adaa249` | Accessible names on **32** unnamed icon-only buttons across 14 files (+43/−2). Found 13 sites the reported list missed, and correctly skipped 1 that already had a `title`. Scanner re-run after the edit: 56 icon buttons, **0 unnamed**.                                                                       |
 
@@ -883,6 +884,56 @@ the post-interview feedback form.
 **Fix:** `aria-label={`${i} of 5 stars`}` + `aria-pressed={i === rating}` inside a
 `role="group"` with a label. The correct pattern already exists in this codebase at
 `interview-scorecard-form.tsx:938` (`aria-label={`${i} star`}` via `ToggleGroup`) — reuse it.
+
+### Fix applied (2026-09-25)
+
+**Status:** Done. **2 sites, 2 files, +14/−2.** The only 2 removed lines are the two opening
+`<div>` tags that were reformatted into multi-line form to take the new attributes; their
+`className` values are **byte-identical** to before (`flex items-center gap-1` and
+`flex items-center gap-0.5`), so no styling changed.
+
+```tsx
+<div role="group" aria-label="Interview rating" className="flex items-center gap-1">
+  <button
+    type="button"
+    onClick={() => setRating(i)}
+    aria-label={`${i} of 5 stars`}
+    aria-pressed={i === rating}
+  >
+```
+
+#### Why `aria-pressed` and not the scorecard's `ToggleGroup` approach
+
+The audit suggested porting these two controls onto the `ToggleGroup` already used by
+`interview-scorecard-form.tsx:934`. That was **rejected as too invasive**: it would replace
+`useState` + raw `<button>` with a Radix controlled `ToggleGroup`, i.e. rewrite real component logic
+on a payment-free but live production screen, for no accessibility gain that the attributes below
+do not already deliver.
+
+`aria-pressed={i === rating}` is an accurate fit here because **rating is single-select, not
+multi-select** — only the chosen star is "on", so exactly one button reports pressed. This is the
+standard pattern for a "rate N of 5" control and it exposes the current value, which the previous
+markup did not.
+
+The group label is `"Interview rating"` at **both** sites: `candidate-detail-sheet`'s rating exists
+only inside its `Complete & Feedback` interview block, and `event-sheet`'s is the post-interview
+feedback form.
+
+#### Scope confirmed by sweep, not by trust
+
+Grepping every `[1, 2, 3, 4, 5]` loop in `src` returns exactly **3** — the two fixed here plus
+`interview-scorecard-form.tsx:934`, which was already correct. So unlike UX-11 and UX-12, this
+issue's reported scope was accurate and complete.
+
+#### Verification
+
+- `tsc` clean · `eslint .` still **59 problems (34/25)** · `pnpm build` ✓.
+- Both strings (`of 5 stars`, `Interview rating`) confirmed present in the built `dist/assets/*.js`,
+  so they survive minification into the deployed bundle.
+- Checked that no CSS `[role=...]` selector can match the new `role="group"` wrappers: the only such
+  rule in `src/index.css:349` is `[role='menuitem']`.
+- Diff audit: the only added non-attribute lines are two `>` characters closing the reformatted
+  `<div>` tags.
 
 ---
 
