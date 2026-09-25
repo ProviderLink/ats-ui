@@ -48,7 +48,7 @@ by the four most recent commits.
 | UX-08 | MEDIUM | Layout      | Page container padding/gap inconsistent across features   | Open   |
 | UX-09 | LOW    | Shell       | Sidebar collapse state is discarded on reload             | Open   |
 | UX-10 | HIGH   | A11y        | 9 unnamed pagination icon buttons, shared by every table  | Fixed  |
-| UX-11 | HIGH   | A11y        | Unnamed row-action icon buttons across 6 tables           | Open   |
+| UX-11 | HIGH   | A11y        | Unnamed row-action icon buttons across 6 tables           | Fixed  |
 | UX-12 | HIGH   | A11y        | Dialogs/sheets missing Radix Title and/or Description     | Fixed  |
 | UX-13 | HIGH   | A11y        | Labels not associated with their controls (many forms)    | Open   |
 | UX-14 | HIGH   | A11y        | Clickable rows and pipeline cards unreachable by keyboard | Open   |
@@ -90,7 +90,7 @@ by the four most recent commits.
 
 **Totals: 17 HIGH · 25 MEDIUM · 7 LOW = 49 findings.**
 
-**Progress: 2 fixed · 47 open.** (See the `### Fix applied` section under each fixed issue.)
+**Progress: 3 fixed · 46 open.** (See the `### Fix applied` section under each fixed issue.)
 
 ### Fix log
 
@@ -98,6 +98,7 @@ by the four most recent commits.
 | ---------- | ----- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-25 | UX-10 | _(uncommitted)_ | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
 | 2026-09-25 | UX-12 | _(uncommitted)_ | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
+| 2026-09-25 | UX-11 | _(uncommitted)_ | Accessible names on **32** unnamed icon-only buttons across 14 files (+43/−2). Found 13 sites the reported list missed, and correctly skipped 1 that already had a `title`. Scanner re-run after the edit: 56 icon buttons, **0 unnamed**. |
 
 ---
 
@@ -452,6 +453,87 @@ controls are the most dangerous to guess at.
 **Fix:** `aria-label={`Delete ${row.original.companyName}`}` etc. The codebase already does this
 correctly in `candidates-table.tsx:677` (`aria-label={`Actions for ${name}`}`) —
 reuse that pattern.
+
+### Fix applied (2026-09-25)
+
+**Status:** Done. **32 sites across 14 files, +43/−2** (the two removals are pure reformats of lines
+that were edited).
+
+#### The reported site list was wrong in both directions
+
+This issue listed ~19 sites. Enumerating the codebase instead of trusting that list produced a very
+different answer, and both errors would have mattered:
+
+**It missed real sites.** `client-detail-sheet.tsx:575` is the exact `Mail`/`Pencil`/`Trash` pattern
+this issue describes, yet was not listed. Neither were 4 "clear search" buttons, the job panel's
+`Copy link`, the `DynamicList` remove buttons, or the stage-remove button — **13 unnamed sites were
+missing from the list.**
+
+**It also contained a non-issue.** `talent-pool-detail-sheet.tsx:127` ("Edit notes") *does* have an
+accessible name: a `title="Edit notes"` attribute. Since `title` is an accessible-name source in its
+own right, it was **left alone**. A naive sweep that only checks `aria-label` would have flagged it
+and added a redundant attribute.
+
+#### The scanner, and why two earlier attempts were wrong
+
+Precision mattered because a bulk edit across 32 sites is hard to review. Two draft heuristics were
+discarded after producing provably wrong answers:
+
+| Attempt | Result | Why it was wrong |
+| --- | --- | --- |
+| v1 (tag/icon regex) | 66 "unnamed" | Counted `asChild` buttons whose child renders real text, and stripped the ternary in `{cond ? 'A' : 'B'}`, losing visible labels |
+| v2 (+ string-literal check) | 5 | Treated `className="size-4"` as a visible label, so **every real icon button passed as "named"** — a false *negative* in the dangerous direction |
+| v3 (strip attribute values, then check literals) | **32** | Matches the manual read of every site |
+
+v2 is the instructive failure: it reported the codebase as almost clean, which is exactly the result
+that would have led to closing this issue without fixing it. The corrected scanner strips all
+attribute values (so class names and handlers are not mistaken for text) *before* looking for string
+literals.
+
+#### Names are contextual, not generic
+
+Every per-row control names its record, reusing the pattern this issue itself cites
+(`candidates-table.tsx:677`):
+
+```tsx
+aria-label={`Delete ${client.companyName}`}                                    // clients-table
+aria-label={`Assign ${candidate.firstName} ${candidate.lastName} to a job`}    // hired / talent-pool
+aria-label={`Remove ${candidate.firstName} ${candidate.lastName} from the talent pool`}
+aria-label={`Delete job ${fullJob.title}`}                                     // job-panel
+aria-label={`Email ${c.name}`}                                                // client contact row
+aria-label={`Remove stage ${stage.name || i + 1}`}                             // pipeline-template-sheet
+aria-label={`Remove item ${i + 1}`}                                            // DynamicList
+```
+
+This deliberately avoids reproducing the UX-15 defect (labels present but identical on every row) in
+the very fix for UX-11.
+
+#### Site-by-site
+
+| File | Sites | Names added |
+| --- | --- | --- |
+| `clients/_components/client-detail-sheet.tsx` | 5 | Email/Edit/Delete contact (each naming the contact), Edit/Delete note |
+| `clients/_components/clients-table.tsx` | 3 | Edit/Delete/View jobs, each naming the company |
+| `hired/_components/hired-table.tsx` | 4 | Assign/Email/More actions (named), Clear search |
+| `talent-pool/_components/talent-pool-table.tsx` | 4 | Remove/Assign/Email (named), Clear search |
+| `jobs/_components/job-panel.tsx` | 3 | Delete job/Edit job (named), Copy link |
+| `jobs/_components/job-list.tsx` | 2 | Close search, Search jobs |
+| `candidates/quick-import/page.tsx` | 3 | Remove experience/education N, Back to candidates |
+| `careers/[id]/apply/page.tsx` | 2 | Remove experience/education N (public form) |
+| `candidates/_components/candidates-table.tsx` | 1 | Clear search |
+| `candidates/page.tsx` | 1 | Clear job filter |
+| `permanently-ineligible` table | 1 | Clear search |
+| `settings/_components/pipeline-template-sheet.tsx` | 1 | Remove stage N |
+| `jobs/_components/new-job-sheet.tsx` | 1 | Remove item N |
+| `emails/[id]/page.tsx` | 1 | Download attachment |
+
+#### Completeness proof
+
+The scanner was re-run after the edit: **56 icon buttons scanned, 0 unnamed.** Repeatable if a future
+change adds a control.
+
+Verification: `tsc` clean · `eslint .` still **59 problems (34/25)** · `pnpm build` ✓. The diff is
+additive apart from 2 reformatted lines, so no existing attribute, handler or class changed.
 
 ---
 
