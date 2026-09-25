@@ -52,7 +52,7 @@ by the four most recent commits.
 | UX-12 | HIGH   | A11y        | Dialogs/sheets missing Radix Title and/or Description     | Fixed  |
 | UX-13 | HIGH   | A11y        | Labels not associated with their controls (many forms)    | Open   |
 | UX-14 | HIGH   | A11y        | Clickable rows and pipeline cards unreachable by keyboard | Open   |
-| UX-15 | MEDIUM | A11y        | Duplicated `aria-label` values with no row context        | Open   |
+| UX-15 | MEDIUM | A11y        | Duplicated `aria-label` values with no row context        | Fixed  |
 | UX-16 | HIGH   | A11y        | Star-rating buttons unnamed and unlabelled (2 files)      | Open   |
 | UX-17 | MEDIUM | A11y        | Status conveyed by colour alone                           | Open   |
 | UX-18 | MEDIUM | A11y        | `outline-none` search inputs with no focus replacement    | Open   |
@@ -90,7 +90,7 @@ by the four most recent commits.
 
 **Totals: 17 HIGH · 25 MEDIUM · 7 LOW = 49 findings.**
 
-**Progress: 3 fixed · 46 open.** (See the `### Fix applied` section under each fixed issue.)
+**Progress: 4 fixed · 45 open.** (See the `### Fix applied` section under each fixed issue.)
 
 ### Fix log
 
@@ -98,6 +98,7 @@ by the four most recent commits.
 | ---------- | ----- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-25 | UX-10 | `698aeca` | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
 | 2026-09-25 | UX-12 | `81e0700` | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
+| 2026-09-25 | UX-15 | _(pending)_ | Row-context labels on **8** controls across 5 files (+16/−8). Grep confirms 0 remaining context-free labels. |
 | 2026-09-25 | UX-11 | `adaa249` | Accessible names on **32** unnamed icon-only buttons across 14 files (+43/−2). Found 13 sites the reported list missed, and correctly skipped 1 that already had a `title`. Scanner re-run after the edit: 56 icon buttons, **0 unnamed**.                                                                       |
 
 ---
@@ -800,6 +801,46 @@ Also:
 
 **Fix:** interpolate the record name, matching `hired-table.tsx:353`
 (`Select ${firstName} ${lastName}`).
+
+### Fix applied (2026-09-25)
+
+**Status:** Done. **8 sites across 5 files, +16/−8.** The 8 removed lines are exactly the 8 labels
+that were replaced — nothing else changed.
+
+| File | Before | After |
+| --- | --- | --- |
+| `settings/disposition-reasons/page.tsx` | `"Edit"`, `"Deactivate"`/`"Activate"` | `` `Edit ${r.label}` ``, `` `Deactivate ${r.label}` `` / `` `Activate ${r.label}` `` |
+| `permanently-ineligible-table.tsx` | `"View details"`, `"Restore candidate"`, `"Delete permanently"` | `` `View details for ${first} ${last}` ``, `` `Restore ${first} ${last}` ``, `` `Delete ${first} ${last} permanently` `` |
+| `tags-table.tsx` | `"Select row"` | `` `Select ${row.original.name}` `` |
+| `team-table.tsx` | `"Select row"` | `` `Select ${row.original.firstName} ${row.original.lastName}` `` |
+| `settings/general/page.tsx` | `"Toggle active"` | `` `Deactivate ${tpl.name}` `` / `` `Activate ${tpl.name}` `` |
+
+#### Two judgement calls
+
+**`"Select row"` became `Select <name>`, not just `Select row N`.** A row *position* is not a stable
+identifier — a screen-reader user cannot tell which checkbox belongs to which record from an ordinal
+alone, and it changes as the list re-sorts. Naming the record matches what `UX-11` did and what the
+`Select all …` controls in other tables already do.
+
+**`general/page.tsx` was a false positive in the original report, and is still worth fixing.**
+The report described it as "repeated per template", but its trigger renders visible text
+(`{tpl.isActive ? 'Active' : 'Inactive'}`), so the button is not icon-only — it always had an
+accessible name from its content. The reason to change it is different and real: a static
+`"Toggle active"` label **overrides** the visible text, so the accessible name contradicted what is
+on screen. It now states the action and the target.
+
+#### Fields were verified, not assumed
+
+All interpolated fields are required (non-optional) in their types, so no label can render as
+`"Activate undefined"`: `DispositionReason.label` (`disposition-reasons.store.ts:7`),
+`PipelineTemplate.name` (`pipeline-template.types.ts:5`), `Tag.name` (`tag.types.ts:3`), and the
+candidate shape used by the ineligible table. `tsc` confirms every reference resolves.
+
+#### Completeness
+
+Each of the 7 old context-free labels was grepped after the edit: **0 remaining** in `src`.
+
+Verification: `tsc` clean · `eslint .` still **59 problems (34/25)** · `pnpm build` ✓.
 
 ---
 
