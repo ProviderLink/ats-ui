@@ -211,6 +211,7 @@ function ExperienceEditor({
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => onChange(entries.filter((_, idx) => idx !== i))}
+                aria-label={`Remove experience ${i + 1}`}
               >
                 <XIcon className="size-3" />
               </Button>
@@ -290,6 +291,7 @@ function EducationEditor({
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => onChange(entries.filter((_, idx) => idx !== i))}
+                aria-label={`Remove education ${i + 1}`}
               >
                 <XIcon className="size-3" />
               </Button>
@@ -1314,6 +1316,7 @@ export default function CandidateQuickImportPage() {
               ? handleCancelReview()
               : navigate('/ats/candidates')
           }
+          aria-label="Back to candidates"
         >
           <ArrowLeftIcon />
         </Button>

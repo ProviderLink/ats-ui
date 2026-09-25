@@ -725,6 +725,7 @@ export function ClientsTable() {
                           e.stopPropagation();
                           handleEdit(client);
                         }}
+                        aria-label={`Edit ${client.companyName}`}
                       >
                         <PencilIcon className="size-3.5" />
                       </Button>
@@ -746,6 +747,7 @@ export function ClientsTable() {
                           e.stopPropagation();
                           setDeleteTarget(client);
                         }}
+                        aria-label={`Delete ${client.companyName}`}
                       >
                         <Trash2Icon className="size-3.5" />
                       </Button>
@@ -766,6 +768,7 @@ export function ClientsTable() {
                         e.stopPropagation();
                         handleViewJobs(client);
                       }}
+                      aria-label={`View jobs for ${client.companyName}`}
                     >
                       <ExternalLinkIcon className="size-3.5" />
                     </Button>

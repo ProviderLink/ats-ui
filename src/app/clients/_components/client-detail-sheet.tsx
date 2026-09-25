@@ -577,6 +577,7 @@ function ContactsTab({
                   size="icon-sm"
                   className="text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
                   onClick={() => setComposeFor(c)}
+                  aria-label={`Email ${c.name}`}
                 >
                   <MailIcon className="size-4" />
                 </Button>
@@ -588,6 +589,7 @@ function ContactsTab({
                     setShowAdd(false);
                     setEditingId(c._id);
                   }}
+                  aria-label={`Edit contact ${c.name}`}
                 >
                   <PencilIcon className="size-4" />
                 </Button>
@@ -597,6 +599,7 @@ function ContactsTab({
                   className="text-muted-foreground hover:text-destructive"
                   disabled={mutating}
                   onClick={() => setDeleteConfirmId(c._id)}
+                  aria-label={`Delete contact ${c.name}`}
                 >
                   <Trash2Icon className="size-4" />
                 </Button>
@@ -1360,6 +1363,7 @@ function NoteCard({
             size="icon-sm"
             className="text-muted-foreground hover:text-foreground"
             onClick={onEdit}
+            aria-label="Edit note"
           >
             <PencilIcon className="size-4" />
           </Button>
@@ -1369,6 +1373,7 @@ function NoteCard({
             className="text-muted-foreground hover:text-destructive"
             disabled={mutating}
             onClick={onDelete}
+            aria-label="Delete note"
           >
             <Trash2Icon className="size-4" />
           </Button>

@@ -244,7 +244,12 @@ export function JobList({
                 }}
                 className="h-8 flex-1 border-none shadow-none bg-transparent dark:bg-transparent pl-2 pr-0 text-sm focus-visible:ring-0"
               />
-              <Button variant="ghost" size="icon-sm" onClick={closeSearch}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={closeSearch}
+                aria-label="Close search"
+              >
                 <XIcon />
               </Button>
             </div>
@@ -260,6 +265,7 @@ export function JobList({
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => setSearchOpen(true)}
+                      aria-label="Search jobs"
                     >
                       <SearchIcon />
                     </Button>

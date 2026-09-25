@@ -448,6 +448,7 @@ export function PipelineTemplateSheet({
                       size="icon-xs"
                       className="text-muted-foreground hover:text-destructive shrink-0"
                       onClick={() => removeStage(stage._id)}
+                      aria-label={`Remove stage ${stage.name || i + 1}`}
                     >
                       <Trash2Icon className="size-3.5" />
                     </Button>

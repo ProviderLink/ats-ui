@@ -2323,6 +2323,7 @@ export function CandidatesTable() {
                   size="icon-sm"
                   className="absolute right-0.5 top-1/2 -translate-y-1/2 size-7"
                   onClick={handleClearSearch}
+                  aria-label="Clear search"
                 >
                   <XIcon className="size-3.5" />
                 </Button>

@@ -434,6 +434,7 @@ export function JobPanel({ job, clients }: Props) {
                   size="icon-sm"
                   className="hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                   onClick={() => setDeleteOpen(true)}
+                  aria-label={`Delete job ${fullJob.title}`}
                 >
                   <Trash2Icon />
                 </Button>
@@ -447,6 +448,7 @@ export function JobPanel({ job, clients }: Props) {
                   size="icon-sm"
                   className="hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
                   onClick={() => setEditOpen(true)}
+                  aria-label={`Edit job ${fullJob.title}`}
                 >
                   <PencilIcon />
                 </Button>
@@ -462,6 +464,9 @@ export function JobPanel({ job, clients }: Props) {
                   size="icon-sm"
                   className="hover:border-green-500/40 hover:bg-green-500/10 hover:text-green-600 dark:hover:text-green-400"
                   onClick={handleCopyLink}
+                  aria-label={
+                    linkCopied ? 'Job link copied' : 'Copy link to job'
+                  }
                 >
                   {linkCopied ? (
                     <CheckIcon className="text-green-600" />

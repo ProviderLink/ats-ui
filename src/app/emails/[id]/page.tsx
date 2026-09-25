@@ -91,7 +91,11 @@ function AttachmentItem({ attachment }: { attachment: EmailAttachment }) {
         </p>
       </div>
       <Button variant="ghost" size="icon-sm" asChild>
-        <a href={attachment.url} download={attachment.filename}>
+        <a
+          href={attachment.url}
+          download={attachment.filename}
+          aria-label={`Download ${attachment.filename}`}
+        >
           <DownloadIcon className="size-4" />
         </a>
       </Button>

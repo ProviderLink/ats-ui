@@ -760,6 +760,7 @@ export function TalentPoolTable() {
                       className="rounded p-2 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 dark:hover:bg-destructive/10 dark:hover:border-destructive/40"
                       disabled={mutating}
                       onClick={() => setRemovePoolTarget(candidate)}
+                      aria-label={`Remove ${candidate.firstName} ${candidate.lastName} from the talent pool`}
                     >
                       <XIcon className="size-3.5" />
                     </Button>
@@ -778,6 +779,7 @@ export function TalentPoolTable() {
                       size="icon-xs"
                       className="rounded p-2 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
                       onClick={() => openAssignJob(candidate)}
+                      aria-label={`Assign ${candidate.firstName} ${candidate.lastName} to a job`}
                     >
                       <BriefcaseIcon className="size-3.5" />
                     </Button>
@@ -797,6 +799,7 @@ export function TalentPoolTable() {
                       className="rounded p-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 dark:hover:border-blue-700/40"
                       disabled={!candidate.email || mutating}
                       onClick={() => openCompose(candidate)}
+                      aria-label={`Email ${candidate.firstName} ${candidate.lastName}`}
                     >
                       <MailIcon className="size-3.5" />
                     </Button>
@@ -859,6 +862,7 @@ export function TalentPoolTable() {
                 size="icon-sm"
                 className="absolute right-0.5 top-1/2 -translate-y-1/2 size-7"
                 onClick={handleClearSearch}
+                aria-label="Clear search"
               >
                 <XIcon className="size-3.5" />
               </Button>

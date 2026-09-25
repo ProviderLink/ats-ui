@@ -264,6 +264,7 @@ function DynamicList({
             size="icon-sm"
             onClick={() => onChange(items.filter((_, idx) => idx !== i))}
             className="shrink-0 text-muted-foreground/40 hover:text-destructive"
+            aria-label={`Remove item ${i + 1}`}
           >
             <XIcon className="size-3.5" />
           </Button>

@@ -516,6 +516,7 @@ export function HiredTable() {
                         setAssignTarget(candidate);
                         setAssignJobOpen(true);
                       }}
+                      aria-label={`Assign ${candidate.firstName} ${candidate.lastName} to a job`}
                     >
                       <BriefcaseIcon className="size-3.5" />
                     </Button>
@@ -538,6 +539,7 @@ export function HiredTable() {
                         setComposeTarget(candidate);
                         setComposeOpen(true);
                       }}
+                      aria-label={`Email ${candidate.firstName} ${candidate.lastName}`}
                     >
                       <MailIcon className="size-3.5" />
                     </Button>
@@ -554,6 +556,7 @@ export function HiredTable() {
                     variant="ghost"
                     size="icon-xs"
                     className="rounded p-2"
+                    aria-label={`More actions for ${candidate.firstName} ${candidate.lastName}`}
                   >
                     <EllipsisIcon className="size-3.5" />
                   </Button>
@@ -623,6 +626,7 @@ export function HiredTable() {
                 size="icon-sm"
                 className="absolute right-0.5 top-1/2 -translate-y-1/2 size-7"
                 onClick={handleClearSearch}
+                aria-label="Clear search"
               >
                 <XIcon className="size-3.5" />
               </Button>

@@ -32,6 +32,7 @@ function CandidatesPageContent() {
             size="icon-sm"
             className="ml-auto"
             onClick={() => navigate('/ats/candidates')}
+            aria-label="Clear job filter"
           >
             <XIcon className="size-3.5" />
           </Button>
