@@ -406,7 +406,9 @@ function SecuritySection() {
                 type="button"
                 onClick={() => setShowCurrent(!showCurrent)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}
+                aria-label={
+                  showCurrent ? 'Hide current password' : 'Show current password'
+                }
               >
                 {showCurrent ? (
                   <EyeOffIcon className="size-4" />
@@ -435,7 +437,9 @@ function SecuritySection() {
                 type="button"
                 onClick={() => setShowNew(!showNew)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}
+                aria-label={
+                  showNew ? 'Hide new password' : 'Show new password'
+                }
               >
                 {showNew ? (
                   <EyeOffIcon className="size-4" />

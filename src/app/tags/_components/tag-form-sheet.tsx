@@ -116,7 +116,7 @@ export function TagFormSheet({ open, onOpenChange, tag, onSave }: Props) {
                     setHexInput(e.target.value);
                   }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  tabIndex={-1}
+                  aria-label="Custom tag colour"
                 />
                 <Button
                   type="button"
