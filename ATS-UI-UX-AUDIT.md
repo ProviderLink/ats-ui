@@ -55,7 +55,7 @@ by the four most recent commits.
 | UX-15 | MEDIUM | A11y        | Duplicated `aria-label` values with no row context        | Fixed  |
 | UX-16 | HIGH   | A11y        | Star-rating buttons unnamed and unlabelled (2 files)      | Fixed  |
 | UX-17 | MEDIUM | A11y        | Status conveyed by colour alone                           | Open   |
-| UX-18 | MEDIUM | A11y        | `outline-none` search inputs with no focus replacement    | Open   |
+| UX-18 | MEDIUM | A11y        | `outline-none` search inputs with no focus replacement    | Fixed  |
 | UX-19 | MEDIUM | A11y        | Password visibility toggles removed from the tab order    | Fixed  |
 | UX-20 | HIGH   | A11y        | Hand-rolled combobox not operable by keyboard             | Open   |
 | UX-21 | HIGH   | States      | Store `error` is never rendered for 6 features            | Open   |
@@ -90,7 +90,7 @@ by the four most recent commits.
 
 **Totals: 17 HIGH · 25 MEDIUM · 7 LOW = 49 findings.**
 
-**Progress: 6 fixed · 43 open.** (See the `### Fix applied` section under each fixed issue.)
+**Progress: 7 fixed · 42 open.** (See the `### Fix applied` section under each fixed issue.)
 
 ### Fix log
 
@@ -98,6 +98,7 @@ by the four most recent commits.
 | ---------- | ----- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-25 | UX-10 | `698aeca` | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
 | 2026-09-25 | UX-12 | `81e0700` | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
+| 2026-09-25 | UX-18 | _(pending)_ | Added `focus-visible:ring-2 focus-visible:ring-ring rounded` to **6** `outline-none` controls so keyboard focus is visible while typing. Left `tags-selector`'s popover container alone (its `outline-none` is intentional). |
 | 2026-09-25 | UX-19 | _(pending)_ | Removed `tabIndex={-1}` from **7** password visibility toggles and labelled each for its own field (login, reset-password, verify-email, account). Left the decorative "Custom" colour button alone. +18/−8. |
 | 2026-09-25 | UX-16 | _(pending)_ | `role="group"` + `aria-label` per star and `aria-pressed` on the selected star, in the candidate interview feedback and calendar feedback forms (+14/−2). |
 | 2026-09-25 | UX-15 | _(pending)_ | Row-context labels on **8** controls across 5 files (+16/−8). Grep confirms 0 remaining context-free labels. |
@@ -1001,6 +1002,73 @@ only — no focus style at all.
 
 **Fix:** `focus-visible:ring-2 focus-visible:ring-ring` (the codebase already does this correctly at
 `emails-list.tsx:223` and `rich-text-editor.tsx:81`).
+
+### Fix applied (2026-09-25)
+
+**Status:** Done. **4 files, 6 className changes** — class-only, no markup, logic or structure touched.
+Every affected element keeps its original classes; the focus utilities are purely appended.
+
+<div role="presentation">
+
+| File | Line | Element |
+| --- | --- | --- |
+| `jobs/_components/new-job-sheet.tsx` | 136 | `ClientCombobox` search input |
+| `jobs/_components/new-job-sheet.tsx` | 345 | `SkillsInput` input |
+| `talent-pool/_components/talent-pool-table.tsx` | 129 | tag-filter search input |
+| `candidates/quick-import/page.tsx` | 440 | job-search input |
+| `calendar/_components/event-sheet.tsx` | 965 | job-search input |
+| `calendar/_components/event-sheet.tsx` | 989 | job option in the search list |
+
+</div>
+
+Appended: `focus-visible:ring-2 focus-visible:ring-ring rounded`. The `rounded` is not my invention —
+the audit's own cited reference, `emails-list.tsx:223`, uses exactly
+`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded`, so the fix matches
+the house pattern. The 6th site is a `<button>` in a `<button>`-parent list, not an input, which is
+why `rich-text-editor.tsx:81` (the other cited reference) is not the direct analogue for it.
+
+#### Two reported sites were wrong
+
+**`components/tags-selector.tsx:41` — false positive, not fixed.** The reported line is
+`<PopoverPrimitive.Content>`, the popover *container*, not a tab stop:
+
+```tsx
+<PopoverPrimitive.Content align="start" sideOffset={4}
+  className={cn('bg-popover ... z-50 w-56 rounded-md border p-2 shadow-md outline-none', ...)}
+```
+
+Radix moves focus to this container when the popover opens (that is how Escape and the focus trap
+work). Its `outline-none` **suppresses the browser's default outline around the entire popover**,
+which is the intended behaviour — adding a ring here would draw a focus rectangle around the whole
+panel. The focusable controls *inside* it already have their own styles. Left as-is.
+
+**The reported line numbers had drifted** (`new-job-sheet.tsx:135` → 136, and the 343 analogue is
+now 345), because UX-11 and UX-12 edited files above them. Anchored by content instead.
+
+#### The scanner, and the third false-negative trap of this audit
+
+A first scanner reported **0 defects**, which was wrong for two separate reasons:
+
+1. It scanned the **working tree**, where my own uncommitted fix was already applied — so it was
+   measuring the fix, not the problem. Correct method: scan the **committed baseline**
+   (`git show HEAD:<file>`) to establish the defect set, then the working tree to confirm it is zero.
+2. Its tag regex terminated on the first `>`, but `onChange={e => ...}` contains `=>`, so any element
+   with an inline arrow-function handler was mis-parsed and skipped. That hid 4 of the 6 sites and
+   reported a misleadingly clean result.
+
+Re-run with a brace-depth-aware parser and a HEAD baseline: **6 defects at HEAD → 0 in the working
+tree**, which matches the 6 edits exactly. The same mistake pattern (a heuristic that reports
+"clean" when the code is not) has now appeared three times in this audit, so a "0 findings" result
+here should always be validated against a **known-bad case** before it is believed.
+
+#### Verification
+
+- `tsc` clean · `eslint .` still **59 problems (34/25)** · `pnpm build` ✓.
+- The new class string is present in the built `dist/assets/*.js`, so it survives minification.
+- Working-tree scan: **0** focusable elements with `outline-none` and no focus replacement.
+- Checked for the one variant a per-element scan cannot see — a parent stripping a child's outline
+  via a descendant selector (`[&_input]:outline-none`): **none** in the codebase. The only global
+  outline rule, `index.css:339` (`outline-ring/50`), sets outline *colour* and does not remove it.
 
 ---
 
