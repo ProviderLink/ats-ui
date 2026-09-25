@@ -238,13 +238,19 @@ function InterviewCompleteFeedbackForm({
           <span className="text-[10px] text-muted-foreground w-12 shrink-0">
             Rating
           </span>
-          <div className="flex items-center gap-0.5">
+          <div
+            role="group"
+            aria-label="Interview rating"
+            className="flex items-center gap-0.5"
+          >
             {[1, 2, 3, 4, 5].map(i => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setRating(i)}
                 className="text-sm"
+                aria-label={`${i} of 5 stars`}
+                aria-pressed={i === rating}
               >
                 <StarIcon
                   className={cn(

@@ -339,13 +339,19 @@ function EventDetail({
       {feedbackOpen && (
         <div className="rounded-md border p-3 flex flex-col gap-3">
           <p className="text-xs font-semibold">Submit Feedback</p>
-          <div className="flex items-center gap-1">
+          <div
+            role="group"
+            aria-label="Interview rating"
+            className="flex items-center gap-1"
+          >
             {[1, 2, 3, 4, 5].map(i => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setRating(i)}
                 className="text-lg"
+                aria-label={`${i} of 5 stars`}
+                aria-pressed={i === rating}
               >
                 <StarIcon
                   className={cn(
