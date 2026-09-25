@@ -45,6 +45,7 @@ import {
   AlertCircleIcon,
   AlertTriangleIcon,
   BriefcaseIcon,
+  CalendarIcon,
   CheckIcon,
   ExternalLinkIcon,
   GraduationCapIcon,
@@ -57,9 +58,14 @@ import {
   VideoIcon,
   XIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { avatarBg } from '../../candidates/_utils/candidate-styles';
+
+/** One `text-sm leading-relaxed` line — the editor's minimum height. */
+const NOTES_EDIT_MIN_HEIGHT = 23;
+/** Past this the editor scrolls instead of growing without limit. */
+const NOTES_EDIT_MAX_HEIGHT = 160;
 
 function TalentPoolNotesEditor({
   notes,
@@ -72,41 +78,66 @@ function TalentPoolNotesEditor({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(notes);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // The editor is an inline, borderless textarea inside the same card as the
+  // read view, so opening it never changes the card's height for a short note.
+  // It grows with the content up to a cap, then scrolls.
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(
+      Math.min(el.scrollHeight, NOTES_EDIT_MAX_HEIGHT),
+      NOTES_EDIT_MIN_HEIGHT
+    )}px`;
+  }, [editing, draft]);
 
   if (editing) {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex items-start gap-3 rounded-lg border bg-muted/30 px-4 py-3">
         <Textarea
-          rows={4}
+          ref={textareaRef}
+          rows={1}
+          autoFocus
           value={draft}
           onChange={e => setDraft(e.target.value)}
-          className="resize-none text-sm"
+          className="min-w-0 flex-1 resize-none border-0 bg-transparent px-0 py-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
           placeholder="Add a note about this candidate…"
           disabled={mutating}
         />
-        <div className="flex items-center gap-1.5">
+        {/*
+          The same 68px slot the pencil occupies in read mode, so the text
+          column keeps its exact width and entering edit mode never reflows
+          the note onto an extra line.
+        */}
+        <div className="flex w-17 shrink-0 items-center justify-end gap-1">
           <Button
-            size="xs"
             variant="outline"
-            className="h-7 text-xs"
+            size="icon-sm"
+            className="text-destructive hover:text-destructive"
+            disabled={mutating}
+            title="Cancel"
             onClick={() => {
               setEditing(false);
               setDraft(notes);
             }}
-            disabled={mutating}
           >
-            Cancel
+            <XIcon className="size-3.5" />
+            <span className="sr-only">Cancel editing notes</span>
           </Button>
           <Button
-            size="xs"
-            className="h-7 text-xs"
+            size="icon-sm"
+            disabled={mutating}
+            title="Save"
             onClick={() => {
               onSave(draft);
               setEditing(false);
             }}
-            disabled={mutating}
           >
-            Save
+            <CheckIcon className="size-3.5" />
+            <span className="sr-only">Save notes</span>
           </Button>
         </div>
       </div>
@@ -114,28 +145,31 @@ function TalentPoolNotesEditor({
   }
 
   return (
-    <div className="relative">
+    <div className="flex items-start gap-3 rounded-lg border bg-muted/30 px-4 py-3">
       {notes.trim() ? (
-        <p className="text-sm text-muted-foreground leading-relaxed italic whitespace-pre-wrap pr-6">
-          "{notes}"
+        <p className="min-w-0 flex-1 text-sm leading-relaxed whitespace-pre-wrap">
+          {notes}
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground/50 italic">
-          No notes added
+        <p className="min-w-0 flex-1 text-sm text-muted-foreground italic">
+          No notes yet — add context about this candidate for your team.
         </p>
       )}
-      <Button
-        variant="outline"
-        size="icon-xs"
-        className="absolute top-0 right-0 bg-background/60 backdrop-blur-sm hover:bg-background/80"
-        onClick={() => {
-          setDraft(notes);
-          setEditing(true);
-        }}
-        title="Edit notes"
-      >
-        <PencilIcon className="size-3.5" />
-      </Button>
+      <div className="flex w-17 shrink-0 items-center justify-end gap-1">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={mutating}
+          title="Edit notes"
+          onClick={() => {
+            setDraft(notes);
+            setEditing(true);
+          }}
+        >
+          <PencilIcon className="size-3.5" />
+          <span className="sr-only">Edit talent pool notes</span>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -536,7 +570,37 @@ export function TalentPoolDetailSheet({
           className="flex flex-col p-0 max-w-none! w-full sm:w-[60vw] min-w-95"
         >
           {/* Header */}
-          <SheetHeader className="shrink-0 border-b pl-6 pr-14 py-5">
+          {/*
+            `px-6` matches the body/footer so the header content lines up with
+            everything below it. The close button is absolutely positioned at
+            the sheet's top-right, so no extra right padding is reserved for it
+            — `pr-14` only made the right gutter 32px wider than the left one.
+          */}
+          <SheetHeader className="relative shrink-0 gap-4 overflow-hidden border-b px-6 py-5">
+            {/*
+              Decorative dot-grid tucked into the top-right corner, clipped by
+              the header and faded with a mask so it reads as a crescent along
+              the sheet's rounded corner. The fill is a repeating
+              `radial-gradient` dot lattice (`background-size` steps it) rather
+              than a gradient wash, so it stays a crisp pattern instead of a
+              blur. `-z-10` sits it behind the header's content because it is a
+              child of the header's stacking context, not a floated overlay.
+              Purely presentational; `aria-hidden` keeps it out of the
+              accessibility tree.
+            */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-20 -right-16 -z-10 size-56 rounded-full"
+              style={{
+                backgroundImage:
+                  'radial-gradient(color-mix(in oklab, var(--primary) 20%, transparent) 1px, transparent 1px)',
+                backgroundSize: '11px 11px',
+                maskImage:
+                  'radial-gradient(circle at 50% 50%, black 45%, transparent 78%)',
+                WebkitMaskImage:
+                  'radial-gradient(circle at 50% 50%, black 45%, transparent 78%)',
+              }}
+            />
             {/*
               Visually hidden. The markup below presents the candidate's name
               and avatar directly, so without these the sheet has no accessible
@@ -547,18 +611,27 @@ export function TalentPoolDetailSheet({
             <SheetDescription className="sr-only">
               Talent pool candidate profile, resume and activity.
             </SheetDescription>
+
+            {/* Identity */}
             <div className="flex items-start gap-4">
-              {/* Avatar */}
+              {/*
+                A hairline `border-border` edge on both avatar variants. The
+                first `AVATAR_BG` tile is `dark:bg-pine-teal-900`, which is
+                *exactly* the dark-mode `--popover` — i.e. the sheet's own
+                background — so that tile was invisible in dark mode and only
+                the initials showed. Matches the house avatar standard in
+                `ui/avatar.tsx` (`after:border-border`).
+              */}
               {c.avatar ? (
                 <img
                   src={c.avatar}
                   alt={fullName}
-                  className="size-14 shrink-0 rounded-xl object-cover"
+                  className="size-14 shrink-0 rounded-xl border border-border object-cover"
                 />
               ) : (
                 <div
                   className={cn(
-                    'flex size-14 shrink-0 items-center justify-center rounded-xl text-lg font-semibold select-none',
+                    'flex size-14 shrink-0 items-center justify-center rounded-xl border border-border text-lg font-semibold select-none',
                     bg
                   )}
                 >
@@ -567,100 +640,130 @@ export function TalentPoolDetailSheet({
                 </div>
               )}
 
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-semibold leading-tight">
-                  {fullName}
-                </p>
-                {(parsedData?.experience ?? [])[0] && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {parsedData!.experience![0].title}
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="min-w-0">
+                  <p
+                    className="truncate text-base font-semibold leading-tight"
+                    title={fullName}
+                  >
+                    {fullName}
                   </p>
-                )}
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                  {parsedData?.experience?.[0] && (
+                    <p
+                      className="mt-0.5 truncate text-sm text-muted-foreground"
+                      title={parsedData.experience[0].title}
+                    >
+                      {parsedData.experience[0].title}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <a
                     href={`mailto:${c.email}`}
-                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex min-w-0 items-center gap-1.5 transition-colors hover:text-foreground"
+                    title={c.email}
                   >
-                    <MailIcon className="size-3.5" />
-                    {c.email}
+                    <MailIcon className="size-3.5 shrink-0" />
+                    <span className="truncate">{c.email}</span>
                   </a>
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <PhoneIcon className="size-3.5" />
+                  <span className="flex items-center gap-1.5">
+                    <PhoneIcon className="size-3.5 shrink-0" />
                     {c.phone}
                   </span>
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <BriefcaseIcon className="size-3.5" />
+                  <span className="flex items-center gap-1.5">
+                    <BriefcaseIcon className="size-3.5 shrink-0" />
                     {c.yearsOfExperience} yrs exp
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <TagsSelector
-                    allTags={allTags}
-                    selectedIds={getTagIds(candidate?.tags)}
-                    onChange={handleUpdateTags}
-                    compact
-                  />
-                  {c.eligibilityStatus === 'permanently_ineligible' && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[11px]"
-                    >
-                      Permanently Ineligible
-                    </Badge>
-                  )}
-                  {c.legalHold && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[11px]"
-                    >
-                      Legal Hold
-                    </Badge>
-                  )}
-                </div>
-                {c.talentPoolAddedAt && (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    Added to pool:{' '}
-                    {new Date(c.talentPoolAddedAt).toLocaleDateString()}
-                  </p>
-                )}
               </div>
+            </div>
 
-              {c.inTalentPool && (
-                <div className="shrink-0 flex flex-col items-end gap-2 w-72">
+            {/* Status · tags
+                Full width on their own row(s) — this is the only thing in the
+                header that grows, so it absorbs all the wrapping. */}
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+              {c.eligibilityStatus === 'permanently_ineligible' && (
+                <Badge
+                  variant="secondary"
+                  className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[11px]"
+                >
+                  Permanently Ineligible
+                </Badge>
+              )}
+              {c.legalHold && (
+                <Badge
+                  variant="secondary"
+                  className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[11px]"
+                >
+                  Legal Hold
+                </Badge>
+              )}
+              {/*
+                Read from `c` (the live store item), not the `candidate` prop
+                snapshot — the prop is frozen at sheet-open time, so a tag
+                added here updated the table row but not this header.
+              */}
+              <TagsSelector
+                allTags={allTags}
+                selectedIds={getTagIds(c.tags)}
+                onChange={handleUpdateTags}
+                compact
+              />
+            </div>
+
+            {/* Meta · actions — date on the left, buttons on the right */}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              {c.talentPoolAddedAt && (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CalendarIcon className="size-3.5 shrink-0" />
+                  Added to talent pool on{' '}
+                  {new Date(c.talentPoolAddedAt).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+              )}
+
+              <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+                {c.inTalentPool && (
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
-                    className="gap-1 text-xs text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive"
                     disabled={mutating}
                     onClick={() => setRemovePoolConfirmOpen(true)}
                   >
-                    <XIcon className="size-3" /> Remove from talent pool
+                    <XIcon className="size-3.5" />
+                    Remove from pool
                   </Button>
-                  <div className="w-full rounded-md border bg-muted/30 px-3 py-3 min-h-24">
-                    <TalentPoolNotesEditor
-                      notes={c.talentPoolNotes ?? ''}
-                      mutating={mutating}
-                      onSave={handleUpdatePoolNotes}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-2 flex items-center gap-2">
-              <Button
-                className="gap-1.5 px-4"
-                onClick={() => setAssignJobOpen(true)}
-              >
-                <BriefcaseIcon className="size-3.5" />
-                Assign to a new job
-              </Button>
+                )}
+                <Button size="sm" onClick={() => setAssignJobOpen(true)}>
+                  <BriefcaseIcon className="size-3.5" />
+                  Assign to a new job
+                </Button>
+              </div>
             </div>
           </SheetHeader>
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-6">
+              {/* Talent pool notes */}
+              {c.inTalentPool && (
+                <>
+                  <div className="flex flex-col gap-3">
+                    <SectionLabel>Talent Pool Notes</SectionLabel>
+                    <TalentPoolNotesEditor
+                      notes={c.talentPoolNotes ?? ''}
+                      mutating={mutating}
+                      onSave={handleUpdatePoolNotes}
+                    />
+                  </div>
+                  <Separator />
+                </>
+              )}
+
               {/* Summary */}
               {parsedData?.summary && (
                 <>
