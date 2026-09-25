@@ -126,7 +126,7 @@ function TagFilter({
               placeholder="Filter tags…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
             />
             {search && (
               <button

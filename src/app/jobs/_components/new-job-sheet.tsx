@@ -133,7 +133,7 @@ function ClientCombobox({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search clients..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-ring rounded"
             />
             {search && (
               <button
@@ -342,7 +342,7 @@ function SkillsInput({
           if (input.trim()) addSkill(input);
         }}
         placeholder={skills.length === 0 ? 'Type skill + Enter or comma' : ''}
-        className="flex-1 min-w-24 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+        className="flex-1 min-w-24 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-ring rounded"
       />
     </div>
   );

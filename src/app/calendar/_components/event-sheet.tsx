@@ -962,7 +962,7 @@ function CreateForm({
               <SearchIcon className="size-4 text-muted-foreground shrink-0" />
               <input
                 ref={jobSearchInputRef}
-                className="flex h-9 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+                className="flex h-9 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
                 placeholder="Search by job or client..."
                 value={jobSearch}
                 onChange={e => setJobSearch(e.target.value)}
@@ -987,7 +987,7 @@ function CreateForm({
                         setJobSearch('');
                       }}
                       className={cn(
-                        'flex w-full flex-col items-start rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                        'flex w-full flex-col items-start rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
                         isSelected
                           ? 'bg-primary/10 text-primary'
                           : 'hover:bg-accent hover:text-accent-foreground'

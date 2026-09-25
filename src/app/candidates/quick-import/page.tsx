@@ -437,7 +437,7 @@ function JobSearchSelect({
           <div className="flex items-center border-b px-3 py-2">
             <SearchIcon className="mr-2 size-4 shrink-0 text-muted-foreground" />
             <input
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
               placeholder="Search by title or client..."
               value={search}
               onChange={e => setSearch(e.target.value)}
