@@ -148,17 +148,20 @@ function WorkspaceCard() {
 
 function EmailSettingsCard() {
   const { settings, loading, mutating, update } = useSettingsStore();
-  const [fromEmail, setFromEmail] = useState(
-    settings?.email.fromEmail ?? initialWorkspace.emailSettings.fromEmail
-  );
   const [fromName, setFromName] = useState(
     settings?.email.fromName ?? initialWorkspace.emailSettings.fromName
   );
   const [saved, setSaved] = useState(false);
 
+  // The sender address is fixed by the backend: Resend only sends from a
+  // verified domain, and every outbound email sets Reply-To to this same
+  // mailbox so candidate replies land in the inbound webhook. It is shown for
+  // transparency but is not editable.
+  const fromEmail =
+    settings?.email.fromEmail ?? initialWorkspace.emailSettings.fromEmail;
+
   useEffect(() => {
     if (settings?.email) {
-      setFromEmail(settings.email.fromEmail);
       setFromName(settings.email.fromName);
     }
   }, [settings?.email]);
@@ -166,7 +169,7 @@ function EmailSettingsCard() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await update({ email: { fromEmail, fromName } });
+      await update({ email: { fromName } });
       toast.success('Email sender settings saved');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -183,7 +186,7 @@ function EmailSettingsCard() {
           Email Sender Settings
         </CardTitle>
         <CardDescription>
-          Configure the from address used for all outbound emails
+          The sender identity used for all outbound emails
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -198,6 +201,9 @@ function EmailSettingsCard() {
                 placeholder="e.g. Acme Staffing"
                 maxLength={100}
               />
+              <p className="text-xs text-muted-foreground">
+                The display name recipients see next to the address.
+              </p>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="es-from-email">From email</Label>
@@ -205,9 +211,15 @@ function EmailSettingsCard() {
                 id="es-from-email"
                 type="email"
                 value={fromEmail}
-                onChange={e => setFromEmail(e.target.value)}
+                readOnly
+                disabled
                 placeholder="hello@company.com"
               />
+              <p className="text-xs text-muted-foreground">
+                Fixed by the server: the domain must be verified with the email
+                provider, and replies are delivered here. Contact your
+                administrator to change it.
+              </p>
             </div>
           </div>
           <div className="flex justify-end">
