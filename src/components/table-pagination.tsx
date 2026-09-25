@@ -99,6 +99,7 @@ export function TablePagination<TData>({
             size="icon-xs"
             onClick={() => goToPage(0)}
             disabled={safePageIndex === 0}
+            aria-label={`Go to first page of ${label}`}
           >
             <ChevronFirstIcon className="size-3.5" />
           </Button>
@@ -107,6 +108,7 @@ export function TablePagination<TData>({
             size="icon-xs"
             onClick={() => goToPage(safePageIndex - 1)}
             disabled={safePageIndex === 0}
+            aria-label={`Go to previous page of ${label}`}
           >
             <ChevronLeftIcon className="size-3.5" />
           </Button>
@@ -115,6 +117,7 @@ export function TablePagination<TData>({
             size="icon-xs"
             onClick={() => goToPage(safePageIndex + 1)}
             disabled={safePageIndex >= pageCount - 1}
+            aria-label={`Go to next page of ${label}`}
           >
             <ChevronRightIcon className="size-3.5" />
           </Button>
@@ -123,6 +126,7 @@ export function TablePagination<TData>({
             size="icon-xs"
             onClick={() => goToPage(pageCount - 1)}
             disabled={safePageIndex >= pageCount - 1}
+            aria-label={`Go to last page of ${label}`}
           >
             <ChevronLastIcon className="size-3.5" />
           </Button>
@@ -163,6 +167,7 @@ export function TablePagination<TData>({
           size="icon-xs"
           onClick={() => goToPage(0)}
           disabled={safePageIndex === 0}
+          aria-label={`Go to first page of ${label}`}
         >
           <ChevronFirstIcon className="size-3.5" />
         </Button>
@@ -171,6 +176,7 @@ export function TablePagination<TData>({
           size="icon-xs"
           onClick={() => goToPage(safePageIndex - 1)}
           disabled={safePageIndex === 0}
+          aria-label={`Go to previous page of ${label}`}
         >
           <ChevronLeftIcon className="size-3.5" />
         </Button>
@@ -186,6 +192,8 @@ export function TablePagination<TData>({
               size="icon-xs"
               onClick={() => goToPage(p as number)}
               className={cn(p === safePageIndex && 'pointer-events-none')}
+              aria-label={`Go to page ${(p as number) + 1} of ${label}`}
+              aria-current={p === safePageIndex ? 'page' : undefined}
             >
               {(p as number) + 1}
             </Button>
@@ -196,6 +204,7 @@ export function TablePagination<TData>({
           size="icon-xs"
           onClick={() => goToPage(safePageIndex + 1)}
           disabled={safePageIndex >= pageCount - 1}
+          aria-label={`Go to next page of ${label}`}
         >
           <ChevronRightIcon className="size-3.5" />
         </Button>
@@ -204,6 +213,7 @@ export function TablePagination<TData>({
           size="icon-xs"
           onClick={() => goToPage(pageCount - 1)}
           disabled={safePageIndex >= pageCount - 1}
+          aria-label={`Go to last page of ${label}`}
         >
           <ChevronLastIcon className="size-3.5" />
         </Button>
