@@ -100,7 +100,7 @@ function buildColumns(
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={v => row.toggleSelected(!!v)}
-          aria-label="Select row"
+          aria-label={`Select ${row.original.name}`}
         />
       ),
       size: 40,

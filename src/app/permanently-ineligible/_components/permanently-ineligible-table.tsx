@@ -334,7 +334,7 @@ export function PermanentlyIneligibleTable() {
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    aria-label="View details"
+                    aria-label={`View details for ${row.original.firstName} ${row.original.lastName}`}
                     onClick={() => openDetail(row.original)}
                   >
                     <ExternalLinkIcon className="size-3.5" />
@@ -349,7 +349,7 @@ export function PermanentlyIneligibleTable() {
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    aria-label="Restore candidate"
+                    aria-label={`Restore ${row.original.firstName} ${row.original.lastName}`}
                     disabled={!!restoringId}
                     onClick={() => setRestoreTarget(row.original)}
                   >
@@ -400,7 +400,7 @@ export function PermanentlyIneligibleTable() {
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    aria-label="Delete permanently"
+                    aria-label={`Delete ${row.original.firstName} ${row.original.lastName} permanently`}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     disabled={deletingId === row.original._id}
                     onClick={() => setDeleteTarget(row.original)}

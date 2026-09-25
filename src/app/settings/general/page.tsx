@@ -555,7 +555,11 @@ function PipelineTemplatesCard() {
                           onClick={() =>
                             handleToggleActive(tpl._id, tpl.isActive)
                           }
-                          aria-label="Toggle active"
+                          aria-label={
+                            tpl.isActive
+                              ? `Deactivate ${tpl.name}`
+                              : `Activate ${tpl.name}`
+                          }
                           className={cn(
                             'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-colors',
                             tpl.isActive

@@ -228,7 +228,7 @@ const baseColumns: ColumnDef<User>[] = [
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={v => row.toggleSelected(!!v)}
-        aria-label="Select row"
+        aria-label={`Select ${row.original.firstName} ${row.original.lastName}`}
       />
     ),
     size: 40,

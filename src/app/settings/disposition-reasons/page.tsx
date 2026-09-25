@@ -421,7 +421,7 @@ export default function DispositionReasonsPage() {
                           <Button
                             size="icon-sm"
                             variant="ghost"
-                            aria-label="Edit"
+                            aria-label={`Edit ${r.label}`}
                             onClick={() => handleEdit(r)}
                           >
                             <PencilIcon className="size-3.5" />
@@ -429,7 +429,11 @@ export default function DispositionReasonsPage() {
                           <Button
                             size="icon-sm"
                             variant="ghost"
-                            aria-label={r.isActive ? 'Deactivate' : 'Activate'}
+                            aria-label={
+                              r.isActive
+                                ? `Deactivate ${r.label}`
+                                : `Activate ${r.label}`
+                            }
                             onClick={() =>
                               handleToggleActive(r._id, r.isActive)
                             }
