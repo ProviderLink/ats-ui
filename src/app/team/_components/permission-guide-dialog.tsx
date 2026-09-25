@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -302,9 +303,9 @@ export function PermissionGuideDialog({ open, onOpenChange }: Props) {
             </div>
             <div>
               <DialogTitle className="text-base">Permission Guide</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <DialogDescription className="text-xs mt-0.5">
                 Read-only reference — ATS & CRM role permissions at a glance
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>

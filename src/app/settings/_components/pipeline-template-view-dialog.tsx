@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -49,6 +50,9 @@ export function PipelineTemplateViewDialog({
           <DialogTitle className="text-base font-semibold leading-none">
             {template.name}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Pipeline template stages and their order.
+          </DialogDescription>
           <div className="flex items-center gap-1.5 flex-wrap pt-1">
             {template.isDefault && (
               <Badge variant="secondary" className="text-xs h-4 px-1.5 gap-0.5">

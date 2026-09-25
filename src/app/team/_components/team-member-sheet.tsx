@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
@@ -139,6 +140,9 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
               Edit
             </Button>
           </div>
+          <SheetDescription className="sr-only">
+            Team member profile, roles and permissions.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">

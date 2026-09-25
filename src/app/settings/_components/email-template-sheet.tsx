@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
@@ -107,6 +108,9 @@ export function EmailTemplateSheet({
           {isEdit && (
             <p className="text-xs text-muted-foreground">{template.name}</p>
           )}
+          <SheetDescription className="sr-only">
+            Email template name, type, subject and body.
+          </SheetDescription>
         </SheetHeader>
 
         <form

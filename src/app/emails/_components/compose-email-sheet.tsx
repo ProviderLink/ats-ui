@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
@@ -273,6 +274,9 @@ export function ComposeEmailSheet({
       >
         <SheetHeader className="px-6 pt-6 pb-4 shrink-0">
           <SheetTitle className="text-base font-medium">{title}</SheetTitle>
+          <SheetDescription className="sr-only">
+            Compose an email with recipients, subject and message.
+          </SheetDescription>
         </SheetHeader>
 
         <Separator />

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -100,6 +101,9 @@ export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
       >
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle className="text-base">Edit Member</SheetTitle>
+          <SheetDescription className="sr-only">
+            Edit this member's name, roles and permissions.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">

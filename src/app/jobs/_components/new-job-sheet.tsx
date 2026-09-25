@@ -14,6 +14,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -685,6 +686,9 @@ export function NewJobSheet({
       >
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle>{isEdit ? 'Edit Job' : 'New Job'}</SheetTitle>
+          <SheetDescription className="sr-only">
+            Job details, requirements, salary range and pipeline.
+          </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
           {!isEdit && (

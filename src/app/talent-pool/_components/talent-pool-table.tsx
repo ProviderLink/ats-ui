@@ -323,6 +323,9 @@ function AssignJobDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Assign to a new job</DialogTitle>
+          <DialogDescription className="sr-only">
+            Search for a job and assign this candidate to it.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div className="relative">

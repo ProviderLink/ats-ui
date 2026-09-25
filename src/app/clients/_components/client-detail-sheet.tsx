@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
@@ -1840,6 +1841,9 @@ function ClientDetailSheetContent({
               compact
             />
           </div>
+          <SheetDescription className="sr-only">
+            Client company details, contacts, jobs and activity.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto">

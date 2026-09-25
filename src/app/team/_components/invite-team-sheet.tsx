@@ -13,6 +13,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -103,6 +104,9 @@ export function InviteTeamSheet({ open, onOpenChange }: Props) {
       <SheetContent side="right" className="flex flex-col gap-0 p-0">
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle>Invite Team Member</SheetTitle>
+          <SheetDescription className="sr-only">
+            Invite a new team member and choose their role.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">

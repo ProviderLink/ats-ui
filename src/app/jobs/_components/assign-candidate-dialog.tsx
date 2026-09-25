@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -91,10 +92,10 @@ export function AssignCandidateDialog({ job, open, onOpenChange }: Props) {
       <DialogContent className="sm:max-w-md flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle>Assign Candidate</DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             Assign an existing candidate to{' '}
             <span className="font-medium text-foreground">{job.title}</span>.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="px-5 pb-3">

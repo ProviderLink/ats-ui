@@ -4,14 +4,15 @@ import { Label } from '@/components/ui/label';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import type { Tag } from '@/store/types';
 import { Palette } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { Tag } from '@/store/types';
 import { PRESET_COLORS } from '../_data/tags';
 import { TagBadge } from './tag-badge';
 
@@ -55,6 +56,9 @@ export function TagFormSheet({ open, onOpenChange, tag, onSave }: Props) {
       <SheetContent side="right" className="flex flex-col p-0 w-[360px]">
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle>{isEditing ? 'Edit Tag' : 'New Tag'}</SheetTitle>
+          <SheetDescription className="sr-only">
+            Tag name and colour.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">

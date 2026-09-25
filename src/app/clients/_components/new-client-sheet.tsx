@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -288,6 +289,9 @@ export function NewClientSheet({ open, onOpenChange, client }: Props) {
       <SheetContent side="right" className="flex flex-col gap-0 p-0">
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle>{isEdit ? 'Edit Client' : 'New Client'}</SheetTitle>
+          <SheetDescription className="sr-only">
+            Client company details, primary contact and status.
+          </SheetDescription>
         </SheetHeader>
 
         <form

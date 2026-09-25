@@ -28,7 +28,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -736,6 +742,9 @@ function TalentPoolDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add to Talent Pool</DialogTitle>
+          <DialogDescription className="sr-only">
+            Add this candidate to the talent pool with an optional note.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
           <Label>Notes (optional)</Label>
@@ -2428,6 +2437,16 @@ export function CandidateDetailSheet({
         >
           {/* Header */}
           <SheetHeader className="shrink-0 border-b pl-6 pr-14 py-5">
+            {/*
+              Visually hidden. The markup below presents the candidate's name
+              and avatar directly, so without these the sheet has no accessible
+              name and Radix logs a missing-Title warning. `sr-only` leaves the
+              rendered design unchanged.
+            */}
+            <SheetTitle className="sr-only">{`Candidate: ${fullName}`}</SheetTitle>
+            <SheetDescription className="sr-only">
+              Candidate profile, applications, interviews and activity.
+            </SheetDescription>
             <div className="flex items-start gap-4">
               {/* Avatar */}
               {c.avatar ? (
