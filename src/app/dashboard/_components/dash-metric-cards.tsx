@@ -277,6 +277,9 @@ function MetricCardSkeleton() {
 export function DashMetricCards() {
   const { kpi, candidates, clients, jobs, loading } = useDashboardStore();
 
+  // The KPI summary is no longer revived from localStorage, so `kpi` is null
+  // until the first fetch resolves — the skeleton is shown for the whole wait
+  // instead of flashing a previous session's numbers.
   if (loading && !kpi) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

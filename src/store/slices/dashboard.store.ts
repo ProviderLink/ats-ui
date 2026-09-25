@@ -1,6 +1,5 @@
 import { getJson } from '@/lib/api-client';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { socketManager } from '../realtime/socket';
 import type {
@@ -111,7 +110,6 @@ interface DashboardState {
   loading: boolean;
   isRefreshing: boolean;
   error: string | null;
-  lastLoadedAt: number | null;
   /** True while the dashboard page is mounted — gates socket-driven refetches. */
   isActive: boolean;
 
@@ -142,7 +140,6 @@ const initialState: DashboardState = {
   loading: false,
   isRefreshing: false,
   error: null,
-  lastLoadedAt: null,
   isActive: false,
   clients: [],
   jobs: [],
@@ -161,6 +158,18 @@ const initialState: DashboardState = {
 };
 
 const HUGE_LIMIT = 9999;
+
+// The dashboard used to persist its derived KPI summary + `lastLoadedAt` under
+// `ats-analytics`, which is what made a previous session's numbers flash on
+// first paint before the live fetch resolved. That persist middleware is gone,
+// so the old payload is now orphaned — it is unreferenced and would linger
+// forever for anyone who does not log out (`resetSessionScopedStores` only runs
+// on logout/401). One guarded purge drops the stale, cross-user residue.
+try {
+  localStorage.removeItem('ats-analytics');
+} catch {
+  // Storage unavailable (private mode / quota) — nothing to purge.
+}
 
 // ---------------------------------------------------------------------------
 // Label / colour maps — kept in one place so UI and derivation stay in sync
@@ -535,120 +544,116 @@ async function fetchList<T>(
 }
 
 export const useDashboardStore = create<DashboardState & DashboardActions>()(
-  persist(
-    immer((set, get) => {
-      // Register a socket invalidator so any ATS entity change (created /
-      // updated / deleted for candidates, applications, jobs, clients,
-      // interviews, plus the domain status-change events) triggers an
-      // immediate background refresh of all dashboard data.
-      socketManager.registerInvalidator(() => {
-        const s = get();
-        // Only refresh while the dashboard is actually on screen, and skip if
-        // a fetch is already in flight.
-        if (s.isActive && !s.loading && !s.isRefreshing) s.fetch();
-      });
+  immer((set, get) => {
+    // Monotonic token identifying the newest in-flight fetch. Responses from
+    // an earlier request are discarded when they land after a newer one, so
+    // rapid refresh / socket-driven cycles can never paint stale aggregates
+    // over fresh ones.
+    let fetchSeq = 0;
 
-      return {
-        ...initialState,
+    // Register a socket invalidator so any ATS entity change (created /
+    // updated / deleted for candidates, applications, jobs, clients,
+    // interviews, plus the domain status-change events) triggers an
+    // immediate background refresh of all dashboard data.
+    socketManager.registerInvalidator(() => {
+      const s = get();
+      // Only refresh while the dashboard is actually on screen, and skip if
+      // a fetch is already in flight.
+      if (s.isActive && !s.loading && !s.isRefreshing) s.fetch();
+    });
 
-        setActive: active => {
+    return {
+      ...initialState,
+
+      setActive: active => {
+        set(s => {
+          s.isActive = active;
+        });
+      },
+
+      fetch: async () => {
+        if (get().loading || get().isRefreshing) return;
+        const hasData = get().kpi !== null;
+        // Capture this run's identity BEFORE any await so we can tell whether
+        // a newer fetch has superseded us by the time the responses arrive.
+        const seq = ++fetchSeq;
+        set(s => {
+          if (hasData) s.isRefreshing = true;
+          else s.loading = true;
+          s.error = null;
+        });
+
+        try {
+          // Kick off the dashboard snapshot and every list endpoint in parallel.
+          // Each list uses a very large limit so the client can compute accurate
+          // breakdowns (counts, trend, conversions) without paginating.
+          const [
+            snapshotRes,
+            clients,
+            jobs,
+            candidates,
+            applications,
+            interviews,
+          ] = await Promise.all([
+            getJson<DashboardSnapshot>('/ats/dashboard').catch(() => null),
+            fetchList<Client>('/ats/clients', { page: 1, limit: HUGE_LIMIT }),
+            fetchList<Job>('/ats/jobs', { page: 1, limit: HUGE_LIMIT }),
+            fetchList<Candidate>('/ats/candidates', {
+              page: 1,
+              limit: HUGE_LIMIT,
+            }),
+            fetchList<Application>('/ats/applications', {
+              page: 1,
+              limit: HUGE_LIMIT,
+            }),
+            fetchList<Interview>('/ats/interviews', {
+              page: 1,
+              limit: HUGE_LIMIT,
+            }),
+          ]);
+
+          const snapshot = snapshotRes ?? null;
+
+          // A newer fetch finished (or started and is still in flight) while
+          // this one was waiting — its payload is authoritative.
+          if (seq !== fetchSeq) return;
+
           set(s => {
-            s.isActive = active;
-          });
-        },
-
-        fetch: async () => {
-          if (get().loading || get().isRefreshing) return;
-          const hasData = get().kpi !== null;
-          set(s => {
-            if (hasData) s.isRefreshing = true;
-            else s.loading = true;
-            s.error = null;
-          });
-
-          try {
-            // Kick off the dashboard snapshot and every list endpoint in parallel.
-            // Each list uses a very large limit so the client can compute accurate
-            // breakdowns (counts, trend, conversions) without paginating.
-            const [
-              snapshotRes,
+            s.clients = clients;
+            s.jobs = jobs;
+            s.candidates = candidates;
+            s.applications = applications;
+            s.interviews = interviews;
+            s.snapshot = snapshot;
+            s.kpi = buildKpi(
+              snapshot,
               clients,
               jobs,
               candidates,
               applications,
-              interviews,
-            ] = await Promise.all([
-              getJson<DashboardSnapshot>('/ats/dashboard').catch(() => null),
-              fetchList<Client>('/ats/clients', { page: 1, limit: HUGE_LIMIT }),
-              fetchList<Job>('/ats/jobs', { page: 1, limit: HUGE_LIMIT }),
-              fetchList<Candidate>('/ats/candidates', {
-                page: 1,
-                limit: HUGE_LIMIT,
-              }),
-              fetchList<Application>('/ats/applications', {
-                page: 1,
-                limit: HUGE_LIMIT,
-              }),
-              fetchList<Interview>('/ats/interviews', {
-                page: 1,
-                limit: HUGE_LIMIT,
-              }),
-            ]);
+              interviews
+            );
+            s.trend = buildTrend(applications);
+            s.applicationsTrend = buildApplicationsTrend(applications, 180);
+            s.topJobs = buildTopJobs(applications, jobs, clients);
+            s.candidateStatuses = buildCandidateStatusBreakdown(candidates);
+            s.jobStatuses = buildJobStatusBreakdown(jobs);
+            s.interviewStatuses = buildInterviewStatusBreakdown(interviews);
+            s.pipelineStages = buildPipelineStages(applications);
+            s.loading = false;
+            s.isRefreshing = false;
+          });
+        } catch (e) {
+          if (seq !== fetchSeq) return;
+          set(s => {
+            s.loading = false;
+            s.isRefreshing = false;
+            s.error = (e as Error).message;
+          });
+        }
+      },
 
-            const snapshot = snapshotRes ?? null;
-
-            set(s => {
-              s.clients = clients;
-              s.jobs = jobs;
-              s.candidates = candidates;
-              s.applications = applications;
-              s.interviews = interviews;
-              s.snapshot = snapshot;
-              s.kpi = buildKpi(
-                snapshot,
-                clients,
-                jobs,
-                candidates,
-                applications,
-                interviews
-              );
-              s.trend = buildTrend(applications);
-              s.applicationsTrend = buildApplicationsTrend(applications, 180);
-              s.topJobs = buildTopJobs(applications, jobs, clients);
-              s.candidateStatuses = buildCandidateStatusBreakdown(candidates);
-              s.jobStatuses = buildJobStatusBreakdown(jobs);
-              s.interviewStatuses = buildInterviewStatusBreakdown(interviews);
-              s.pipelineStages = buildPipelineStages(applications);
-              s.lastLoadedAt = Date.now();
-              s.loading = false;
-              s.isRefreshing = false;
-            });
-          } catch (e) {
-            set(s => {
-              s.loading = false;
-              s.isRefreshing = false;
-              s.error = (e as Error).message;
-            });
-          }
-        },
-
-        reset: () => set(() => ({ ...initialState })),
-      };
-    }),
-    {
-      name: 'ats-analytics',
-      storage: createJSONStorage(() => localStorage),
-      // v3: removed pickLarger workaround — /ats/dashboard is now confirmed
-      // to return live data. Old caches with inflated counts must be discarded.
-      version: 3,
-      // Persist only the derived KPI summary and the last-load timestamp so
-      // revisits can render numbers instantly. Raw entity lists are NOT
-      // persisted — they are refetched on every mount and must never leak PII
-      // (or stale, cross-user data) through localStorage.
-      partialize: state => ({
-        kpi: state.kpi,
-        lastLoadedAt: state.lastLoadedAt,
-      }),
-    }
-  )
+      reset: () => set(() => ({ ...initialState })),
+    };
+  })
 );

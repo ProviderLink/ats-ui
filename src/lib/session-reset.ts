@@ -35,7 +35,10 @@ import { useUserStore } from '@/store/slices/users.store';
  * Zustand `persist` keys for every store that caches session data.
  *
  * Deliberately EXCLUDES `ats-auth` — the caller keeps the user/`isAuthenticated`
- * slice intact so the redirect to the login page still works.
+ * slice intact so the redirect to the login page still works. The dashboard
+ * store no longer persists anything (it used to write `ats-analytics`), but its
+ * legacy key stays listed so a logout still clears any old payload on browsers
+ * that have not reloaded the app since the persist middleware was removed.
  */
 export const SESSION_STORE_KEYS = [
   'ats-activity-logs',
