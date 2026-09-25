@@ -56,7 +56,7 @@ by the four most recent commits.
 | UX-16 | HIGH   | A11y        | Star-rating buttons unnamed and unlabelled (2 files)      | Fixed  |
 | UX-17 | MEDIUM | A11y        | Status conveyed by colour alone                           | Open   |
 | UX-18 | MEDIUM | A11y        | `outline-none` search inputs with no focus replacement    | Open   |
-| UX-19 | MEDIUM | A11y        | Password visibility toggles removed from the tab order    | Open   |
+| UX-19 | MEDIUM | A11y        | Password visibility toggles removed from the tab order    | Fixed  |
 | UX-20 | HIGH   | A11y        | Hand-rolled combobox not operable by keyboard             | Open   |
 | UX-21 | HIGH   | States      | Store `error` is never rendered for 6 features            | Open   |
 | UX-22 | HIGH   | States      | Persisted stores flash the previous session's data        | Open   |
@@ -90,7 +90,7 @@ by the four most recent commits.
 
 **Totals: 17 HIGH · 25 MEDIUM · 7 LOW = 49 findings.**
 
-**Progress: 5 fixed · 44 open.** (See the `### Fix applied` section under each fixed issue.)
+**Progress: 6 fixed · 43 open.** (See the `### Fix applied` section under each fixed issue.)
 
 ### Fix log
 
@@ -98,6 +98,7 @@ by the four most recent commits.
 | ---------- | ----- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-09-25 | UX-10 | `698aeca` | Contextual `aria-label` + `aria-current` on all pagination controls in `components/table-pagination.tsx` (10 added lines, 0 deleted).                                                                                                                                                                            |
 | 2026-09-25 | UX-12 | `81e0700` | `sr-only` Title/Description on the two detail sheets; the 5 hand-rolled description paragraphs converted to `DialogDescription`; then the remaining 10 sheets and 2 newly-found dialogs. **16 files, +101/−6.** Verified by exhaustive sweep: 16/16 `SheetHeader`s and every real `DialogContent` now have both. |
+| 2026-09-25 | UX-19 | _(pending)_ | Removed `tabIndex={-1}` from **7** password visibility toggles and labelled each for its own field (login, reset-password, verify-email, account). Left the decorative "Custom" colour button alone. +18/−8. |
 | 2026-09-25 | UX-16 | _(pending)_ | `role="group"` + `aria-label` per star and `aria-pressed` on the selected star, in the candidate interview feedback and calendar feedback forms (+14/−2). |
 | 2026-09-25 | UX-15 | _(pending)_ | Row-context labels on **8** controls across 5 files (+16/−8). Grep confirms 0 remaining context-free labels. |
 | 2026-09-25 | UX-11 | `adaa249` | Accessible names on **32** unnamed icon-only buttons across 14 files (+43/−2). Found 13 sites the reported list missed, and correctly skipped 1 that already had a `title`. Scanner re-run after the edit: 56 icon buttons, **0 unnamed**.                                                                       |
@@ -1022,6 +1023,67 @@ They also carry no `aria-label`.
 typo silently fails.
 
 **Fix:** remove `tabIndex={-1}` and add `aria-label={show ? 'Hide password' : 'Show password'}`.
+
+### Fix applied (2026-09-25)
+
+**Status:** Done. **5 files, +18/−8.** All 8 removed lines are the `tabIndex={-1}` attributes — the
+only lines changed in the whole diff are those removals plus the `aria-label`s that replaced them.
+
+**7 password toggles fixed**, each labelled to match its own field rather than a generic string:
+
+| File | Field | Label |
+| --- | --- | --- |
+| `auth/login/page.tsx` | Password | `Hide/Show password` |
+| `auth/reset-password/page.tsx` | New password | `Hide/Show new password` |
+| `auth/reset-password/page.tsx` | Confirm password | `Hide/Show confirm password` |
+| `auth/verify-email/page.tsx` | Password | `Hide/Show password` |
+| `auth/verify-email/page.tsx` | Confirm password | `Hide/Show confirm password` |
+| `settings/account/page.tsx` | Current password | `Hide/Show current password` |
+| `settings/account/page.tsx` | New password | `Hide/Show new password` |
+
+Wording was taken from the adjacent `<Label htmlFor>` in each form (`Login` → "Password";
+`reset-password` → "New password"/"Confirm password"; `settings/account` → "Current password"/"New
+password"), so the label matches what the user sees.
+
+#### One reported site was NOT a toggle, and was deliberately not "fixed" as one
+
+The report grouped `tag-form-sheet.tsx:115, 122` with the password toggles. Reading them shows **two
+different elements**:
+
+```tsx
+<input type="color" ... tabIndex={-1} />          {/* :122 — real native control */}
+<Button type="button" ... tabIndex={-1}>          {/* :115 — decorative */}
+  <Palette className="size-3" />
+  Custom
+</Button>
+```
+
+- **`:122` (the `<input type="color">`)** is the actual native colour picker, visually hidden under
+  the button (`absolute inset-0 opacity-0`). It is a real keyboard-reachable control, so it now has
+  `aria-label="Custom tag colour"`.
+- **`:115` (the "Custom" button)** was **left exactly as it is.** It is a decorative *visual
+  overlay*: it is `pointer-events-none`, and the accessible way to change the colour is the hex
+  input at `:104` alongside it. Making it focusable would add a second, duplicate control with no
+  name in the tab order — a regression, not a fix.
+
+So the count is 8 `tabIndex` removals across the files reported, but only 7 of them were
+visibility toggles.
+
+#### Safety checks specific to these files
+
+These are the **sign-in and password-reset screens**, so an accidental behaviour change here would be
+serious. Checked:
+
+- Every toggle carries `type="button"` (verified by reading all 7). Without it a `<button>` inside a
+  `<form>` defaults to `type="submit"`, so pressing it would submit the form — that risk is already
+  absent and remains so.
+- The diff adds **no** `onClick`, `type`, `value`, `className` or state line. Only `aria-label`
+  strings were introduced.
+- All four new strings confirmed present in the built `dist/assets/*.js`.
+- Remaining `tabIndex={-1}` in `src` is now 2, both intentional and pre-existing: the decorative
+  "Custom" button and `ui/sidebar.tsx:287`.
+
+Verification: `tsc` clean · `eslint .` still **59 problems (34/25)** · `pnpm build` ✓.
 
 ---
 
