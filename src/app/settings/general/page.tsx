@@ -33,6 +33,7 @@ import {
   usePipelineTemplateStore,
   useSettingsStore,
   useUserStore,
+  useAuthStore,
 } from '@/store';
 import type { EmailTemplate, PipelineTemplate } from '@/store/types';
 import {
@@ -41,6 +42,7 @@ import {
   EyeIcon,
   FileTextIcon,
   LayersIcon,
+  ListFilterIcon,
   MailCheckIcon,
   MailIcon,
   PencilIcon,
@@ -59,6 +61,7 @@ import { EmailTemplateSheet } from '../_components/email-template-sheet';
 import { EmailTemplateViewDialog } from '../_components/email-template-view-dialog';
 import { PipelineTemplateSheet } from '../_components/pipeline-template-sheet';
 import { PipelineTemplateViewDialog } from '../_components/pipeline-template-view-dialog';
+import { DispositionReasonsCard } from '../disposition-reasons/page';
 import {
   EMAIL_TEMPLATE_TYPES,
   workspaceSettings as initialWorkspace,
@@ -1164,6 +1167,10 @@ function ApplicationConfirmationCard() {
 }
 
 export default function SettingsGeneralPage() {
+  // The rejection-reason editor is admin-only, matching its own route guard,
+  // because only admins may write to `/ats/disposition-reasons`.
+  const isAdmin = useAuthStore(s => s.user?.roles.includes('admin') ?? false);
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 overflow-y-auto">
       <div>
@@ -1173,7 +1180,7 @@ export default function SettingsGeneralPage() {
         </p>
       </div>
       <Tabs defaultValue="general">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="general">
             <SlidersHorizontalIcon className="size-4" />
             General
@@ -1186,6 +1193,12 @@ export default function SettingsGeneralPage() {
             <MailIcon className="size-4" />
             Email Templates
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="rejection-reasons">
+              <ListFilterIcon className="size-4" />
+              Rejection Reasons
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="general" className="flex flex-col gap-6 mt-4">
           <WorkspaceCard />
@@ -1199,6 +1212,11 @@ export default function SettingsGeneralPage() {
         <TabsContent value="emails" className="mt-4">
           <EmailTemplatesCard />
         </TabsContent>
+        {isAdmin && (
+          <TabsContent value="rejection-reasons" className="mt-4">
+            <DispositionReasonsCard />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
