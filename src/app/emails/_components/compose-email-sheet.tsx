@@ -99,7 +99,9 @@ export function ComposeEmailSheet({
   const [bcc, setBcc] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-  const [template, setTemplate] = useState('');
+  // The chosen template's id (not its type) — a type can hold several
+  // templates, so the id is the only thing that identifies which one was used.
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
@@ -114,7 +116,7 @@ export function ComposeEmailSheet({
       setBcc('');
       setSubject('');
       setBody('');
-      setTemplate('');
+      setSelectedTemplateId('');
       setShowCc(false);
       setShowBcc(false);
       setAttachments([]);
@@ -126,7 +128,7 @@ export function ComposeEmailSheet({
       setBody(
         `\n\n---\nOn ${mode.email.sentAt ?? mode.email.receivedAt}, ${mode.email.from} wrote:\n\n${mode.email.bodyText}`
       );
-      setTemplate('');
+      setSelectedTemplateId('');
       setShowCc(!!mode.email.cc?.length);
       setShowBcc(false);
       setAttachments([]);
@@ -138,7 +140,7 @@ export function ComposeEmailSheet({
       setBody(
         `\n\n---\n---------- Forwarded message ----------\nFrom: ${mode.email.from}\nDate: ${mode.email.sentAt ?? mode.email.receivedAt}\nSubject: ${mode.email.subject}\nTo: ${mode.email.to.join(', ')}\n\n${mode.email.bodyText}`
       );
-      setTemplate('');
+      setSelectedTemplateId('');
       setShowCc(false);
       setShowBcc(false);
       // Forwarding inherits the original message's attachments by reference.
@@ -147,25 +149,24 @@ export function ComposeEmailSheet({
       setTo(mode.to);
       setCc('');
       setBcc('');
-      setTemplate(mode.templateType ?? '');
       setShowCc(false);
       setShowBcc(false);
       setAttachments([]);
 
+      // Prefill carries no explicit template choice, so fall back to the
+      // default (first active) template of the requested type — and remember
+      // its id so the email is logged against the template it actually used.
+      const templates = useEmailTemplateStore.getState().items;
+      const tmpl = mode.templateType
+        ? templates.find(t => t.type === mode.templateType && t.isActive)
+        : undefined;
+      setSelectedTemplateId(tmpl?._id ?? '');
+
       const prefillSubject = mode.subject ?? '';
       const prefillBody = mode.body ?? '';
       const vars = mode.variables;
-      if ((!prefillSubject || !prefillBody) && mode.templateType) {
-        const templates = useEmailTemplateStore.getState().items;
-        const tmpl = templates.find(
-          t => t.type === mode.templateType && t.isActive
-        );
-        setSubject(substituteVars(prefillSubject || tmpl?.subject || '', vars));
-        setBody(substituteVars(prefillBody || tmpl?.bodyText || '', vars));
-      } else {
-        setSubject(substituteVars(prefillSubject, vars));
-        setBody(substituteVars(prefillBody, vars));
-      }
+      setSubject(substituteVars(prefillSubject || tmpl?.subject || '', vars));
+      setBody(substituteVars(prefillBody || tmpl?.bodyText || '', vars));
     }
   }
 
@@ -211,13 +212,13 @@ export function ComposeEmailSheet({
 
   function handleTemplateChange(selection: TemplateSelection | null) {
     if (!selection) {
-      setTemplate('');
+      setSelectedTemplateId('');
       setSubject('');
       setBody('');
       return;
     }
     const vars = prefill?.variables;
-    setTemplate(selection.type);
+    setSelectedTemplateId(selection.templateId);
     if (selection.subject) setSubject(substituteVars(selection.subject, vars));
     if (selection.bodyText) setBody(substituteVars(selection.bodyText, vars));
   }
@@ -233,14 +234,10 @@ export function ComposeEmailSheet({
       return;
     }
 
-    // Resolve the template type string to an actual MongoDB ObjectId.
-    const templateType = template || null;
-    let templateId: string | undefined;
-    if (templateType) {
-      const templates = useEmailTemplateStore.getState().items;
-      const match = templates.find(t => t.type === templateType && t.isActive);
-      templateId = match?._id;
-    }
+    // The selector hands back the exact template id, so no re-resolution by
+    // type is needed — that lookup always returned the first match and logged
+    // every email of a type against the same template.
+    const templateId = selectedTemplateId || undefined;
 
     try {
       await send({
@@ -287,7 +284,7 @@ export function ComposeEmailSheet({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="template">Template</Label>
               <TemplateSelector
-                value={template}
+                value={selectedTemplateId}
                 onChange={handleTemplateChange}
                 disabled={uploading}
               />
