@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,22 +10,27 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import {
   CATEGORY_LABELS,
   useDispositionReasonsStore,
   type DispositionReason,
   type DispositionReasonCategory,
 } from '@/store/slices/disposition-reasons.store';
-import { useEffect, useMemo, useState } from 'react';
+import { CheckIcon, ChevronDownIcon, SearchIcon } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface RejectPayload {
   rejectionReasonId: string;
@@ -112,6 +118,9 @@ function RejectForm({
     'candidate_pool' | 'permanently_ineligible'
   >('candidate_pool');
   const [internalNotes, setInternalNotes] = useState('');
+  const [reasonSearch, setReasonSearch] = useState('');
+  const [reasonPickerOpen, setReasonPickerOpen] = useState(false);
+  const reasonSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchActive(currentStageName);
@@ -135,15 +144,35 @@ function RejectForm({
   // Destination is only offered on a candidate's last live application.
   const showDestination = !hasOtherLiveApplication;
 
+  /**
+   * Filter, then group. The seeded list holds ~50 reasons, so a search box is
+   * the only practical way to find one. Matching also covers the category name,
+   * so typing "interview" surfaces that whole group rather than only the
+   * reasons whose label happens to contain the word.
+   */
   const grouped = useMemo(() => {
+    const q = reasonSearch.trim().toLowerCase();
+    const matches = q
+      ? activeReasons.filter(
+          r =>
+            r.label.toLowerCase().includes(q) ||
+            CATEGORY_LABELS[r.category].toLowerCase().includes(q)
+        )
+      : activeReasons;
+
     const map = new Map<DispositionReasonCategory, DispositionReason[]>();
-    for (const r of activeReasons) {
+    for (const r of matches) {
       const list = map.get(r.category) ?? [];
       list.push(r);
       map.set(r.category, list);
     }
     return map;
-  }, [activeReasons]);
+  }, [activeReasons, reasonSearch]);
+
+  const matchCount = useMemo(
+    () => Array.from(grouped.values()).reduce((n, list) => n + list.length, 0),
+    [grouped]
+  );
 
   const canSubmit =
     selectedReasonId.length > 0 &&
@@ -222,27 +251,104 @@ function RejectForm({
         {/* Structured reason */}
         <div className="space-y-2">
           <Label>Rejection Reason *</Label>
-          <Select
-            value={selectedReasonId}
-            onValueChange={setSelectedReasonId}
-            disabled={loading}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a reason..." />
-            </SelectTrigger>
-            <SelectContent className="max-h-75">
-              {Array.from(grouped.entries()).map(([category, reasons]) => (
-                <SelectGroup key={category}>
-                  <SelectLabel>{CATEGORY_LABELS[category]}</SelectLabel>
-                  {reasons.map(r => (
-                    <SelectItem key={r._id} value={r._id}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={reasonPickerOpen} onOpenChange={setReasonPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                aria-label="Rejection reason"
+                className="w-full justify-between font-normal text-sm"
+              >
+                <span
+                  className={cn(
+                    'truncate',
+                    !selectedReason && 'text-muted-foreground'
+                  )}
+                >
+                  {selectedReason
+                    ? selectedReason.label
+                    : loading
+                      ? 'Loading reasons…'
+                      : 'Select a reason…'}
+                </span>
+                <ChevronDownIcon className="size-4 opacity-50 shrink-0" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-(--radix-popover-trigger-width) p-0"
+              align="start"
+              onOpenAutoFocus={e => {
+                // Radix focuses the content container first; send it to the
+                // search field instead so the user can type immediately.
+                e.preventDefault();
+                reasonSearchRef.current?.focus();
+              }}
+            >
+              <div className="flex items-center gap-2 border-b px-3">
+                <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
+                <input
+                  ref={reasonSearchRef}
+                  value={reasonSearch}
+                  onChange={e => setReasonSearch(e.target.value)}
+                  placeholder="Search reasons…"
+                  className="h-9 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+
+              <div className="max-h-72 overflow-y-auto overscroll-contain p-1">
+                {Array.from(grouped.entries()).map(([category, items]) => (
+                  <div key={category}>
+                    <p className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                      {CATEGORY_LABELS[category]}
+                    </p>
+                    {items.map(r => {
+                      const isSelected = r._id === selectedReasonId;
+                      return (
+                        <button
+                          key={r._id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedReasonId(r._id);
+                            setReasonSearch('');
+                            setReasonPickerOpen(false);
+                          }}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent',
+                            isSelected && 'bg-accent'
+                          )}
+                        >
+                          <CheckIcon
+                            className={cn(
+                              'size-3.5 shrink-0',
+                              !isSelected && 'invisible'
+                            )}
+                          />
+                          <span className="flex-1 truncate">{r.label}</span>
+                          {/* Choosing one of these bans the candidate from
+                              reapplying, so flag it before it is picked. */}
+                          {r.category === 'permanently_ineligible_reasons' && (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-destructive/40 text-[10px] text-destructive"
+                            >
+                              Never rehire
+                            </Badge>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {matchCount === 0 && activeReasons.length > 0 && (
+                  <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                    No reasons match &ldquo;{reasonSearch}&rdquo;
+                  </p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           {!loading && activeReasons.length === 0 && (
             <p className="text-xs text-muted-foreground">
               No rejection reasons configured. Add them under Settings →
