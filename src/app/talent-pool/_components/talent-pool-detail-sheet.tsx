@@ -292,6 +292,10 @@ function EducationList({ items }: { items: ParsedEducation[] }) {
   );
 }
 
+/** Radix Select forbids an empty-string item value, so the "use the first
+ * stage" option needs a non-empty sentinel that we map back to undefined. */
+const FIRST_STAGE_VALUE = '__first__';
+
 function AssignJobDialog({
   open,
   onClose,
@@ -330,14 +334,20 @@ function AssignJobDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Assign to a new job</DialogTitle>
           <DialogDescription className="sr-only">
             Search for a job and assign this candidate to it.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-3">
+        {/*
+          `min-w-0` is required. `DialogContent` is a grid, and a grid item's
+          automatic minimum size is its content, so a long job title made this
+          column wider than the dialog — the list then overflowed past the
+          padding and the dialog's right gutter looked like zero.
+        */}
+        <div className="flex min-w-0 flex-col gap-3">
           <div className="relative">
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <Input
@@ -394,7 +404,9 @@ function AssignJobDialog({
                   <SelectValue placeholder="First stage (default)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">First stage (default)</SelectItem>
+                  <SelectItem value={FIRST_STAGE_VALUE}>
+                    First stage (default)
+                  </SelectItem>
                   {stages.map(s => (
                     <SelectItem key={s._id} value={s._id}>
                       {s.name}
@@ -412,7 +424,12 @@ function AssignJobDialog({
           <Button
             disabled={!selected}
             onClick={() => {
-              onConfirm(selected, selectedStageId || undefined);
+              onConfirm(
+                selected,
+                selectedStageId === FIRST_STAGE_VALUE
+                  ? undefined
+                  : selectedStageId || undefined
+              );
               setSelected('');
               setSelectedStageId('');
               setSearch('');
@@ -843,6 +860,68 @@ export function TalentPoolDetailSheet({
                   <Separator />
                 </>
               )}
+
+              {/*
+                Additional Info — compensation and reason for leaving.
+
+                Rendered ALWAYS (with "Not provided" fallbacks) rather than only
+                when values exist, matching the Portfolio section's convention:
+                a hidden section is indistinguishable from a missing feature, so
+                a recruiter could not tell whether the candidate declined to
+                answer or the field simply was not shown. Mirrors the labels and
+                layout used in `candidate-detail-sheet.tsx`.
+              */}
+              <>
+                <Separator />
+                <div className="flex flex-col gap-3">
+                  <SectionLabel>Additional Info</SectionLabel>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">
+                        Current Salary (PHP)
+                      </span>
+                      {c.currentSalaryPHP != null ? (
+                        <span className="font-medium">
+                          ₱{c.currentSalaryPHP.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Not provided
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">
+                        Current Salary (USD)
+                      </span>
+                      {c.currentSalaryUSD != null ? (
+                        <span className="font-medium">
+                          ${c.currentSalaryUSD.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Not provided
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">
+                      Reason for Leaving
+                    </span>
+                    <p
+                      className={cn(
+                        'text-sm leading-relaxed',
+                        c.reasonForLeaving
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {c.reasonForLeaving || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+              </>
 
               {/* Resume & Intro Video */}
               <div className="flex flex-col gap-3">
