@@ -1,3 +1,7 @@
+import {
+  RecipientField,
+  type RecipientFieldHandle,
+} from '@/components/recipient-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +15,7 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { escapeHtml } from '@/lib/html';
+import { parseRecipients } from '@/lib/recipients';
 import { useEmailStore, useEmailTemplateStore } from '@/store';
 import type { Email, EmailAttachment } from '@/store/types';
 import {
@@ -64,6 +69,8 @@ type ComposeMode =
       variables?: Record<string, string>;
     };
 
+export type { ComposeMode };
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -107,6 +114,10 @@ export function ComposeEmailSheet({
   const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
   const [lastSignature, setLastSignature] = useState(modeSignature);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Lets Send pick up an address that is still being typed in the field.
+  const toRef = useRef<RecipientFieldHandle>(null);
+  const ccRef = useRef<RecipientFieldHandle>(null);
+  const bccRef = useRef<RecipientFieldHandle>(null);
 
   if (lastSignature !== modeSignature) {
     setLastSignature(modeSignature);
@@ -182,10 +193,7 @@ export function ComposeEmailSheet({
           : 'New Email';
 
   function parseEmails(val: string): string[] {
-    return val
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
+    return parseRecipients(val);
   }
 
   async function handleFiles(files: FileList | null) {
@@ -224,7 +232,14 @@ export function ComposeEmailSheet({
   }
 
   async function handleSend() {
-    const toList = parseEmails(to);
+    // Commit anything still half-typed in the recipient fields first — the
+    // caller gets the final strings back, so a Send click cannot drop an
+    // address the user had typed but not yet separated with Enter/comma.
+    const finalTo = toRef.current?.flush() ?? to;
+    const finalCc = ccRef.current?.flush() ?? cc;
+    const finalBcc = bccRef.current?.flush() ?? bcc;
+
+    const toList = parseEmails(finalTo);
     if (!toList.length || !subject.trim() || !body.trim()) {
       toast.error('To, Subject, and Message are required.');
       return;
@@ -238,12 +253,14 @@ export function ComposeEmailSheet({
     // type is needed — that lookup always returned the first match and logged
     // every email of a type against the same template.
     const templateId = selectedTemplateId || undefined;
+    const ccList = parseEmails(finalCc);
+    const bccList = parseEmails(finalBcc);
 
     try {
       await send({
         to: toList,
-        cc: parseEmails(cc).length ? parseEmails(cc) : undefined,
-        bcc: parseEmails(bcc).length ? parseEmails(bcc) : undefined,
+        cc: ccList.length ? ccList : undefined,
+        bcc: bccList.length ? bccList : undefined,
         subject: subject.trim(),
         // Escape the body: it is plain text being wrapped as HTML, so `<` must
         // not be sent to the recipient as markup.
@@ -307,11 +324,12 @@ export function ComposeEmailSheet({
                   </button>
                 )}
               </div>
-              <Input
+              <RecipientField
                 id="to"
+                ref={toRef}
                 placeholder="recipient@email.com"
                 value={to}
-                onChange={e => setTo(e.target.value)}
+                onChange={setTo}
               />
             </div>
 
@@ -319,11 +337,12 @@ export function ComposeEmailSheet({
             {showCc && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cc">Cc</Label>
-                <Input
+                <RecipientField
                   id="cc"
+                  ref={ccRef}
                   placeholder="cc@email.com"
                   value={cc}
-                  onChange={e => setCc(e.target.value)}
+                  onChange={setCc}
                 />
               </div>
             )}
@@ -332,11 +351,12 @@ export function ComposeEmailSheet({
             {showBcc && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="bcc">Bcc</Label>
-                <Input
+                <RecipientField
                   id="bcc"
+                  ref={bccRef}
                   placeholder="bcc@email.com"
                   value={bcc}
-                  onChange={e => setBcc(e.target.value)}
+                  onChange={setBcc}
                 />
               </div>
             )}

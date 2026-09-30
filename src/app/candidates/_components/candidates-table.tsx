@@ -1,4 +1,8 @@
-import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import {
+  ComposeEmailSheet,
+  type ComposeMode,
+} from '@/app/emails/_components/compose-email-sheet';
+import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
 import { ChangeJobDialog } from '@/components/change-job-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import {
@@ -1591,6 +1595,10 @@ export function CandidatesTable() {
   const [bulkStageId, setBulkStageId] = useState('');
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
   const [bulkActing, setBulkActing] = useState(false);
+  const [bulkComposeOpen, setBulkComposeOpen] = useState(false);
+  const [bulkComposeMode, setBulkComposeMode] = useState<ComposeMode>({
+    type: 'new',
+  });
 
   // Subscribe to real-time candidate and application updates
   useSocketRoom('candidates');
@@ -1931,6 +1939,32 @@ export function CandidatesTable() {
   }, [selectedIds, stageInfoByCandidateId]);
 
   // ── Bulk action handlers ─────────────────────────────────────────
+  /**
+   * Bulk email. Every reachable selected candidate's address goes into the
+   * single To list, so one send reaches all of them.
+   *
+   * A selection can mix candidates with and without an email address; the ones
+   * that cannot be reached are reported instead of being silently dropped, and
+   * an all-unreachable selection refuses to open the composer at all.
+   */
+  function openBulkCompose() {
+    if (selectedCount === 0) return;
+    const selectedRows = items.filter(c => selectedIds.has(c._id));
+    const reachable = selectedRows.filter(c => (c.email ?? '').trim());
+    if (reachable.length === 0) {
+      toast.error('None of the selected candidates has an email address.');
+      return;
+    }
+    const skipped = selectedRows.length - reachable.length;
+    if (skipped > 0) {
+      toast.info(
+        `Emailing ${reachable.length} of ${selectedRows.length} selected — ${skipped} ${skipped === 1 ? 'has' : 'have'} no email address.`
+      );
+    }
+    setBulkComposeMode(buildCandidateComposeMode(reachable));
+    setBulkComposeOpen(true);
+  }
+
   async function handleBulkTalentPool() {
     if (selectedCount === 0) return;
     setBulkActing(true);
@@ -2427,6 +2461,11 @@ export function CandidatesTable() {
               Add to Talent Pool
             </Button>
 
+            <Button size="sm" variant="outline" onClick={openBulkCompose}>
+              <MailIcon className="size-4" />
+              Email
+            </Button>
+
             <Button
               size="sm"
               variant="ghost"
@@ -2570,6 +2609,13 @@ export function CandidatesTable() {
         candidateName={`${selectedCount} selected ${selectedCount === 1 ? 'candidate' : 'candidates'}`}
         submitting={bulkActing}
         onConfirm={handleBulkReject}
+      />
+
+      {/* Bulk email — one send, every selected address in the To list */}
+      <ComposeEmailSheet
+        open={bulkComposeOpen}
+        onOpenChange={setBulkComposeOpen}
+        mode={bulkComposeMode}
       />
 
       <CandidateDetailSheet

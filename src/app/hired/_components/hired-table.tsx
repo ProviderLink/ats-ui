@@ -5,7 +5,11 @@ import {
   SortHeader,
   TableSkeleton,
 } from '@/app/candidates/_components/candidates-table';
-import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import {
+  ComposeEmailSheet,
+  type ComposeMode,
+} from '@/app/emails/_components/compose-email-sheet';
+import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
 import { TablePagination } from '@/components/table-pagination';
 import { TagList } from '@/components/tag-list';
 import { Badge } from '@/components/ui/badge';
@@ -118,7 +122,7 @@ export function HiredTable() {
   const [assignJobOpen, setAssignJobOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<Candidate | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [composeTarget, setComposeTarget] = useState<Candidate | null>(null);
+  const [composeMode, setComposeMode] = useState<ComposeMode>({ type: 'new' });
 
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
     useTablePagination({ storageKey: 'hired', defaultSize: 20 });
@@ -262,6 +266,9 @@ export function HiredTable() {
     setInputValue(q);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     resetPage();
+    // Selections belong to the previous filter — dropping them stops a bulk
+    // action from reaching a candidate the user can no longer see.
+    setSelectedIds(new Set());
     searchTimer.current = setTimeout(() => setQuery(q), 300);
   }
 
@@ -309,26 +316,27 @@ export function HiredTable() {
     setDetailOpen(true);
   }
 
-  function buildComposeMode() {
-    if (!composeTarget) return { type: 'new' as const };
-    return {
-      type: 'prefill' as const,
-      to: composeTarget.email,
-      subject: '',
-      body: '',
-      templateType: 'general',
-      context: { type: 'general', candidateId: composeTarget._id },
-      variables: {
-        candidateName: `${composeTarget.firstName} ${composeTarget.lastName}`,
-        candidateEmail: composeTarget.email,
-        candidatePhone: composeTarget.phone ?? '',
-        jobTitle: '',
-        clientName: '',
-        currentStage: '',
-        senderName: '',
-      },
-    };
+  /**
+   * Open the composer for one or many candidates.
+   *
+   * Every address goes into the single To list, so one send reaches all of
+   * them. Candidates with no email address are filtered out: the row action is
+   * already disabled for them, and a bulk selection can easily mix both.
+   */
+  function openComposeFor(candidates: Candidate[]) {
+    const reachable = candidates.filter(c => (c.email ?? '').trim());
+    if (reachable.length === 0) {
+      toast.error('None of the selected candidates has an email address.');
+      return;
+    }
+    setComposeMode(buildCandidateComposeMode(reachable));
+    setComposeOpen(true);
   }
+
+  const selectedRows = useMemo(
+    () => data.filter(c => selectedIds.has(c._id)),
+    [data, selectedIds]
+  );
 
   const columns: ColumnDef<Candidate>[] = useMemo(
     () => [
@@ -535,10 +543,7 @@ export function HiredTable() {
                       size="icon-xs"
                       className="rounded p-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
                       disabled={!candidate.email || mutating}
-                      onClick={() => {
-                        setComposeTarget(candidate);
-                        setComposeOpen(true);
-                      }}
+                      onClick={() => openComposeFor([candidate])}
                       aria-label={`Email ${candidate.firstName} ${candidate.lastName}`}
                     >
                       <MailIcon className="size-3.5" />
@@ -639,6 +644,7 @@ export function HiredTable() {
             onChange={ids => {
               setTagFilter(ids);
               resetPage();
+              setSelectedIds(new Set());
             }}
           />
         </div>
@@ -648,6 +654,34 @@ export function HiredTable() {
             ? 'Loading…'
             : `${totalRows} ${totalRows === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' hired'}`}
         </p>
+
+        {/* Bulk selection bar */}
+        {selectedRows.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs shrink-0">
+            <Badge variant="secondary" className="text-xs">
+              {selectedRows.length} selected
+            </Badge>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openComposeFor(selectedRows)}
+            >
+              <MailIcon className="size-4" />
+              Email
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto text-muted-foreground"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <XIcon className="size-4" />
+              Clear
+            </Button>
+          </div>
+        )}
 
         {/* Table */}
         <div className="rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -748,7 +782,7 @@ export function HiredTable() {
       <ComposeEmailSheet
         open={composeOpen}
         onOpenChange={setComposeOpen}
-        mode={buildComposeMode()}
+        mode={composeMode}
       />
     </TooltipProvider>
   );

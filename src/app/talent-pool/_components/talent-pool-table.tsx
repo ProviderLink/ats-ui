@@ -4,11 +4,16 @@ import {
   SortHeader,
   TableSkeleton,
 } from '@/app/candidates/_components/candidates-table';
-import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import {
+  ComposeEmailSheet,
+  type ComposeMode,
+} from '@/app/emails/_components/compose-email-sheet';
+import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
 import { TablePagination } from '@/components/table-pagination';
 import { TagList } from '@/components/tag-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -507,7 +512,9 @@ export function TalentPoolTable() {
     null
   );
   const [composeOpen, setComposeOpen] = useState(false);
-  const [composeTarget, setComposeTarget] = useState<Candidate | null>(null);
+  const [composeMode, setComposeMode] = useState<ComposeMode>({ type: 'new' });
+  // Bulk selection — drives the header checkbox and the bulk action bar.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
     useTablePagination({ storageKey: 'talent-pool', defaultSize: 20 });
@@ -591,6 +598,9 @@ export function TalentPoolTable() {
     // Debounce the actual search query to avoid re-filtering on every keystroke
     if (searchTimer.current) clearTimeout(searchTimer.current);
     resetPage();
+    // Selections belong to the previous filter — dropping them stops a bulk
+    // action from reaching a candidate the user can no longer see.
+    setSelectedIds(new Set());
     searchTimer.current = setTimeout(() => {
       setQuery(q);
     }, 300);
@@ -605,6 +615,7 @@ export function TalentPoolTable() {
   function handleTagsChange(tags: string[]) {
     setTagFilter(tags);
     resetPage();
+    setSelectedIds(new Set());
   }
 
   async function handleRemoveFromPool() {
@@ -631,32 +642,39 @@ export function TalentPoolTable() {
     setAssignJobOpen(true);
   }
 
-  function openCompose(candidate: Candidate) {
-    setComposeTarget(candidate);
-    setComposeOpen(true);
+  /** Add or remove one candidate from the bulk selection. */
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  function buildComposeMode() {
-    if (!composeTarget) return { type: 'new' as const };
-    const name = `${composeTarget.firstName} ${composeTarget.lastName}`;
-    return {
-      type: 'prefill' as const,
-      to: composeTarget.email,
-      subject: '',
-      body: '',
-      templateType: 'general',
-      context: { type: 'general', candidateId: composeTarget._id },
-      variables: {
-        candidateName: name,
-        candidateEmail: composeTarget.email,
-        candidatePhone: composeTarget.phone ?? '',
-        jobTitle: '',
-        clientName: '',
-        currentStage: '',
-        companyName: '',
-        senderName: '',
-      },
-    };
+  const selectedCount = selectedIds.size;
+  // Rows picked for the bulk bar. Derived from the FILTERED list, so a
+  // selection made before a search cannot smuggle in a hidden candidate.
+  const selectedRows = useMemo(
+    () => data.filter(c => selectedIds.has(c._id)),
+    [data, selectedIds]
+  );
+
+  /**
+   * Open the composer for one or many candidates.
+   *
+   * Every address goes into the single To list, so one send reaches all of
+   * them. Candidates with no email address are filtered out — the row action is
+   * already disabled for them, and a bulk selection can easily mix both.
+   */
+  function openComposeFor(candidates: Candidate[]) {
+    const reachable = candidates.filter(c => (c.email ?? '').trim());
+    if (reachable.length === 0) {
+      toast.error('None of the selected candidates has an email address.');
+      return;
+    }
+    setComposeMode(buildCandidateComposeMode(reachable));
+    setComposeOpen(true);
   }
 
   async function handleAssignToJob(jobId: string, startStageId?: string) {
@@ -676,6 +694,41 @@ export function TalentPoolTable() {
 
   const columns: ColumnDef<Candidate>[] = useMemo(
     () => [
+      {
+        id: 'select',
+        header: () => (
+          <Checkbox
+            // Computed inline (instead of from component-scope helpers) so the
+            // memo only depends on `data` and `selectedIds`.
+            checked={
+              data.length > 0 && data.every(c => selectedIds.has(c._id))
+                ? true
+                : selectedIds.size > 0
+                  ? 'indeterminate'
+                  : false
+            }
+            onCheckedChange={() =>
+              setSelectedIds(prev =>
+                prev.size === data.length
+                  ? new Set()
+                  : new Set(data.map(c => c._id))
+              )
+            }
+            aria-label="Select all candidates"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={e => e.stopPropagation()}>
+            <Checkbox
+              checked={selectedIds.has(row.original._id)}
+              onCheckedChange={() => toggleSelect(row.original._id)}
+              aria-label={`Select ${row.original.firstName} ${row.original.lastName}`}
+            />
+          </div>
+        ),
+        enableSorting: false,
+        size: 40,
+      },
       {
         id: 'candidate',
         accessorFn: row => `${row.firstName} ${row.lastName}`,
@@ -798,7 +851,7 @@ export function TalentPoolTable() {
                       size="icon-xs"
                       className="rounded p-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 dark:hover:border-blue-700/40"
                       disabled={!candidate.email || mutating}
-                      onClick={() => openCompose(candidate)}
+                      onClick={() => openComposeFor([candidate])}
                       aria-label={`Email ${candidate.firstName} ${candidate.lastName}`}
                     >
                       <MailIcon className="size-3.5" />
@@ -819,11 +872,13 @@ export function TalentPoolTable() {
     // `mutating` is read by the action buttons below and MUST be a dependency:
     // with an empty array the columns were built once and the buttons stayed
     // frozen at their mount value, so they never disabled during a mutation and
-    // a second click could fire a duplicate request. The `open*` helpers are
-    // intentionally not listed — they are plain functions recreated each render,
-    // so including them would rebuild these columns on every render for no
-    // benefit (see the note above the memo).
-    [mutating]
+    // a second click could fire a duplicate request. `selectedIds`/`data` are
+    // required for the checkbox column, which must re-render when the selection
+    // changes. The `open*`/`toggle*` helpers are intentionally not listed —
+    // they are plain functions recreated each render, so including them would
+    // rebuild these columns on every render for no benefit; the ones that read
+    // `data` still see a fresh copy because `data` is a dependency.
+    [mutating, selectedIds, data]
   );
 
   const table = useReactTable({
@@ -882,11 +937,39 @@ export function TalentPoolTable() {
             : `${totalRows} ${totalRows === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' in talent pool'}`}
         </p>
 
+        {/* Bulk selection bar */}
+        {selectedCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs shrink-0">
+            <Badge variant="secondary" className="text-xs">
+              {selectedCount} selected
+            </Badge>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openComposeFor(selectedRows)}
+            >
+              <MailIcon className="size-4" />
+              Email
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto text-muted-foreground"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <XIcon className="size-4" />
+              Clear
+            </Button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
           <div className="overflow-auto flex-1">
             <Table>
-              <TableHeader className="sticky top-0 z-10 bg-foreground/[0.05] dark:bg-muted">
+              <TableHeader className="sticky top-0 z-10 bg-foreground/5 dark:bg-muted">
                 {table.getHeaderGroups().map(hg => (
                   <TableRow
                     key={hg.id}
@@ -912,7 +995,7 @@ export function TalentPoolTable() {
                   table.getRowModel().rows.map(row => (
                     <TableRow
                       key={row.id}
-                      className="border-b last:border-0 hover:bg-foreground/[0.04] dark:hover:bg-white/3 cursor-pointer"
+                      className="border-b last:border-0 hover:bg-foreground/4 dark:hover:bg-white/3 cursor-pointer"
                       onClick={() => openDetail(row.original)}
                     >
                       {row.getVisibleCells().map(cell => (
@@ -988,7 +1071,7 @@ export function TalentPoolTable() {
       <ComposeEmailSheet
         open={composeOpen}
         onOpenChange={setComposeOpen}
-        mode={buildComposeMode()}
+        mode={composeMode}
       />
     </TooltipProvider>
   );
