@@ -1,5 +1,4 @@
 import type {
-  InterviewMeetingType,
   InterviewRecommendation,
   InterviewStatus,
   InterviewType,
@@ -30,14 +29,29 @@ export interface Interview {
   clientId: string;
   title: string;
   type: InterviewType;
-  interviewType: InterviewMeetingType;
-  round: number;
   status: InterviewStatus;
   scheduledAt: string;
+  /**
+   * Server-managed. A fixed default is applied on create and the schedule form
+   * no longer asks for it, but it is still rendered and used to compute the
+   * interview's end time.
+   */
   duration: number;
+  /**
+   * Server-managed: always the company timezone from Settings. Read here so the
+   * calendar and detail views can render the wall clock in the zone the
+   * interview was booked under.
+   */
   timezone: string;
   meetingDetails?: MeetingDetails | null;
   interviewerIds: string[];
+  /**
+   * Display names for `interviewerIds`, resolved by the backend.
+   *
+   * Optional: older records and deleted users have no name, in which case the
+   * UI falls back to the raw id for that slot.
+   */
+  interviewerNames?: string[];
   feedbacks: InterviewFeedback[];
   organizerId: string;
   reminderSent: boolean;
@@ -52,11 +66,7 @@ export interface CreateInterviewDto {
   clientId: string;
   title: string;
   type: InterviewType;
-  interviewType?: InterviewMeetingType;
-  round: number;
   scheduledAt: string;
-  duration: number;
-  timezone: string;
   interviewerIds: string[];
   meetingDetails?: MeetingDetails;
 }
@@ -66,12 +76,8 @@ export interface CreateInterviewDto {
 export interface CreateNestedInterviewDto {
   title: string;
   type: InterviewType;
-  interviewType?: InterviewMeetingType;
   jobId?: string;
-  round: number;
   scheduledAt: string;
-  duration: number;
-  timezone: string;
   interviewerIds: string[];
   meetingDetails?: MeetingDetails;
 }
@@ -79,19 +85,10 @@ export interface CreateNestedInterviewDto {
 export interface UpdateInterviewDto {
   title?: string;
   scheduledAt?: string;
-  duration?: number;
-  timezone?: string;
   interviewerIds?: string[];
   meetingDetails?: MeetingDetails;
   status?: InterviewStatus;
-  /**
-   * Sent by the calendar edit form but NOT yet accepted by the backend's
-   * `updateInterviewSchema`, so zod currently strips both. Declared here so the
-   * payload is typed; the form renders them read-only until the schema allows
-   * them (see `event-sheet.tsx`).
-   */
   type?: InterviewType;
-  round?: number;
 }
 
 export interface CreateFeedbackDto {

@@ -54,9 +54,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useInterviewerOptions } from '@/hooks/use-interviewer-options';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { useTablePagination } from '@/hooks/use-table-pagination';
-import { zonedWallClockToUtc } from '@/lib/timezones';
+import { DEFAULT_TIMEZONE, zonedWallClockToUtc } from '@/lib/timezones';
 import { cn, formatDate, sortableTime, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
@@ -64,6 +65,7 @@ import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
+import { useSettingsStore } from '@/store/slices/settings.store';
 import { useUserStore } from '@/store/slices/users.store';
 import type {
   Application,
@@ -877,17 +879,28 @@ function PipelineActionsMenu({
   candidate,
   allApps,
   allJobs,
-  users,
 }: {
   candidate: Candidate;
   allApps: Application[];
   allJobs: Job[];
-  users: { _id: string; firstName: string; lastName: string }[];
 }) {
   const appStore = useApplicationStore();
   const candStore = useCandidateStore();
   const createInterviewForApplication = useInterviewStore(
     s => s.createForApplication
+  );
+  // Scoped to ATS staff — the boot-loaded user list also holds CRM-only
+  // accounts (client/va) and deactivated users, which showed up here as
+  // interviewers who are not part of the team.
+  const { interviewers } = useInterviewerOptions();
+  const users = useMemo(
+    () =>
+      interviewers.map(u => ({
+        _id: u._id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      })),
+    [interviewers]
   );
 
   const candidateApps = useMemo(
@@ -918,6 +931,8 @@ function PipelineActionsMenu({
   const [changeJobOpen, setChangeJobOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('');
   const [acting, setActing] = useState(false);
+  const settings = useSettingsStore(s => s.settings);
+  const companyTimezone = settings?.companyTimezone || DEFAULT_TIMEZONE;
 
   const openJobs = useMemo(
     () => allJobs.filter(j => j.status === 'open'),
@@ -1134,11 +1149,11 @@ function PipelineActionsMenu({
     setActing(true);
     try {
       // `data.scheduledAt` is a wall clock from the dialog; interpret it in the
-      // zone the user picked, not in the browser's zone.
+      // company timezone, which is the zone the form displays.
       const scheduledAt = zonedWallClockToUtc(
         data.scheduledAt.slice(0, 10),
         data.scheduledAt.slice(11, 16),
-        data.timezone
+        companyTimezone
       );
       if (!scheduledAt) {
         toast.error('Please enter a valid date and time');
@@ -1147,12 +1162,9 @@ function PipelineActionsMenu({
       await createInterviewForApplication(application._id, {
         title: data.title,
         type: data.type as Interview['type'],
-        interviewType: data.interviewType,
         jobId: data.jobId || undefined,
-        round: data.round,
         scheduledAt,
-        duration: data.duration,
-        timezone: data.timezone,
+        // Empty is valid — the backend falls back to the organiser.
         interviewerIds: data.interviewerIds,
         meetingDetails: {
           link: data.meetingLink || null,
@@ -1567,8 +1579,6 @@ export function CandidatesTable() {
 
   const allJobs = useJobStore(s => s.items);
   const allClients = useClientStore(s => s.items);
-  // Interviewers for the Schedule Interview dialog (boot-loaded).
-  const allUsers = useUserStore(s => s.items);
 
   const [activeTab, setActiveTab] = useState<TabValue>('pending');
   const [inputValue, setInputValue] = useState('');
@@ -2263,7 +2273,6 @@ export function CandidatesTable() {
                 candidate={row.original}
                 allApps={allApps}
                 allJobs={allJobs}
-                users={allUsers}
               />
             ) : (
               <ReviewActionsDropdown
@@ -2283,7 +2292,6 @@ export function CandidatesTable() {
     allApps,
     allJobs,
     allClients,
-    allUsers,
     selectedIds,
     selectedCount,
     allFilteredSelected,

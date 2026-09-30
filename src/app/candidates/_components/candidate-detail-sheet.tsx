@@ -6,7 +6,10 @@ import { PortfolioSection } from '@/components/portfolio-section';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { ResumeViewer } from '@/components/resume-viewer';
-import { ScheduleInterviewDialog } from '@/components/schedule-interview-dialog';
+import {
+  ScheduleInterviewDialog,
+  type ScheduleInterviewInput,
+} from '@/components/schedule-interview-dialog';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,10 +46,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useInterviewerOptions } from '@/hooks/use-interviewer-options';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getJson, patchJson } from '@/lib/api-client';
 import { getTagIds } from '@/lib/tags';
 import {
+  DEFAULT_TIMEZONE,
   getZonedDate,
   getZonedTime,
   zonedWallClockToUtc,
@@ -60,6 +65,7 @@ import { useEmailTemplateStore } from '@/store/slices/email-templates.store';
 import { useInterviewScorecardStore } from '@/store/slices/interview-scorecards.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
+import { useSettingsStore } from '@/store/slices/settings.store';
 import { useTagStore } from '@/store/slices/tags.store';
 import { useUserStore } from '@/store/slices/users.store';
 import type { InterviewScorecard } from '@/store/types/interview-scorecard.types';
@@ -69,12 +75,10 @@ import type {
   Candidate,
   EmailTemplate,
   Interview,
-  InterviewMeetingType,
   InterviewRecommendation,
   ParsedEducation,
   ParsedExperience,
 } from '@/store/types';
-import { INTERVIEW_MEETING_TYPE_LABELS } from '@/store/types';
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
@@ -386,16 +390,14 @@ function RescheduleDialog({
   onConfirm,
   interviewTitle,
   currentDate,
-  currentDuration,
   currentTimezone,
   loading,
 }: {
   open: boolean;
   onClose: () => void;
-  onConfirm: (data: { scheduledAt: string; duration: number }) => Promise<void>;
+  onConfirm: (data: { scheduledAt: string }) => Promise<void>;
   interviewTitle: string;
   currentDate: string;
-  currentDuration: number;
   /** IANA zone the interview was scheduled in; the wall clock is shown and
    *  re-interpreted in this zone so rescheduling never shifts the time. */
   currentTimezone?: string | null;
@@ -411,7 +413,6 @@ function RescheduleDialog({
       onConfirm={onConfirm}
       interviewTitle={interviewTitle}
       currentDate={currentDate}
-      currentDuration={currentDuration}
       currentTimezone={currentTimezone}
       loading={loading}
     />
@@ -423,15 +424,13 @@ function RescheduleForm({
   onConfirm,
   interviewTitle,
   currentDate,
-  currentDuration,
   currentTimezone,
   loading,
 }: {
   onClose: () => void;
-  onConfirm: (data: { scheduledAt: string; duration: number }) => Promise<void>;
+  onConfirm: (data: { scheduledAt: string }) => Promise<void>;
   interviewTitle: string;
   currentDate: string;
-  currentDuration: number;
   currentTimezone?: string | null;
   loading?: boolean;
 }) {
@@ -448,9 +447,8 @@ function RescheduleForm({
 
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
-  const [duration, setDuration] = useState(currentDuration);
 
-  const isValid = date && time && duration > 0;
+  const isValid = Boolean(date && time);
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
@@ -480,24 +478,6 @@ function RescheduleForm({
               className="h-8 text-xs"
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs">Duration (min)</Label>
-            <Select
-              value={String(duration)}
-              onValueChange={v => setDuration(Number(v))}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[15, 30, 45, 60, 90, 120].map(m => (
-                  <SelectItem key={m} value={String(m)}>
-                    {m} min
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
         <DialogFooter>
           <Button
@@ -518,7 +498,6 @@ function RescheduleForm({
                 scheduledAt:
                   zonedWallClockToUtc(date, time, currentTimezone ?? '') ||
                   new Date(`${date}T${time}`).toISOString(),
-                duration,
               });
             }}
           >
@@ -1568,8 +1547,19 @@ export function CandidateDetailSheet({
   );
   const moveStage = useApplicationStore(s => s.moveStage);
   const updateAppNotes = useApplicationStore(s => s.updateNotes);
-  const users = useUserStore(s => s.items);
-  const fetchUsers = useUserStore(s => s.fetch);
+  const settings = useSettingsStore(s => s.settings);
+  const companyTimezone = settings?.companyTimezone || DEFAULT_TIMEZONE;
+  // Scoped to ATS staff — see `useInterviewerOptions`.
+  const { interviewers } = useInterviewerOptions();
+  const users = useMemo(
+    () =>
+      interviewers.map(u => ({
+        _id: u._id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      })),
+    [interviewers]
+  );
   const [notesText, setNotesText] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
@@ -1581,12 +1571,6 @@ export function CandidateDetailSheet({
     /** IANA zone so the form shows/edits the wall clock in the same zone. */
     timezone?: string | null;
   } | null>(null);
-
-  useEffect(() => {
-    if (open && users.length === 0) {
-      fetchUsers();
-    }
-  }, [open, users.length, fetchUsers]);
 
   const openJobs = useMemo(
     () =>
@@ -2319,20 +2303,7 @@ export function CandidateDetailSheet({
     }
   }
 
-  async function handleScheduleInterview(data: {
-    title: string;
-    type: string;
-    interviewType: InterviewMeetingType;
-    jobId: string;
-    round: number;
-    scheduledAt: string;
-    duration: number;
-    timezone: string;
-    interviewerIds: string[];
-    meetingLink: string;
-    phoneNumber: string;
-    address: string;
-  }) {
+  async function handleScheduleInterview(data: ScheduleInterviewInput) {
     if (!activePipelineApp || !candidate) return;
 
     if (data.type === 'google_meet' && !data.meetingLink.trim()) {
@@ -2342,11 +2313,11 @@ export function CandidateDetailSheet({
     setPipelineLoading(true);
     try {
       // `data.scheduledAt` is a wall clock from the dialog; interpret it in the
-      // zone the user picked, not in the browser's zone.
+      // company timezone, which is the zone the form displays.
       const scheduledAt = zonedWallClockToUtc(
         data.scheduledAt.slice(0, 10),
         data.scheduledAt.slice(11, 16),
-        data.timezone
+        companyTimezone
       );
       if (!scheduledAt) {
         toast.error('Please enter a valid date and time');
@@ -2355,12 +2326,8 @@ export function CandidateDetailSheet({
       await createInterviewForApplication(activePipelineApp._id, {
         title: data.title,
         type: data.type as Interview['type'],
-        interviewType: data.interviewType,
         jobId: data.jobId || undefined,
-        round: data.round,
         scheduledAt,
-        duration: data.duration,
-        timezone: data.timezone,
         interviewerIds: data.interviewerIds,
         meetingDetails: {
           link: data.meetingLink || null,
@@ -2369,8 +2336,6 @@ export function CandidateDetailSheet({
         },
       });
       fetchScopedInterviewsByApplication(activePipelineApp._id, { limit: 50 });
-      const typeLabel =
-        INTERVIEW_MEETING_TYPE_LABELS[data.interviewType] ?? data.interviewType;
       const jobTitle =
         jobs.find(j => j._id === data.jobId)?.title ??
         pipelineJob?.title ??
@@ -2379,7 +2344,7 @@ export function CandidateDetailSheet({
         'application',
         activePipelineApp._id,
         'interview_scheduled',
-        `Interview scheduled: ${typeLabel} for ${jobTitle}`
+        `Interview scheduled for ${jobTitle}`
       );
       setScheduleOpen(false);
     } catch {
@@ -2959,7 +2924,7 @@ export function CandidateDetailSheet({
                                         {iv.title}
                                       </p>
                                       <p className="text-xs text-muted-foreground">
-                                        Round {iv.round} · {typeLabel}
+                                        {typeLabel}
                                       </p>
                                     </div>
                                     <Badge
@@ -3990,11 +3955,7 @@ export function CandidateDetailSheet({
         candidateName={fullName}
         job={pipelineJob}
         jobs={openJobs}
-        users={users.map(u => ({
-          _id: u._id,
-          firstName: u.firstName,
-          lastName: u.lastName,
-        }))}
+        users={users}
         loading={pipelineLoading}
       />
 
@@ -4011,7 +3972,6 @@ export function CandidateDetailSheet({
             rescheduleInterview._id,
             {
               scheduledAt: data.scheduledAt,
-              duration: data.duration,
             },
             activePipelineApp?._id
           );
@@ -4035,7 +3995,6 @@ export function CandidateDetailSheet({
         }}
         interviewTitle={rescheduleInterview?.title ?? ''}
         currentDate={rescheduleInterview?.scheduledAt ?? ''}
-        currentDuration={rescheduleInterview?.duration ?? 30}
         currentTimezone={rescheduleInterview?.timezone}
         loading={actionLoading}
       />

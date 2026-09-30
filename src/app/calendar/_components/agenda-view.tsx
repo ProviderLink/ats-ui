@@ -166,9 +166,6 @@ export function AgendaView({
                                 : event.status}
                             </Badge>
                           )}
-                          <span className="text-xs text-muted-foreground">
-                            Round {event.round}
-                          </span>
                         </div>
                         <span className="text-sm font-medium truncate">
                           {event.title}
@@ -193,9 +190,12 @@ export function AgendaView({
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
                         <UsersIcon className="size-3 shrink-0" />
                         <span className="truncate">
-                          {event.interviewerIds
-                            .map(id => interviewerNames[id] ?? id)
-                            .join(', ')}
+                          {(
+                            event.interviewerNames ??
+                            event.interviewerIds.map(
+                              id => interviewerNames[id] ?? id
+                            )
+                          ).join(', ')}
                         </span>
                       </div>
                     )}
