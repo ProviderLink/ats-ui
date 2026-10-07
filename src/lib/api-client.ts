@@ -29,6 +29,18 @@ export function onUnauthorized(callback: () => void): void {
   _onUnauthorized = callback;
 }
 
+/** Auth header for an arbitrary URL — only ever sent to our own API origin. */
+export function authHeadersForUrl(url: string): Record<string, string> {
+  try {
+    const target = new URL(url, window.location.href);
+    const api = new URL(BASE_URL, window.location.href);
+    if (target.origin !== api.origin) return {};
+  } catch {
+    return {};
+  }
+  return authHeaders();
+}
+
 function authHeaders(): Record<string, string> {
   return _authToken ? { Authorization: `Bearer ${_authToken}` } : {};
 }

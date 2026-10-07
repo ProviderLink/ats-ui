@@ -56,7 +56,7 @@ import {
   getZonedTime,
   zonedWallClockToUtc,
 } from '@/lib/timezones';
-import { cn, formatDate, timeAgo } from '@/lib/utils';
+import { cn, formatDate, isHttpUrl, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -3301,7 +3301,7 @@ export function CandidateDetailSheet({
                     url={c.resumeUrl}
                     filename={c.resumeOriginalName}
                   />
-                  {c.videoIntroUrl ? (
+                  {isHttpUrl(c.videoIntroUrl) ? (
                     <IntroVideo
                       url={c.videoIntroUrl}
                       source={c.videoIntroSource}

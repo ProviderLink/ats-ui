@@ -1,4 +1,4 @@
-import { getAuthToken } from './api-client';
+import { authHeadersForUrl } from './api-client';
 
 /**
  * Sanitize a filename for the `download` attribute.
@@ -29,11 +29,7 @@ export async function downloadFileWithAuth(
   url: string,
   filename: string
 ): Promise<void> {
-  const headers: Record<string, string> = {};
-  const token = getAuthToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers: authHeadersForUrl(url) });
   if (!res.ok) throw new Error(`Download failed: ${res.status}`);
 
   const blob = await res.blob();

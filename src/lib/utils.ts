@@ -61,3 +61,14 @@ export function sortableTime(value: string | null | undefined): number {
   const t = Date.parse(value);
   return Number.isNaN(t) ? Number.NEGATIVE_INFINITY : t;
 }
+
+/** True only for absolute http(s) URLs — rejects javascript:, data:, etc. */
+export function isHttpUrl(value: string | null | undefined): value is string {
+  if (!value) return false;
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

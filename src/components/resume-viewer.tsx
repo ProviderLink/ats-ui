@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { getAuthToken } from '@/lib/api-client';
+import { authHeadersForUrl } from '@/lib/api-client';
 import { downloadFileWithAuth } from '@/lib/download';
 import { cn } from '@/lib/utils';
 import {
@@ -150,11 +150,7 @@ export function ResumeViewer({
       if (host) host.replaceChildren();
 
       try {
-        const headers: Record<string, string> = {};
-        const token = getAuthToken();
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(url, { headers });
+        const res = await fetch(url, { headers: authHeadersForUrl(url) });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
 
         const rawBlob = await res.blob();
