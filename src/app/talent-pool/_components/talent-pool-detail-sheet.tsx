@@ -32,7 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getTagIds } from '@/lib/tags';
-import { cn, isHttpUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
@@ -931,7 +931,7 @@ export function TalentPoolDetailSheet({
                     url={c.resumeUrl}
                     filename={c.resumeOriginalName}
                   />
-                  {isHttpUrl(c.videoIntroUrl) ? (
+                  {c.videoIntroUrl ? (
                     <IntroVideo
                       url={c.videoIntroUrl}
                       source={c.videoIntroSource}

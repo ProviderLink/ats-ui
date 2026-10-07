@@ -513,9 +513,10 @@ export const useClientStore = create<ClientState & ClientActions>()(
     {
       name: 'ats-clients',
       storage: createJSONStorage(() => localStorage),
-      partialize: () => ({}),
-      version: 1,
-      migrate: () => ({}),
+      partialize: s => ({
+        items: s.items,
+        pagination: s.pagination,
+      }),
       merge: (persisted, current) => ({
         ...current,
         ...(persisted as Partial<ClientState>),

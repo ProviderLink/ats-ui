@@ -421,9 +421,6 @@ export const useApplicationStore = create<
     {
       name: 'ats-applications',
       storage: createJSONStorage(() => localStorage),
-      partialize: () => ({}),
-      version: 1,
-      migrate: () => ({}),
     }
   )
 );

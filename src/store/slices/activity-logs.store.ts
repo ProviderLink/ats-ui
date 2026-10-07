@@ -122,16 +122,15 @@ export const useActivityLogStore = create<
     {
       name: 'ats-activity-logs',
       storage: createJSONStorage(() => localStorage),
-      // Feeds name people and describe candidates, so nothing is persisted.
-      partialize: () => ({}),
+      // Only persist the per-entity feed cache, not loading flags.
+      partialize: s => ({ feeds: s.feeds }),
       // Bump when the shape or meaning of a cached entry changes, so stale
       // rows are discarded rather than rendered with a fallback label.
       // v1 → v2: the backend migrated legacy `type`-only rows to `action`, and
       // `stage_changed` / `status_changed` gained new metadata key names that
       // older cached entries do not carry.
-      // v2 → v3: persistence removed; discard any cached feeds left behind.
-      version: 3,
-      migrate: () => ({}),
+      version: 2,
+      migrate: () => ({ feeds: {} }),
     }
   )
 );

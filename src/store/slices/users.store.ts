@@ -382,9 +382,7 @@ export const useUserStore = create<UserState & UserActions>()(
     {
       name: 'ats-users',
       storage: createJSONStorage(() => localStorage),
-      partialize: () => ({}),
-      version: 1,
-      migrate: () => ({}),
+      partialize: s => ({ items: s.items }),
     }
   )
 );

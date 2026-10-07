@@ -426,9 +426,6 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
     {
       name: 'ats-interviews',
       storage: createJSONStorage(() => localStorage),
-      partialize: () => ({}),
-      version: 1,
-      migrate: () => ({}),
     }
   )
 );
