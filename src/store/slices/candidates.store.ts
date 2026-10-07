@@ -585,7 +585,9 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
     {
       name: 'ats-candidates',
       storage: createJSONStorage(() => localStorage),
-      partialize: s => ({ detail: s.detail }),
+      partialize: () => ({}),
+      version: 1,
+      migrate: () => ({}),
     }
   )
 );

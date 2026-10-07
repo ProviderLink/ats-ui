@@ -282,6 +282,9 @@ export const useEmailStore = create<EmailState & EmailActions>()(
     {
       name: 'ats-emails',
       storage: createJSONStorage(() => localStorage),
+      partialize: () => ({}),
+      version: 1,
+      migrate: () => ({}),
     }
   )
 );
