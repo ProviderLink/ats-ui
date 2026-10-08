@@ -1,75 +1,41 @@
-# React + TypeScript + Vite
+# Arista ATS (UI)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Applicant tracking frontend for the unified ATS/CRM backend (`ats-crm-backend`). It covers the public careers portal and the recruiter app under `/ats`.
 
-Currently, two official plugins are available:
+**Stack:** React 19, TypeScript, Vite, React Router, Zustand, Tailwind 4 + shadcn/ui, TanStack Table, Socket.IO client.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Getting started
 
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
+cp .env.example .env   # set VITE_API_URL and VITE_WS_URL
+pnpm dev               # http://localhost:5173/ats
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| Script       | Purpose                     |
+| ------------ | --------------------------- |
+| `pnpm dev`   | Start the dev server        |
+| `pnpm build` | Type-check and build `dist` |
+| `pnpm lint`  | Run ESLint                  |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Main areas
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Careers** (`/careers`, public): job list, job details, apply with resume parsing.
+- **Candidates**: In Review, In Pipeline and Hired tabs, with bulk actions (move stage, reject, add to Talent Pool, remove from job to Talent Pool, email).
+- **Talent Pool**: parked candidates, assignable to a new job. **Permanently Ineligible**: banned candidates, permanent delete (admin only).
+- **Jobs, Clients, Calendar, Emails, Tags, Team, Settings**.
+
+## Candidate flow in brief
+
+- **Reject** closes the application with a reason and a destination (Talent Pool or Permanently Ineligible).
+- **Remove from Job** (bulk, In Pipeline tab) closes the application without a rejection and adds the candidate to the Talent Pool. Uses `PATCH /ats/applications/:id/move-to-talent-pool`.
+- **Change Job** (row menu) replaces the current job and keeps the candidate in the pipeline.
+- **Add to Talent Pool** only tags the candidate; it does not remove them from the job.
+
+## Conventions
+
+See [CLAUDE.md](CLAUDE.md), [STYLE.md](STYLE.md) and [BUSINESS_LOGIC.md](BUSINESS_LOGIC.md). Access tokens are kept in memory only; the refresh token is an httpOnly cookie set by the backend.
+
+## Deploy
+
+Vercel, auto-deployed from `master`. `vercel.json` rewrites all routes to `index.html`.
