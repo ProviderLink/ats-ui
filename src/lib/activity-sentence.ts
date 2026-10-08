@@ -935,7 +935,9 @@ export function buildActivitySentence(
       ].filter(Boolean);
 
       return finish(
-        'moved the candidate to another job',
+        metadata['movedToTalentPool'] === true
+          ? 'removed the candidate from the job \u2014 the candidate moved to the talent pool'
+          : 'moved the candidate to another job',
         parts.length > 0 ? parts.join(' \u00b7 ') : null
       );
     }

@@ -4,6 +4,7 @@ import {
 } from '@/app/emails/_components/compose-email-sheet';
 import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
 import { ChangeJobDialog } from '@/components/change-job-dialog';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import {
   ScheduleInterviewDialog,
@@ -102,6 +103,7 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   StarIcon,
+  UserMinusIcon,
   UserCheckIcon,
   XIcon,
 } from 'lucide-react';
@@ -1576,6 +1578,7 @@ export function CandidatesTable() {
   const allApps = useApplicationStore(s => s.items);
   const moveStageApp = useApplicationStore(s => s.moveStage);
   const rejectApp = useApplicationStore(s => s.reject);
+  const moveAppToTalentPool = useApplicationStore(s => s.moveToTalentPool);
 
   const allJobs = useJobStore(s => s.items);
   const allClients = useClientStore(s => s.items);
@@ -1604,6 +1607,7 @@ export function CandidatesTable() {
   const [bulkStageOpen, setBulkStageOpen] = useState(false);
   const [bulkStageId, setBulkStageId] = useState('');
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
+  const [bulkPoolMoveOpen, setBulkPoolMoveOpen] = useState(false);
   const [bulkActing, setBulkActing] = useState(false);
   const [bulkComposeOpen, setBulkComposeOpen] = useState(false);
   const [bulkComposeMode, setBulkComposeMode] = useState<ComposeMode>({
@@ -1991,6 +1995,46 @@ export function CandidatesTable() {
       );
     } else {
       toast.error(`Added ${ok} of ${ids.length} — some candidates failed`);
+    }
+  }
+
+  /**
+   * Bulk "Remove from job → Talent Pool".
+   *
+   * Closes each selected candidate's application for the job in view and parks
+   * them in the Talent Pool. Not a rejection: no reason is asked for and none
+   * is recorded. When a job filter is active only that job's application is
+   * closed; any other job the candidate is on is left alone.
+   */
+  async function handleBulkMoveToTalentPool() {
+    if (selectedCount === 0) return;
+    setBulkActing(true);
+    const ids = [...selectedIds];
+    const results = await runAllWithConcurrency(
+      ids.map(id => async () => {
+        const live = allApps.filter(
+          a =>
+            a.candidateId === id &&
+            (a.phase === 'pending' || a.phase === 'approved')
+        );
+        const stageAppId = stageInfoByCandidateId.get(id)?.applicationId;
+        const target = jobIdFilter
+          ? live.find(a => a.jobId === jobIdFilter)
+          : (live.find(a => a._id === stageAppId) ?? live[0]);
+        if (!target) throw new Error('No live application');
+        return moveAppToTalentPool(target._id);
+      })
+    );
+    setBulkActing(false);
+    setBulkPoolMoveOpen(false);
+    clearSelection();
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    if (ok === ids.length) {
+      toast.success(
+        `${ok} ${ok === 1 ? 'candidate' : 'candidates'} moved to Talent Pool`
+      );
+    } else {
+      toast.error(`Moved ${ok} of ${ids.length} — some candidates failed`);
     }
   }
 
@@ -2459,6 +2503,18 @@ export function CandidatesTable() {
               Reject
             </Button>
 
+            {activeTab === 'approved' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setBulkPoolMoveOpen(true)}
+                disabled={bulkActing}
+              >
+                <UserMinusIcon className="size-4" />
+                Remove from Job
+              </Button>
+            )}
+
             <Button
               size="sm"
               variant="outline"
@@ -2617,6 +2673,17 @@ export function CandidatesTable() {
         candidateName={`${selectedCount} selected ${selectedCount === 1 ? 'candidate' : 'candidates'}`}
         submitting={bulkActing}
         onConfirm={handleBulkReject}
+      />
+
+      {/* Bulk remove from job → Talent Pool */}
+      <ConfirmDialog
+        open={bulkPoolMoveOpen}
+        onOpenChange={setBulkPoolMoveOpen}
+        title="Remove from job and move to Talent Pool"
+        description={`${selectedCount} selected ${selectedCount === 1 ? 'candidate' : 'candidates'} will be removed from ${jobIdFilter ? 'this job' : 'their current job'} and added to the Talent Pool. This is not a rejection. They can be assigned to another job later from the Talent Pool page.`}
+        confirmLabel="Move to Talent Pool"
+        loading={bulkActing}
+        onConfirm={handleBulkMoveToTalentPool}
       />
 
       {/* Bulk email — one send, every selected address in the To list */}

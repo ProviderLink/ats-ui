@@ -49,6 +49,11 @@ interface ApplicationActions {
       internalNotes?: string;
     }
   ) => Promise<void>;
+  /**
+   * Remove the candidate from this job and park them in the Talent Pool.
+   * Not a rejection — no reason is needed and nothing is recorded as one.
+   */
+  moveToTalentPool: (id: string, notes?: string) => Promise<void>;
   updateNotes: (id: string, notes: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   setFilters: (f: Partial<ApplicationFilters>) => void;
@@ -287,6 +292,31 @@ export const useApplicationStore = create<
               destination: payload?.destination ?? undefined,
               internalNotes: payload?.internalNotes ?? undefined,
             }
+          );
+          set(s => {
+            const idx = s.items.findIndex(x => x._id === id);
+            if (idx !== -1) s.items[idx] = app;
+            if (s.detail[id]) s.detail[id] = app;
+            s.mutating = false;
+          });
+        } catch (e) {
+          set(s => {
+            s.mutating = false;
+            s.error = (e as Error).message;
+          });
+          throw e;
+        }
+      },
+
+      moveToTalentPool: async (id, notes) => {
+        set(s => {
+          s.mutating = true;
+          s.error = null;
+        });
+        try {
+          const app = await patchJson<Application>(
+            `/ats/applications/${id}/move-to-talent-pool`,
+            { notes: notes ?? undefined }
           );
           set(s => {
             const idx = s.items.findIndex(x => x._id === id);
