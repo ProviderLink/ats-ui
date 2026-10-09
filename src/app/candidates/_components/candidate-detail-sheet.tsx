@@ -56,7 +56,7 @@ import {
   getZonedTime,
   zonedWallClockToUtc,
 } from '@/lib/timezones';
-import { cn, formatDate, timeAgo } from '@/lib/utils';
+import { cn, formatDate, safeHttpUrl, timeAgo } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -167,7 +167,7 @@ function IntroVideo({
           className="h-7 gap-1 px-2 text-xs"
           asChild
         >
-          <a href={url} target="_blank" rel="noopener noreferrer">
+          <a href={safeHttpUrl(url)} target="_blank" rel="noopener noreferrer">
             <ExternalLinkIcon className="size-3.5" />
             Open in new tab
           </a>
@@ -185,7 +185,7 @@ function IntroVideo({
             candidate&apos;s intro video.
           </p>
           <Button variant="outline" size="sm" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer">
+            <a href={safeHttpUrl(url)} target="_blank" rel="noopener noreferrer">
               <ExternalLinkIcon className="size-3.5" />
               Open video
             </a>
@@ -2957,7 +2957,7 @@ export function CandidateDetailSheet({
                                   )}
                                   {iv.meetingDetails?.link && (
                                     <a
-                                      href={iv.meetingDetails.link}
+                                      href={safeHttpUrl(iv.meetingDetails.link)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="flex items-center gap-1 text-xs text-primary hover:underline"

@@ -21,6 +21,17 @@ export function resetRefreshState(): void {
   _refreshPromise = null;
 }
 
+/** True when `url` points at our own API, the only place the token belongs. */
+export function isApiUrl(url: string): boolean {
+  try {
+    return (
+      new URL(url, window.location.href).origin === new URL(BASE_URL).origin
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function getAuthToken(): string | null {
   return _authToken;
 }

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { getAuthToken } from '@/lib/api-client';
+import { getAuthToken, isApiUrl } from '@/lib/api-client';
 import { downloadFileWithAuth } from '@/lib/download';
 import { cn } from '@/lib/utils';
 import {
@@ -152,7 +152,10 @@ export function ResumeViewer({
       try {
         const headers: Record<string, string> = {};
         const token = getAuthToken();
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        // Only our own API gets the token, never a stored resume URL.
+        if (token && isApiUrl(url)) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
 
         const res = await fetch(url, { headers });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);

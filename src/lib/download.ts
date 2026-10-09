@@ -1,4 +1,4 @@
-import { getAuthToken } from './api-client';
+import { getAuthToken, isApiUrl } from './api-client';
 
 /**
  * Sanitize a filename for the `download` attribute.
@@ -31,7 +31,9 @@ export async function downloadFileWithAuth(
 ): Promise<void> {
   const headers: Record<string, string> = {};
   const token = getAuthToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Only our own API gets the token; file hosts (Cloudinary) and any other
+  // URL must never receive it.
+  if (token && isApiUrl(url)) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`Download failed: ${res.status}`);

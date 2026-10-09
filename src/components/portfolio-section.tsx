@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { downloadFileWithAuth } from '@/lib/download';
+import { safeHttpUrl } from '@/lib/utils';
 import {
   DownloadIcon,
   ExternalLinkIcon,
@@ -59,7 +60,7 @@ export function PortfolioSection({
         <div className="flex flex-col gap-0.5">
           <p className="text-xs text-muted-foreground">Portfolio Link</p>
           <a
-            href={url}
+            href={safeHttpUrl(url)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex w-fit items-center gap-1.5 break-all text-sm text-primary underline-offset-2 hover:underline"

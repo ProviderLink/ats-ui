@@ -32,7 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getTagIds } from '@/lib/tags';
-import { cn } from '@/lib/utils';
+import { cn, safeHttpUrl } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
@@ -195,7 +195,7 @@ function IntroVideo({
           className="h-7 gap-1 px-2 text-xs"
           asChild
         >
-          <a href={url} target="_blank" rel="noopener noreferrer">
+          <a href={safeHttpUrl(url)} target="_blank" rel="noopener noreferrer">
             <ExternalLinkIcon className="size-3.5" />
             Open in new tab
           </a>
@@ -213,7 +213,7 @@ function IntroVideo({
             candidate&apos;s intro video.
           </p>
           <Button variant="outline" size="sm" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer">
+            <a href={safeHttpUrl(url)} target="_blank" rel="noopener noreferrer">
               <ExternalLinkIcon className="size-3.5" />
               Open video
             </a>
