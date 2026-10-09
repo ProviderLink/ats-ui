@@ -124,7 +124,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         // server sees a clean close rather than an auth failure.
         socketManager.disconnect();
         try {
-          await postJson('/auth/logout', {});
+          await postJson('/auth/logout', { app: 'ats' });
         } finally {
           setAuthToken(null);
           set(s => {
