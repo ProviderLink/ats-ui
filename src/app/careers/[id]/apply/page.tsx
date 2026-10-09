@@ -38,6 +38,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { JobClosedNotice } from '../../_components/job-closed-notice';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -1327,6 +1328,12 @@ export default function CareerApplyPage() {
         </Link>
       </div>
     );
+  }
+
+  // --- Closed job: no form, just the notice (a finished application still
+  // shows the success page below) ---
+  if (step !== 'success' && job.status !== 'open') {
+    return <JobClosedNotice title={job.title} />;
   }
 
   // --- Success ---

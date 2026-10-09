@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { JobClosedNotice } from '../_components/job-closed-notice';
 
 export default function CareerJobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -76,6 +77,8 @@ export default function CareerJobDetailPage() {
       </div>
     );
   }
+
+  if (job.status !== 'open') return <JobClosedNotice title={job.title} />;
 
   const deadline = job.applicationDeadline
     ? formatDeadline(job.applicationDeadline)
