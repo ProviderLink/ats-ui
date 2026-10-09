@@ -1781,10 +1781,24 @@ export function CandidatesTable() {
   // store, the application store has likely been corrupted by a lightweight
   // socket broadcast (e.g. triggered by a public apply).  Fall back to
   // candidate-level status so the Pipeline tab doesn't show zero.
-  const pipelineIdsFallback = useMemo(
-    () => new Set(items.filter(c => c.status === 'approved').map(c => c._id)),
-    [items]
-  );
+  //
+  // The fallback must never revive a candidate who has left the pipeline:
+  // reject / remove-from-job leave `status` at 'approved', so anyone pooled,
+  // banned, or who has application records at all is excluded.
+  const pipelineIdsFallback = useMemo(() => {
+    const withApplications = new Set(allApps.map(a => a.candidateId));
+    return new Set(
+      items
+        .filter(
+          c =>
+            c.status === 'approved' &&
+            !c.inTalentPool &&
+            c.eligibilityStatus !== 'permanently_ineligible' &&
+            !withApplications.has(c._id)
+        )
+        .map(c => c._id)
+    );
+  }, [items, allApps]);
   const effectivePipelineIds = useMemo(() => {
     if (candidatesInPipelineIds.size > 0) return candidatesInPipelineIds;
     if (pipelineIdsFallback.size > 0) return pipelineIdsFallback;
