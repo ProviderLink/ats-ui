@@ -58,7 +58,8 @@ const initialState: AuthState = {
 
 // Backend returns `id` + `roles` (array)
 interface BackendAuthUser {
-  id: string;
+  _id?: string;
+  id?: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -73,7 +74,7 @@ interface BackendAuthUser {
 
 function mapAuthUser(u: BackendAuthUser): AuthState['user'] {
   return {
-    _id: u.id,
+    _id: (u._id ?? u.id) as string,
     email: u.email,
     firstName: u.firstName,
     lastName: u.lastName,
