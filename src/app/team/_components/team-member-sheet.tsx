@@ -1,68 +1,68 @@
-"use client";
+'use client';
 
 import {
   ActivityTimeline,
   type ActivityFilter,
-} from "@/components/activity-timeline";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from '@/components/activity-timeline';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn, formatDate } from "@/lib/utils";
-import type { User, UserPermissionResource } from "@/store/types/user.types";
-import { BadgeCheckIcon, PencilIcon } from "lucide-react";
-import { ROLE_LABELS } from "../_data/team";
+} from '@/components/ui/tooltip';
+import { cn, formatDate } from '@/lib/utils';
+import type { User, UserPermissionResource } from '@/store/types/user.types';
+import { BadgeCheckIcon, PencilIcon } from 'lucide-react';
+import { ROLE_LABELS } from '../_data/team';
 
 const PERMISSION_LABELS: Record<string, string> = {
-  candidates: "Candidates",
-  jobs: "Jobs",
-  interviews: "Interviews",
-  clients: "Clients",
-  emails: "Emails",
-  tags: "Tags",
-  settings: "Settings",
-  dashboard: "Dashboard",
-  team: "Team",
-  pipelineTemplates: "Pipeline Templates",
-  emailTemplates: "Email Templates",
-  activityLogs: "Activity Logs",
-  assignments: "Assignments",
-  reports: "Reports",
-  eod: "EOD",
-  performanceReview: "Performance Review",
+  candidates: 'Candidates',
+  jobs: 'Jobs',
+  interviews: 'Interviews',
+  clients: 'Clients',
+  emails: 'Emails',
+  tags: 'Tags',
+  settings: 'Settings',
+  dashboard: 'Dashboard',
+  team: 'Team',
+  pipelineTemplates: 'Pipeline Templates',
+  emailTemplates: 'Email Templates',
+  activityLogs: 'Activity Logs',
+  assignments: 'Assignments',
+  reports: 'Reports',
+  eod: 'EOD',
+  performanceReview: 'Performance Review',
 };
 
 const ACTION_LABELS: Record<keyof UserPermissionResource, string> = {
-  read: "Read",
-  write: "Write",
-  manage: "Manage",
-  schedule: "Schedule",
-  approve: "Approve",
+  read: 'Read',
+  write: 'Write',
+  manage: 'Manage',
+  schedule: 'Schedule',
+  approve: 'Approve',
 };
 
 const AVATAR_COLORS = [
-  { bg: "#d4ede8", text: "#115e59" },
-  { bg: "#ede9fe", text: "#5b21b6" },
-  { bg: "#fef3c7", text: "#92400e" },
-  { bg: "#ffe4e6", text: "#9f1239" },
-  { bg: "#e0f2fe", text: "#0c4a6e" },
-  { bg: "#d1fae5", text: "#065f46" },
+  { bg: '#d4ede8', text: '#115e59' },
+  { bg: '#ede9fe', text: '#5b21b6' },
+  { bg: '#fef3c7', text: '#92400e' },
+  { bg: '#ffe4e6', text: '#9f1239' },
+  { bg: '#e0f2fe', text: '#0c4a6e' },
+  { bg: '#d1fae5', text: '#065f46' },
 ];
 
 function avatarColor(member: User) {
-  const first = member.firstName ?? "";
-  const last = member.lastName ?? "";
+  const first = member.firstName ?? '';
+  const last = member.lastName ?? '';
   const idx =
     ((first.charCodeAt(0) || 0) + (last.charCodeAt(0) || 0)) %
     AVATAR_COLORS.length;
@@ -84,12 +84,12 @@ function DetailRow({
   );
 }
 
-const Empty = ({ text = "—" }: { text?: string }) => (
+const Empty = ({ text = '—' }: { text?: string }) => (
   <span className="text-muted-foreground">{text}</span>
 );
 
 function activeActions(value: boolean | UserPermissionResource | undefined) {
-  if (typeof value === "boolean") return value ? [] : null;
+  if (typeof value === 'boolean') return value ? [] : null;
   if (!value) return null;
   const actions = (
     Object.entries(value) as [keyof UserPermissionResource, boolean][]
@@ -108,32 +108,32 @@ type Props = {
 
 /** Sign-ins are the most frequent entries, so they get their own view. */
 const SIGN_IN_ACTIONS = new Set([
-  "login",
-  "login_failed",
-  "password_changed",
-  "password_reset",
-  "invite_accepted",
+  'login',
+  'login_failed',
+  'password_changed',
+  'password_reset',
+  'invite_accepted',
 ]);
 
 const MEMBER_ACTIVITY_FILTERS: ActivityFilter[] = [
   {
-    id: "signins",
-    label: "Sign-ins",
-    match: (log) => SIGN_IN_ACTIONS.has(String(log.action)),
+    id: 'signins',
+    label: 'Sign-ins',
+    match: log => SIGN_IN_ACTIONS.has(String(log.action)),
   },
   {
-    id: "changes",
-    label: "Changes",
-    match: (log) => !SIGN_IN_ACTIONS.has(String(log.action)),
+    id: 'changes',
+    label: 'Changes',
+    match: log => !SIGN_IN_ACTIONS.has(String(log.action)),
   },
 ];
 
 export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
   if (!member) return null;
 
-  const first = member.firstName ?? "";
-  const last = member.lastName ?? "";
-  const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || "?";
+  const first = member.firstName ?? '';
+  const last = member.lastName ?? '';
+  const initials = ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || '?';
   const color = avatarColor(member);
   const permissions = Object.entries(member.permissions ?? {}).flatMap(
     ([resource, value]) => {
@@ -141,7 +141,7 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
       return actions
         ? [{ label: PERMISSION_LABELS[resource] ?? resource, actions }]
         : [];
-    },
+    }
   );
 
   return (
@@ -192,19 +192,19 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1.5 text-xs font-medium",
+                    'inline-flex items-center gap-1.5 text-xs font-medium',
                     member.isActive
-                      ? "text-[#2d8a51] dark:text-[#69c58a]"
-                      : "text-rose-600 dark:text-rose-400",
+                      ? 'text-[#2d8a51] dark:text-[#69c58a]'
+                      : 'text-rose-600 dark:text-rose-400'
                   )}
                 >
                   <span
                     className={cn(
-                      "size-1.5 rounded-full",
-                      member.isActive ? "bg-[#69c58a]" : "bg-rose-500",
+                      'size-1.5 rounded-full',
+                      member.isActive ? 'bg-[#69c58a]' : 'bg-rose-500'
                     )}
                   />
-                  {member.isActive ? "Active" : "Inactive"}
+                  {member.isActive ? 'Active' : 'Inactive'}
                 </span>
                 {!member.isInviteAccepted && (
                   <Badge
@@ -267,7 +267,7 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
               <div className="divide-y">
                 <DetailRow label="Roles">
                   <div className="flex flex-wrap justify-end gap-1.5">
-                    {member.roles?.map((r) => (
+                    {member.roles?.map(r => (
                       <Badge key={r} variant="secondary" className="text-xs">
                         {ROLE_LABELS[r] ?? r}
                       </Badge>
@@ -279,7 +279,7 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
                     <Empty text="None" />
                   ) : (
                     <div className="flex justify-end gap-1.5">
-                      {member.appAccess.map((a) => (
+                      {member.appAccess.map(a => (
                         <Badge
                           key={a}
                           variant="outline"
@@ -301,7 +301,7 @@ export function TeamMemberSheet({ member, open, onOpenChange, onEdit }: Props) {
                       <DetailRow key={label} label={label}>
                         {actions.length ? (
                           <span className="text-xs text-muted-foreground">
-                            {actions.join(" · ")}
+                            {actions.join(' · ')}
                           </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">

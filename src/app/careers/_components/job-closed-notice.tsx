@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 export function JobClosedNotice({ title }: { title: string }) {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6 lg:px-10">
-      <Card className="rounded-sm">
+      <Card className="careers-card rounded-2xl">
         <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-muted">
             <LockIcon className="size-6 text-muted-foreground" />

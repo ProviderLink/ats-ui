@@ -38,6 +38,8 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ApplyStepper } from '../../_components/apply-stepper';
+import { CareersDoodles } from '../../_components/careers-doodles';
 import { JobClosedNotice } from '../../_components/job-closed-notice';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -346,57 +348,43 @@ function EducationEditor({
 
 function JobSummaryCard({ job }: { job: Job }) {
   return (
-    <Card className="rounded-sm">
-      <CardHeader>
-        <CardTitle className="font-heading text-lg">Job summary</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1.5">
-          <p className="text-xs text-muted-foreground">Position</p>
-          <p className="text-base font-medium text-foreground">{job.title}</p>
+    <Card className="careers-card rounded-2xl">
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-muted-foreground">Applying for</p>
+          <p className="font-heading text-lg font-semibold leading-snug">
+            {job.title}
+          </p>
         </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
-            {job.location && (
-              <span className="flex items-center gap-1.5">
-                <MapPinIcon className="size-4" />
-                {job.location}
-              </span>
-            )}
-            <span className="flex items-center gap-1.5">
-              <UsersIcon className="size-4" />
-              {job.openings} opening{job.openings === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="text-xs">
-              {jobTypeLabel[job.jobType]}
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {locationTypeLabel[job.locationType]}
-            </Badge>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <MapPinIcon className="size-4" />
+            {job.location ?? 'Remote'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <UsersIcon className="size-4" />
+            {job.openings} opening{job.openings === 1 ? '' : 's'}
+          </span>
         </div>
-
-        <Separator />
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-muted-foreground">Location</p>
-            <p className="text-sm font-medium text-foreground">
-              {job.location ?? 'Remote'}
-            </p>
-          </div>
-          {job.salaryRange && (
-            <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {jobTypeLabel[job.jobType]}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            {locationTypeLabel[job.locationType]}
+          </Badge>
+        </div>
+        {job.salaryRange && (
+          <>
+            <Separator />
+            <div className="flex flex-col gap-1">
               <p className="text-xs text-muted-foreground">Compensation</p>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium">
                 {formatSalary(job.salaryRange)}
               </p>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -485,7 +473,7 @@ function InputStep({
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
         <div className="flex flex-col gap-8 lg:col-span-2">
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">
                 Personal Information
@@ -637,7 +625,7 @@ function InputStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">
                 Resume & Video Intro
@@ -707,8 +695,8 @@ function InputStep({
                   accept=".pdf"
                   onChange={handleFileChange}
                 />
-                <div className="mt-4 flex items-start gap-3 rounded-lg border border-foreground/20 bg-foreground p-4 text-background">
-                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 opacity-80" />
+                <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
                   <p className="text-xs leading-relaxed">
                     <strong className="font-semibold">Important:</strong> Upload
                     a <strong className="font-semibold">text-based PDF</strong>{' '}
@@ -816,14 +804,18 @@ function InputStep({
               <Button
                 type="submit"
                 size="lg"
-                className="w-full"
+                className="w-full bg-careers-accent text-careers hover:bg-careers-accent/90"
                 disabled={!canSubmit}
               >
                 <UploadIcon />
                 Upload & Parse Resume
               </Button>
               <Link to={`/careers/${job._id}`}>
-                <Button type="button" variant="outline" className="w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                >
                   Cancel
                 </Button>
               </Link>
@@ -868,8 +860,8 @@ function ReviewStep({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-lg border border-border bg-muted px-4 py-3">
-        <p className="text-sm text-muted-foreground">
+      <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
+        <p className="text-sm text-white/70">
           AI has extracted the following information from your resume. Please
           review and correct any errors before submitting.
         </p>
@@ -877,7 +869,7 @@ function ReviewStep({
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">Basic Info</CardTitle>
             </CardHeader>
@@ -893,7 +885,7 @@ function ReviewStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">
                 Resume Summary
@@ -912,7 +904,7 @@ function ReviewStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">Skills</CardTitle>
             </CardHeader>
@@ -927,7 +919,7 @@ function ReviewStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">Languages</CardTitle>
             </CardHeader>
@@ -942,7 +934,7 @@ function ReviewStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">
                 Certifications
@@ -959,7 +951,7 @@ function ReviewStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">
                 Work Experience
@@ -975,7 +967,7 @@ function ReviewStep({
             </CardContent>
           </Card>
 
-          <Card className="rounded-sm">
+          <Card className="careers-card rounded-2xl">
             <CardHeader>
               <CardTitle className="font-heading text-lg">Education</CardTitle>
             </CardHeader>
@@ -992,13 +984,13 @@ function ReviewStep({
 
         <div className="lg:col-span-1">
           <div className="sticky top-8 flex flex-col gap-5">
-            <div className="flex items-center gap-2 rounded-sm border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground/80">
-              <PencilIcon className="size-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white/80">
+              <PencilIcon className="size-4 text-careers-accent" />
               Edit anything that looks wrong, then submit.
             </div>
             <JobSummaryCard job={job} />
             {videoIntroUrl && (
-              <Card className="rounded-sm">
+              <Card className="careers-card rounded-2xl">
                 <CardHeader>
                   <CardTitle className="font-heading text-sm">
                     Video Intro
@@ -1017,7 +1009,7 @@ function ReviewStep({
               </Card>
             )}
             {(values.portfolioUrl || portfolioFileName) && (
-              <Card className="rounded-sm">
+              <Card className="careers-card rounded-2xl">
                 <CardHeader>
                   <CardTitle className="font-heading text-sm">
                     Portfolio
@@ -1052,7 +1044,7 @@ function ReviewStep({
               <Button
                 type="button"
                 size="lg"
-                className="w-full"
+                className="w-full bg-careers-accent text-careers hover:bg-careers-accent/90"
                 onClick={onSubmit}
                 disabled={submitting}
               >
@@ -1062,7 +1054,7 @@ function ReviewStep({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
                 onClick={onBack}
                 disabled={submitting}
               >
@@ -1088,8 +1080,8 @@ function LoadingScreen({
   return (
     <div className="flex flex-1 items-center justify-center py-24">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-muted">
-          <Loader2Icon className="size-8 animate-spin text-foreground" />
+        <div className="flex size-16 items-center justify-center rounded-full bg-white/10">
+          <Loader2Icon className="size-8 animate-spin text-careers-accent" />
         </div>
         <div>
           <p className="text-base font-medium">{message}</p>
@@ -1322,7 +1314,11 @@ export default function CareerApplyPage() {
             : 'This job is no longer available.'}
         </p>
         <Link to="/careers">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          >
             Back to jobs
           </Button>
         </Link>
@@ -1340,8 +1336,8 @@ export default function CareerApplyPage() {
   if (step === 'success') {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-6 px-4 py-24 text-center sm:px-6">
-        <div className="flex size-16 items-center justify-center rounded-full bg-muted">
-          <CheckCircle2Icon className="size-8 text-foreground" />
+        <div className="flex size-16 items-center justify-center rounded-full bg-careers-accent">
+          <CheckCircle2Icon className="size-8 text-careers" />
         </div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight">
           Application submitted
@@ -1351,7 +1347,12 @@ export default function CareerApplyPage() {
           application for <strong>{job.title}</strong> and will be in touch
           soon.
         </p>
-        <Button onClick={() => navigate('/careers')}>Back to jobs</Button>
+        <Button
+          className="bg-careers-accent text-careers hover:bg-careers-accent/90"
+          onClick={() => navigate('/careers')}
+        >
+          Back to jobs
+        </Button>
       </div>
     );
   }
@@ -1383,81 +1384,83 @@ export default function CareerApplyPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:px-10">
-      <div className="flex flex-col gap-5">
-        <Link
-          to={`/careers/${job._id}`}
-          className="flex w-fit items-center gap-1.5 text-sm text-foreground/60 transition-colors hover:text-foreground"
-        >
-          <ArrowLeftIcon className="size-4" />
-          Back to job
-        </Link>
-        <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            {stepMeta[step].title}
-          </h1>
-          <p className="text-base text-muted-foreground">
-            {stepMeta[step].desc}
-          </p>
+    <div className="relative flex-1 overflow-x-clip">
+      <CareersDoodles variant="detail" />
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10 sm:px-10 sm:py-14 lg:px-12">
+        <div className="flex flex-col gap-6">
+          <Link
+            to={`/careers/${job._id}`}
+            className="flex w-fit items-center gap-1.5 text-sm text-white/70 transition-colors hover:text-white"
+          >
+            <ArrowLeftIcon className="size-4" />
+            Back to job
+          </Link>
+          <ApplyStepper current={inReview ? 1 : 0} />
+          <div className="flex flex-col gap-2">
+            <h1 className="font-heading text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+              {stepMeta[step].title}
+            </h1>
+            <p className="text-base text-white/70">{stepMeta[step].desc}</p>
+          </div>
         </div>
+
+        {step === 'input' && (
+          <InputStep
+            job={job}
+            form={form}
+            resumeFile={resumeFile}
+            setResumeFile={file => {
+              setResumeFile(file);
+              if (file) setResumeError(null);
+            }}
+            resumeError={resumeError}
+            portfolioFile={portfolioFile}
+            setPortfolioFile={setPortfolioFile}
+            onSubmit={handleInputSubmit}
+          />
+        )}
+
+        {parsing && (
+          <LoadingScreen
+            message="Parsing resume..."
+            description="AI is extracting structured information from your uploaded PDF."
+          />
+        )}
+
+        {inReview && inputValues && (
+          <ReviewStep
+            job={job}
+            values={inputValues}
+            reviewData={reviewData}
+            setReviewData={setReviewData}
+            videoIntroUrl={inputValues.videoIntroUrl ?? ''}
+            portfolioFileName={portfolioFile?.name ?? null}
+            onSubmit={handleSubmit}
+            onBack={handleBackToUpload}
+            submitting={step === 'submitting'}
+          />
+        )}
       </div>
-
-      {step === 'input' && (
-        <InputStep
-          job={job}
-          form={form}
-          resumeFile={resumeFile}
-          setResumeFile={file => {
-            setResumeFile(file);
-            if (file) setResumeError(null);
-          }}
-          resumeError={resumeError}
-          portfolioFile={portfolioFile}
-          setPortfolioFile={setPortfolioFile}
-          onSubmit={handleInputSubmit}
-        />
-      )}
-
-      {parsing && (
-        <LoadingScreen
-          message="Parsing resume..."
-          description="AI is extracting structured information from your uploaded PDF."
-        />
-      )}
-
-      {inReview && inputValues && (
-        <ReviewStep
-          job={job}
-          values={inputValues}
-          reviewData={reviewData}
-          setReviewData={setReviewData}
-          videoIntroUrl={inputValues.videoIntroUrl ?? ''}
-          portfolioFileName={portfolioFile?.name ?? null}
-          onSubmit={handleSubmit}
-          onBack={handleBackToUpload}
-          submitting={step === 'submitting'}
-        />
-      )}
     </div>
   );
 }
 
 function ApplyPageSkeleton() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:px-10">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10 sm:px-10 sm:py-14 lg:px-12">
       <div className="flex flex-col gap-5">
-        <Skeleton className="h-4 w-24 rounded-sm" />
+        <Skeleton className="h-4 w-24 rounded-2xl bg-white/10" />
         <div className="flex flex-col gap-2">
-          <Skeleton className="h-10 w-2/3 rounded-sm" />
-          <Skeleton className="h-5 w-1/2 rounded-sm" />
+          <Skeleton className="h-10 w-2/3 rounded-2xl bg-white/10" />
+          <Skeleton className="h-5 w-1/2 rounded-2xl bg-white/10" />
         </div>
       </div>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="flex flex-col gap-8 lg:col-span-2">
-          <Skeleton className="h-64 w-full rounded-sm" />
-          <Skeleton className="h-64 w-full rounded-sm" />
+          <Skeleton className="h-64 w-full rounded-2xl bg-white/10" />
+          <Skeleton className="h-64 w-full rounded-2xl bg-white/10" />
         </div>
-        <Skeleton className="h-80 w-full rounded-sm" />
+        <Skeleton className="h-80 w-full rounded-2xl bg-white/10" />
       </div>
     </div>
   );

@@ -215,6 +215,8 @@
 
 /* ─── Tailwind Theme Mapping ───────────────────────────── */
 @theme inline {
+  --color-careers: var(--careers);
+  --color-careers-accent: var(--careers-accent);
   --font-sans: 'Inter Variable', sans-serif;
   --font-heading: 'Inter Variable', sans-serif;
 
@@ -369,4 +371,27 @@ body {
      center` behaves identically while there is room, then falls back to
      start-alignment once the page overflows. */
   align-items: safe center !important;
+}
+
+/* ─── Careers list — dark green theme ───────────────────── */
+.careers-theme {
+  --careers: #0f4a47;
+  --careers-accent: #2de0be;
+}
+:root:not(.dark) .careers-theme.careers-dark,
+.dark .careers-theme.careers-dark {
+  --background: #0f4a47;
+  --foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.12);
+  --muted-foreground: rgba(255, 255, 255, 0.55);
+}
+.careers-theme.careers-dark .careers-card {
+  --foreground: #0a0a0a;
+  --muted-foreground: #737373;
+  --border: #e5e5e5;
+  --border-subtle: #ededed;
+  --muted: #f5f5f5;
+  --secondary: #f5f5f5;
+  background: #ffffff;
+  color: #0a0a0a;
 }
