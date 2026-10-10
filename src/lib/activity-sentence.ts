@@ -224,6 +224,10 @@ const KNOWN_ACTIONS = new Set([
   'eod_compliance_checked',
   'survey_dispatched',
   'settings_updated',
+  'email_sent',
+  'email_received',
+  'email_bounced',
+  'email_failed',
 ]);
 
 /**
@@ -311,6 +315,8 @@ const DANGER_ACTIONS = new Set([
   'eod_deleted',
   'contact_removed',
   'note_deleted',
+  'email_bounced',
+  'email_failed',
 ]);
 
 /**
@@ -531,6 +537,12 @@ const ICON_BY_ACTION: Record<string, ActivityIconName> = {
   eod_deleted: 'trash',
   eod_compliance_checked: 'shield-check',
   settings_updated: 'settings',
+
+  // email (derived from the emails collection, not logged)
+  email_sent: 'mail',
+  email_received: 'message-plus',
+  email_bounced: 'alert',
+  email_failed: 'alert',
 };
 
 /**
@@ -751,6 +763,98 @@ function describeChanges(changes: string[]): string | null {
   return extra > 0 ? `${joined} (+${extra} more)` : joined;
 }
 
+/** Lower-case the first letter, leaving acronyms (`CRM`, `AI`) alone. */
+function lowerFirst(value: string): string {
+  return /^[A-Z]{2,}/.test(value)
+    ? value
+    : value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+/** `a`, `a and b`, `a, b and c` — or `a, b and 2 more` for long lists. */
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length > 3) {
+    return `${items[0]}, ${items[1]} and ${items.length - 2} more`;
+  }
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+interface ChangeSummary {
+  /** Complete clause, e.g. "changed the website and industry". */
+  headline: string;
+  /** Just the field list, e.g. "website and industry". */
+  fields: string;
+  /** Optional second line with short before → after values. */
+  detail: string | null;
+}
+
+/**
+ * Reduce the backend's `changes` strings to what a reader needs: WHICH fields
+ * changed (and, for a single short value, from what to what).
+ *
+ *   ['Website updated', 'Industry changed from "A" to "B"']
+ *     → headline "changed website and industry", detail "Industry: A → B"
+ */
+function summariseChanges(changes: string[]): ChangeSummary | null {
+  const fields: string[] = [];
+  const phrases: string[] = [];
+  const pairs: { field: string; from: string; to: string }[] = [];
+
+  for (const raw of changes) {
+    const match = CHANGE_PATTERN.exec(raw);
+    if (match) {
+      const field = lowerFirst(sanitizePlain(match[1] ?? ''));
+      if (!field) continue;
+      fields.push(field);
+      const from = stripQuotes(sanitizePlain(match[2] ?? ''));
+      const to = stripQuotes(sanitizePlain(match[3] ?? ''));
+      if (
+        from &&
+        to &&
+        from.length <= MAX_COMPARABLE_CHARS &&
+        to.length <= MAX_COMPARABLE_CHARS
+      ) {
+        pairs.push({ field, from, to });
+      }
+      continue;
+    }
+    const plain = sanitizePlain(raw);
+    if (!plain) continue;
+    const stripped = plain.replace(/\s+(updated|changed|removed)$/i, '');
+    if (stripped !== plain) {
+      fields.push(lowerFirst(truncate(stripped, MAX_VALUE_CHARS)));
+    } else {
+      phrases.push(lowerFirst(truncate(plain, MAX_VALUE_CHARS)));
+    }
+  }
+
+  if (fields.length === 0 && phrases.length === 0) return null;
+
+  const list = joinList(fields);
+  const only = pairs[0];
+  if (fields.length === 1 && phrases.length === 0 && only) {
+    return {
+      headline: `changed ${only.field} from ${only.from} to ${only.to}`,
+      fields: list,
+      detail: null,
+    };
+  }
+
+  const parts = [fields.length > 0 ? `changed ${list}` : null, ...phrases];
+  const detail =
+    pairs.length > 0
+      ? pairs
+          .slice(0, MAX_CHANGES_SHOWN)
+          .map(p => `${upperFirst(p.field)}: ${p.from} \u2192 ${p.to}`)
+          .join(' \u00b7 ')
+      : null;
+  return {
+    headline: parts.filter(Boolean).join(', '),
+    fields: list,
+    detail,
+  };
+}
+
 /** `82/100` when the score sits on a 0-100 scale, otherwise the raw value. */
 function formatScore(score: number | null): string | null {
   if (score === null) return null;
@@ -767,9 +871,79 @@ function formatScore(score: number | null): string | null {
  *   2. A stored `description` (written by the service when metadata is thin).
  *   3. A generic fallback built from the resource type.
  */
+/** "a call note", "an email note", "a note" — from the note's contact method. */
+function noteLabel(method: string | null): string {
+  if (!method || method === 'other') return 'a note';
+  return `${/^[aeiou]/i.test(method) ? 'an' : 'a'} ${method} note`;
+}
+
+/**
+ * Rejection reasons are logged under the `settings` resource with their label
+ * and category as metadata. Name the reason instead of "the workspace settings".
+ */
+function describeReason(
+  verb: string,
+  metadata: Record<string, unknown>
+): { text: string; detail: string | null } | null {
+  const label = str(metadata['label']);
+  if (!label) return null;
+  const category = str(metadata['category']);
+  return {
+    text: `${verb} the rejection reason \u201c${label}\u201d`,
+    detail: category ? `Category: ${humanEnum(category)}` : null,
+  };
+}
+
+export interface ActivityContext {
+  /** Job title for a job id, when the jobs are loaded. */
+  jobTitle?: (id: string) => string | null;
+  /** IANA zone used to print interview times (the company timezone). */
+  timeZone?: string;
+}
+
+/** "OpenAI" / "Claude" for the engine that produced an AI entry. */
+function providerLabel(value: string | null): string | null {
+  if (!value) return null;
+  if (value.toLowerCase() === 'openai') return 'OpenAI';
+  if (value.toLowerCase() === 'claude') return 'Claude';
+  return upperFirst(value);
+}
+
+/** "Tue, Oct 14, 14:30" in the given zone; null when the value is unusable. */
+function formatWhen(value: unknown, timeZone?: string): string | null {
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  };
+  try {
+    return new Intl.DateTimeFormat(LOCALE, { ...options, timeZone }).format(
+      date
+    );
+  } catch {
+    return new Intl.DateTimeFormat(LOCALE, options).format(date);
+  }
+}
+
+/** Short label for what an outbound email was, from its template context. */
+const EMAIL_KIND_TEXT: Record<string, string> = {
+  offer: 'sent an offer email',
+  rejection: 'sent a rejection email',
+  interview: 'sent an interview email',
+  follow_up: 'sent a follow-up email',
+  application_confirmation: 'sent the application confirmation',
+};
+
 export function buildActivitySentence(
   log: ActivityLog,
-  actor: ActivityActor
+  actor: ActivityActor,
+  ctx: ActivityContext = {}
 ): ActivitySentence {
   const key = resolveActionKey(log.action);
   const metadata = (log.metadata ?? {}) as Record<string, unknown>;
@@ -862,42 +1036,35 @@ export function buildActivitySentence(
         'stage'
       );
       if (from && to) {
-        return finish(`moved the candidate from ${from} to ${to}`);
+        return finish(`moved from ${from} to ${to}`);
       }
-      if (to) return finish(`moved the candidate to ${to}`);
-      return finish('changed the candidate\u2019s pipeline stage');
+      if (to) return finish(`moved to ${to}`);
+      return finish('changed the stage');
     }
 
     case 'applied': {
       const source = str(metadata['source']);
-      const phase = str(metadata['phase']);
       if (source === 'assigned') {
-        if (phase === 'approved') {
-          return finish('assigned the candidate to this job and approved them');
-        }
         return finish('assigned the candidate to this job');
       }
       if (source === 'internal_upload') {
         return finish('added the candidate to this job');
       }
-      if (phase === 'approved') {
-        return finish('submitted an application and it was auto-approved');
-      }
       return finish('submitted an application');
     }
 
     case 'ineligible_reapply_blocked': {
-      return finish(
-        'blocked an application \u2014 the candidate is permanently ineligible'
-      );
+      return finish('blocked a re-application', 'Permanently ineligible');
     }
 
     case 'approved': {
       const stageName = pick(metadata, 'stageName');
+      const aiScore = formatScore(num(metadata['aiScore']));
       return finish(
         stageName
-          ? `approved the application and placed the candidate in ${stageName}`
-          : 'approved the application'
+          ? `approved the candidate into ${stageName}`
+          : 'approved the application',
+        aiScore ? `AI score at approval: ${aiScore}` : ''
       );
     }
 
@@ -906,21 +1073,22 @@ export function buildActivitySentence(
       const destination = str(metadata['destination']);
       const lastStage = pick(metadata, 'lastStage');
 
-      // Reject now carries a destination when it was the candidate's last live
-      // application, so say where they went rather than just "rejected".
-      const target =
-        destination === 'permanently_ineligible'
-          ? 'rejected the application \u2014 the candidate is permanently ineligible'
-          : destination === 'candidate_pool'
-            ? 'rejected the application \u2014 the candidate moved to the talent pool'
-            : 'rejected the application';
-
+      // The destination is only present on the candidate's last live
+      // application; say where they went on the detail line.
       const parts = [
         reason ? `Reason: ${reason}` : null,
+        destination === 'permanently_ineligible'
+          ? 'Permanently ineligible'
+          : destination === 'candidate_pool'
+            ? 'Moved to talent pool'
+            : null,
         lastStage ? `Last stage: ${lastStage}` : null,
       ].filter(Boolean);
 
-      return finish(target, parts.length > 0 ? parts.join(' \u00b7 ') : null);
+      return finish(
+        'rejected the application',
+        parts.length > 0 ? parts.join(' \u00b7 ') : null
+      );
     }
 
     case 'job_changed': {
@@ -936,7 +1104,7 @@ export function buildActivitySentence(
 
       return finish(
         metadata['movedToTalentPool'] === true
-          ? 'removed the candidate from the job \u2014 the candidate moved to the talent pool'
+          ? 'moved the candidate to the talent pool'
           : 'moved the candidate to another job',
         parts.length > 0 ? parts.join(' \u00b7 ') : null
       );
@@ -950,28 +1118,34 @@ export function buildActivitySentence(
       const reasonLabel = pick(metadata, 'reasonLabel');
       const lastStage = pick(metadata, 'lastStage');
 
-      const target =
-        destination === 'permanently_ineligible'
-          ? 'disposed the application \u2014 the candidate is permanently ineligible'
-          : destination === 'candidate_pool'
-            ? 'disposed the application \u2014 the candidate moved to the talent pool'
-            : 'disposed the application';
-
-      // Internal notes can be a paragraph; the reason and the last stage are
-      // what a reader actually needs, so they win the detail line.
+      // Internal notes can be a paragraph; the reason, the destination and the
+      // last stage are what a reader actually needs.
       const parts = [
         reasonLabel ? `Reason: ${reasonLabel}` : null,
+        destination === 'permanently_ineligible'
+          ? 'Permanently ineligible'
+          : destination === 'candidate_pool'
+            ? 'Moved to talent pool'
+            : null,
         lastStage ? `Last stage: ${lastStage}` : null,
       ].filter(Boolean);
 
-      return finish(target, parts.length > 0 ? parts.join(' \u00b7 ') : null);
+      return finish(
+        'closed the application',
+        parts.length > 0 ? parts.join(' \u00b7 ') : null
+      );
     }
 
     case 'notes_updated':
       return finish('updated the application notes');
 
-    case 'deleted':
+    case 'deleted': {
+      if (log.resourceType === 'settings') {
+        const reason = describeReason('deleted', metadata);
+        if (reason) return finish(reason.text, reason.detail ?? '');
+      }
       return finish(`deleted ${resourceLabel(log.resourceType)}`);
+    }
 
     // ── Candidate profile ────────────────────────────────────────────
     case 'created':
@@ -984,18 +1158,21 @@ export function buildActivitySentence(
       }
       if (log.resourceType === 'candidate') {
         const source = str(metadata['source']);
+        const appliedJobId = str(metadata['appliedJobId']);
+        const job = appliedJobId ? (ctx.jobTitle?.(appliedJobId) ?? null) : null;
+        const forJob = job ? ` for ${job}` : '';
         // A candidate created by a public application submitted it themselves;
         // there is no user to credit, so state the event without an actor
         // rather than crediting "System".
         if (source === 'applied' || source === 'direct_apply') {
           return unattributed
-            ? impersonal('the candidate applied')
-            : finish('added the candidate');
+            ? impersonal(`the candidate applied${forJob}`)
+            : finish(`added the candidate${forJob}`);
         }
         if (source === 'internal_upload')
-          return finish('uploaded the candidate');
+          return finish(`uploaded the candidate${forJob}`);
         if (source === 'assigned') return finish('assigned the candidate');
-        return finish('added the candidate');
+        return finish(`added the candidate${forJob}`);
       }
       if (log.resourceType === 'user') {
         const roles = strArray(metadata['roles']);
@@ -1005,6 +1182,10 @@ export function buildActivitySentence(
             ? `Roles: ${roles.map(r => humanEnum(r)).join(', ')}`
             : null
         );
+      }
+      if (log.resourceType === 'settings') {
+        const reason = describeReason('added', metadata);
+        if (reason) return finish(reason.text, reason.detail ?? '');
       }
       if (log.resourceType === 'tag') return finish('created the tag');
       if (log.resourceType === 'assignment')
@@ -1031,13 +1212,22 @@ export function buildActivitySentence(
             `${humanEnum(fromStatus)} to ${humanEnum(toStatus)}`
         );
       }
+      if (log.resourceType === 'settings') {
+        const reason = describeReason(
+          metadata['deactivated'] === true ? 'deactivated' : 'edited',
+          metadata
+        );
+        if (reason) return finish(reason.text, reason.detail ?? '');
+      }
+      const edit = summariseChanges(changes);
+      if (edit) return finish(edit.headline, edit.detail ?? '');
       if (log.resourceType === 'tag') return finish('renamed the tag');
       if (log.resourceType === 'user')
-        return finish('updated team member details');
+        return finish('edited the team member');
       if (log.resourceType === 'assignment')
-        return finish('updated the assignment');
+        return finish('edited the assignment');
       if (log.resourceType === 'work_entry')
-        return finish('updated a work entry');
+        return finish('edited a work entry');
       break; // description (if any) is rendered by the fallback below
     }
 
@@ -1045,17 +1235,13 @@ export function buildActivitySentence(
       // Key generations: `{ from, to }` and `{ oldStatus, newStatus }`.
       const from = pick(metadata, 'from', 'oldStatus', 'fromStatus');
       const to = pick(metadata, 'to', 'newStatus', 'status');
-      const subject =
-        log.resourceType === 'job'
-          ? 'the job'
-          : resourceLabel(log.resourceType);
-      const describe =
+      return finish(
         from && to
-          ? `changed ${subject} status from ${humanEnum(from)} to ${humanEnum(to)}`
+          ? `changed status from ${humanEnum(from)} to ${humanEnum(to)}`
           : to
-            ? `changed ${subject} status to ${humanEnum(to)}`
-            : `changed ${subject} status`;
-      return finish(describe);
+            ? `changed status to ${humanEnum(to)}`
+            : 'changed the status'
+      );
     }
 
     case 'eligibility_changed': {
@@ -1099,9 +1285,14 @@ export function buildActivitySentence(
     case 'candidate_scoring_completed': {
       const score = formatScore(num(metadata['score']));
       const recommendation = pick(metadata, 'recommendation');
+      const engine = providerLabel(pick(metadata, 'provider'));
+      const parts = [
+        recommendation ? `Recommendation: ${humanEnum(recommendation)}` : null,
+        engine ? `by ${engine}` : null,
+      ].filter(Boolean);
       return finish(
         score ? `scored the candidate ${score}` : 'scored the candidate',
-        recommendation ? `Recommendation: ${humanEnum(recommendation)}` : null
+        parts.join(' \u00b7 ')
       );
     }
 
@@ -1112,7 +1303,16 @@ export function buildActivitySentence(
       // prose. It belongs on the candidate's validation panel, not in a
       // timeline, where it drowns the event it is describing.
       const score = formatScore(num(metadata['score']));
-      const detailLine = score ? `Score: ${score}` : null;
+      const engine = providerLabel(pick(metadata, 'provider'));
+      const reason = pick(metadata, 'reason');
+      // A flagged application is worth knowing the why of; a passing one only
+      // needs its score.
+      const detailLine =
+        isValid === false && reason
+          ? `Reason: ${reason}`
+          : [score ? `Score: ${score}` : null, engine ? `by ${engine}` : null]
+              .filter(Boolean)
+              .join(' \u00b7 ') || null;
       if (isValid === true) {
         return finish('validated the application as eligible', detailLine);
       }
@@ -1139,13 +1339,19 @@ export function buildActivitySentence(
       const label = interviewTypeLabel(pick(metadata, 'interviewType'));
       const jobTitle = pick(metadata, 'jobTitle');
       const what = label ? interviewTypePhrase(label) : 'an interview';
+      const when = formatWhen(metadata['scheduledAt'], ctx.timeZone);
       return finish(
-        jobTitle ? `scheduled ${what} for ${jobTitle}` : `scheduled ${what}`
+        jobTitle ? `scheduled ${what} for ${jobTitle}` : `scheduled ${what}`,
+        when ? `On ${when}` : ''
       );
     }
 
-    case 'interview_updated':
-      return finish('updated the interview');
+    case 'interview_updated': {
+      const edit = summariseChanges(changes);
+      return edit
+        ? finish(edit.headline, edit.detail ?? '')
+        : finish('edited the interview');
+    }
 
     case 'interview_cancelled':
       return finish('cancelled the interview');
@@ -1174,13 +1380,13 @@ export function buildActivitySentence(
 
     // ── Notes ────────────────────────────────────────────────────────
     case 'note_added':
-      return finish('added a note');
+      return finish(`added ${noteLabel(str(metadata['method']))}`);
 
     case 'note_updated':
-      return finish('updated a note');
+      return finish(`edited ${noteLabel(str(metadata['method']))}`);
 
     case 'note_deleted':
-      return finish('deleted a note');
+      return finish(`deleted ${noteLabel(str(metadata['method']))}`);
 
     // ── Clients ──────────────────────────────────────────────────────
     case 'contact_added': {
@@ -1190,20 +1396,30 @@ export function buildActivitySentence(
 
     case 'contact_updated': {
       const name = pick(metadata, 'contactName');
-      return finish(name ? `updated the contact ${name}` : 'updated a contact');
+      const edit = summariseChanges(changes);
+      const who = name ? `${name}\u2019s` : 'a contact\u2019s';
+      return edit
+        ? finish(`changed ${who} ${edit.fields}`, edit.detail ?? '')
+        : finish(name ? `edited the contact ${name}` : 'edited a contact');
     }
 
     case 'contact_removed':
       return finish('removed a contact');
 
     case 'crm_profile_updated':
-      return finish('updated the CRM profile');
+    case 'crm_client_account_updated': {
+      const edit = summariseChanges(changes);
+      return edit
+        ? finish(`changed CRM ${edit.fields}`, edit.detail ?? '')
+        : finish('edited the CRM profile');
+    }
 
-    case 'crm_client_account_updated':
-      return finish('updated the client CRM account');
-
-    case 'va_profile_updated':
-      return finish('updated the VA profile');
+    case 'va_profile_updated': {
+      const fields = strArray(metadata['fields']).map(f => humanKey(f));
+      return fields.length > 0
+        ? finish(`changed the VA profile`, fields.join(' \u00b7 '))
+        : finish('edited the VA profile');
+    }
 
     // ── Jobs ─────────────────────────────────────────────────────────
     case 'pipeline_changed': {
@@ -1219,8 +1435,14 @@ export function buildActivitySentence(
     }
 
     // ── Users / team ─────────────────────────────────────────────────
-    case 'permissions_updated':
-      return finish('updated account permissions');
+    case 'permissions_updated': {
+      const resources = strArray(metadata['resources']).map(r =>
+        humanKey(r).toLowerCase()
+      );
+      return resources.length > 0
+        ? finish(`changed permissions`, resources.join(' \u00b7 '))
+        : finish('changed permissions');
+    }
 
     case 'provisioned_va':
       return finish('granted CRM portal access');
@@ -1259,8 +1481,43 @@ export function buildActivitySentence(
     case 'survey_dispatched':
       return finish('dispatched a satisfaction survey');
 
-    case 'settings_updated':
-      return finish('updated workspace settings');
+    // ── Email (derived from the emails collection) ───────────────────
+    case 'email_sent': {
+      const subject = pick(metadata, 'subject');
+      const kind = str(metadata['kind']);
+      const text = unattributed
+        ? kind === 'application_confirmation'
+          ? 'application confirmation email sent'
+          : 'email sent'
+        : (EMAIL_KIND_TEXT[kind ?? ''] ?? 'emailed the candidate');
+      return finish(text, subject ? `\u201c${subject}\u201d` : '');
+    }
+
+    case 'email_received': {
+      const subject = pick(metadata, 'subject');
+      const files = num(metadata['attachments']);
+      const parts = [
+        subject ? `\u201c${subject}\u201d` : null,
+        files ? `${files} attachment${files === 1 ? '' : 's'}` : null,
+      ].filter(Boolean);
+      return impersonal('the candidate replied by email', parts.join(' \u00b7 '));
+    }
+
+    case 'email_bounced':
+    case 'email_failed': {
+      const subject = pick(metadata, 'subject');
+      return impersonal(
+        key === 'email_bounced' ? 'email bounced' : 'email failed to send',
+        subject ? `\u201c${subject}\u201d` : ''
+      );
+    }
+
+    case 'settings_updated': {
+      const edit = summariseChanges(changes);
+      return edit
+        ? finish(edit.headline, edit.detail ?? '')
+        : finish('changed workspace settings');
+    }
   }
 
   // ── Fallbacks ──────────────────────────────────────────────────────
@@ -1282,10 +1539,8 @@ export function buildActivitySentence(
     };
   }
 
-  const changesText = describeChanges(changes);
-  if (changesText) {
-    return finish(`updated ${resourceLabel(log.resourceType)}`, changesText);
-  }
+  const edit = summariseChanges(changes);
+  if (edit) return finish(edit.headline, edit.detail ?? '');
 
   const metadataText = describeGenericMetadata(metadata);
 
@@ -1302,7 +1557,7 @@ export function buildActivitySentence(
 
   // A recognised action whose metadata happens to be empty — the switch above
   // already knows the right phrasing, so do not call it "legacy".
-  return finish(`updated ${resourceLabel(log.resourceType)}`, metadataText);
+  return finish(`edited ${resourceLabel(log.resourceType)}`, metadataText);
 }
 
 // ── timestamps ─────────────────────────────────────────────────────────────
@@ -1313,6 +1568,35 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
+}
+
+/**
+ * Day heading for a group of entries: "Today", "Yesterday", "12 Sep" and, once
+ * the entry leaves this year, "12 Sep 2025".
+ */
+export function formatActivityDay(
+  value: string | null | undefined,
+  now: Date = new Date()
+): string {
+  const date = value ? new Date(value) : new Date(NaN);
+  if (Number.isNaN(date.getTime())) return '';
+  if (isSameDay(date, now)) return 'Today';
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (isSameDay(date, yesterday)) return 'Yesterday';
+  const dayMonth = new Intl.DateTimeFormat(LOCALE, DAY_MONTH_FORMAT).format(
+    date
+  );
+  return date.getFullYear() === now.getFullYear()
+    ? dayMonth
+    : `${dayMonth} ${date.getFullYear()}`;
+}
+
+/** Clock time only ("14:32"); the day heading carries the date. */
+export function formatActivityClock(value: string | null | undefined): string {
+  const date = value ? new Date(value) : new Date(NaN);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(LOCALE, TIME_FORMAT).format(date);
 }
 
 export interface ActivityTime {

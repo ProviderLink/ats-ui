@@ -1,4 +1,5 @@
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
 import { PortfolioSection } from '@/components/portfolio-section';
 import { ResumeViewer } from '@/components/resume-viewer';
 import { TagsSelector } from '@/components/tags-selector';
@@ -565,6 +566,10 @@ export function TalentPoolDetailSheet({
     );
   });
 
+  const emailActivity = useCandidateEmailActivity(
+    (current ?? candidate)?._id
+  );
+
   if (!candidate) return null;
 
   const c = current ?? candidate;
@@ -1040,6 +1045,7 @@ export function TalentPoolDetailSheet({
               <ActivityTimeline
                 resourceType="candidate"
                 resourceId={c._id}
+                extraLogs={emailActivity}
                 compact
               />
             </div>

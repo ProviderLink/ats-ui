@@ -1,22 +1,21 @@
 import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useActivityActors } from '@/hooks/use-activity-actors';
 import {
   buildActivitySentence,
+  formatActivityClock,
+  formatActivityDay,
   formatActivityTime,
   type ActivityActor,
+  type ActivityContext,
   type ActivityIconName,
   type ActivitySentence,
   type ActivityTone,
 } from '@/lib/activity-sentence';
 import { cn } from '@/lib/utils';
 import { useActivityLogStore } from '@/store/slices/activity-logs.store';
+import { useJobStore } from '@/store/slices/jobs.store';
+import { useSettingsStore } from '@/store/slices/settings.store';
 import {
   ActivityResourceType,
   type ActivityLog,
@@ -36,7 +35,6 @@ import {
   CalendarXIcon,
   CheckCheckIcon,
   CheckCircle2Icon,
-  CircleHelpIcon,
   CirclePauseIcon,
   CirclePlayIcon,
   ClipboardCheckIcon,
@@ -79,70 +77,24 @@ import {
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 
 /**
- * Accent styling per semantic tone.
- *
- * Only the small badge on the avatar and the "recent" timestamp carry colour —
- * the sentence itself stays in foreground ink so a long list of events reads as
- * prose rather than as a wall of coloured labels.
- *
- * The badge tints are tuned so the glyph keeps ≥3:1 contrast against its own
- * background (the WCAG minimum for a non-text graphic). Measured, light mode:
- * emerald 3.65, red 4.77, violet 5.89, teal 7.41, grey 12.2. Amber is the
- * exception — even `amber-700` only reached 2.1:1 against a white glyph, so the
- * warning badge drops the solid fill for an amber tint with dark ink.
+ * Ink colour per semantic tone. Only the glyph that stands in for a missing
+ * performer uses it — the sentences themselves stay in foreground ink so a long
+ * feed reads as plain prose rather than a wall of coloured labels.
  */
-const TONE_STYLES: Record<ActivityTone, { badge: string; accent: string }> = {
-  success: {
-    badge:
-      'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950',
-    accent: 'text-emerald-700 dark:text-emerald-400',
-  },
-  danger: {
-    badge: 'bg-red-600 text-white dark:bg-red-500 dark:text-red-950',
-    accent: 'text-red-700 dark:text-red-400',
-  },
-  warning: {
-    // Tinted, not solid — see the contrast note above.
-    badge:
-      'bg-amber-400 text-amber-950 ring-amber-200/70 dark:bg-amber-500 dark:text-amber-950 dark:ring-amber-900/50',
-    accent: 'text-amber-700 dark:text-amber-400',
-  },
-  info: {
-    badge:
-      'bg-pine-teal-700 text-white dark:bg-pine-teal-500 dark:text-pine-teal-950',
-    accent: 'text-pine-teal-700 dark:text-pine-teal-300',
-  },
-  ai: {
-    badge: 'bg-violet-600 text-white dark:bg-violet-500 dark:text-violet-950',
-    accent: 'text-violet-700 dark:text-violet-400',
-  },
-  neutral: {
-    badge: 'bg-muted-foreground text-background',
-    accent: 'text-muted-foreground',
-  },
+const TONE_ACCENT: Record<ActivityTone, string> = {
+  success: 'text-emerald-700 dark:text-emerald-400',
+  danger: 'text-red-700 dark:text-red-400',
+  warning: 'text-amber-700 dark:text-amber-400',
+  info: 'text-pine-teal-700 dark:text-pine-teal-300',
+  ai: 'text-violet-700 dark:text-violet-400',
+  neutral: 'text-muted-foreground',
 };
 
 /**
- * Badge geometry.
+ * Glyph for an event.
  *
- * A 13px badge forces lucide's 24-unit artwork down to ~9px, where the default
- * 2-unit stroke renders as a ~0.7px hairline that muddies complex glyphs. 15px
- * with a 2.4 stroke keeps the outline ~1.1px so each icon stays legible.
- */
-const BADGE_SIZE = 15;
-const BADGE_ICON_SIZE = 10;
-const BADGE_STROKE = 2.4;
-
-/**
- * Glyph for the badge on the actor avatar.
- *
- * The icon communicates the KIND of event (created, moved, cancelled, scored…)
- * and the badge colour communicates its meaning (success, danger, AI…), so the
- * two are resolved independently — a pass/fail AI verdict, for instance, reuses
- * the check/shield glyphs rather than a generic sparkle.
- *
- * Sizing and stroke are applied once in `ActivityBadge` rather than repeated
- * on every entry, so adding an icon here cannot introduce an inconsistent size.
+ * Used as the avatar of an entry that names no performer, so the row still
+ * says what kind of event it was (created, moved, cancelled, scored…).
  */
 const ACTIVITY_ICON: Record<ActivityIconName, LucideIcon> = {
   // lifecycle
@@ -200,51 +152,6 @@ const ACTIVITY_ICON: Record<ActivityIconName, LucideIcon> = {
   activity: ActivityIcon,
 };
 
-/**
- * Neutral grey badge for an entry whose event kind could not be determined,
- * so a legacy row reads as unknown rather than being disguised as a known event.
- */
-const LEGACY_BADGE =
-  'bg-muted-foreground/60 text-background dark:bg-muted-foreground/50';
-
-/**
- * The badge that sits on the lower-right of the actor avatar.
- *
- * Renders a distinct glyph per event kind, tinted by tone. Legacy rows (whose
- * event kind could not be determined) get a neutral grey badge with a question
- * mark so they are never mistaken for a known event.
- */
-function ActivityBadge({
-  icon,
-  tone,
-  isLegacy,
-}: {
-  icon: ActivityIconName;
-  tone: ActivityTone;
-  isLegacy: boolean;
-}) {
-  const Icon = ACTIVITY_ICON[icon];
-
-  return (
-    <span
-      aria-hidden
-      style={{ width: BADGE_SIZE, height: BADGE_SIZE }}
-      className={cn(
-        'absolute -right-1 -bottom-1 grid place-items-center rounded-full ring-2 ring-card',
-        isLegacy ? LEGACY_BADGE : TONE_STYLES[tone].badge
-      )}
-    >
-      {isLegacy ? (
-        <CircleHelpIcon size={BADGE_ICON_SIZE} strokeWidth={BADGE_STROKE} />
-      ) : (
-        // Size + stroke applied once here, so every entry of the map above is
-        // guaranteed to render identically.
-        <Icon size={BADGE_ICON_SIZE} strokeWidth={BADGE_STROKE} />
-      )}
-    </span>
-  );
-}
-
 const RESOURCE_ICON: Record<ActivityResourceTypeValue | string, ReactNode> = {
   [ActivityResourceType.candidate]: <UserIcon className="size-3" />,
   [ActivityResourceType.client]: <Building2Icon className="size-3" />,
@@ -262,6 +169,11 @@ const RESOURCE_ICON: Record<ActivityResourceTypeValue | string, ReactNode> = {
   [ActivityResourceType.work_entry]: <NotebookPenIcon className="size-3" />,
   [ActivityResourceType.settings]: <SettingsIcon className="size-3" />,
 };
+
+/** An uninformative "edited …" row with no detail line, safe to fold. */
+function isFoldable(sentence: ActivitySentence): boolean {
+  return sentence.detail === null && sentence.text.startsWith('edited ');
+}
 
 /** Stable reference for feeds that have not loaded yet. */
 const EMPTY_LOGS: ActivityLog[] = [];
@@ -288,6 +200,9 @@ export interface ActivityTimelineProps {
   logs?: ActivityLog[];
   /** External loading flag — only used together with `logs`. */
   loading?: boolean;
+  /** Extra entries merged into the feed by time — e.g. a candidate's emails,
+   * which live in their own collection rather than in the activity log. */
+  extraLogs?: ActivityLog[];
 }
 
 /**
@@ -321,6 +236,7 @@ export function ActivityTimeline({
   className,
   logs: controlledLogs,
   loading: controlledLoading,
+  extraLogs,
 }: ActivityTimelineProps) {
   const feeds = useActivityLogStore(s => s.feeds);
   const storeLoading = useActivityLogStore(s => s.loading);
@@ -329,9 +245,25 @@ export function ActivityTimeline({
 
   const key = `${resourceType}|${resourceId}`;
   const isControlled = controlledLogs !== undefined;
-  const logs: ActivityLog[] = isControlled
+  const baseLogs: ActivityLog[] = isControlled
     ? controlledLogs
     : (feeds[key] ?? EMPTY_LOGS);
+  const logs = useMemo(() => {
+    const extra = (extraLogs ?? []).filter(e => e.resourceId === resourceId);
+    if (extra.length === 0) return baseLogs;
+    return [...baseLogs, ...extra].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [baseLogs, extraLogs, resourceId]);
+
+  // Lookups the sentences use to name a job or print an interview time.
+  const jobs = useJobStore(s => s.items);
+  const companyTimezone = useSettingsStore(s => s.settings?.companyTimezone);
+  const context = useMemo<ActivityContext>(() => {
+    const titles = new Map(jobs.map(j => [j._id, j.title]));
+    return { jobTitle: id => titles.get(id) ?? null, timeZone: companyTimezone };
+  }, [jobs, companyTimezone]);
   const loading = isControlled ? !!controlledLoading : storeLoading;
 
   // Self-fetch mode: trigger a fetch on mount and whenever the entity changes.
@@ -346,19 +278,57 @@ export function ActivityTimeline({
   const shown = useMemo(() => logs.slice(0, maxItems), [logs, maxItems]);
   const isLoading = loading && logs.length === 0;
 
-  // Build the render model once per data change instead of on every item render.
-  const items = useMemo(() => {
+  // Build the render model once per data change, grouped by calendar day so the
+  // rows themselves only need to show a clock time.
+  const groups = useMemo(() => {
     const now = new Date();
-    return shown.map(log => {
+    const result: {
+      day: string;
+      items: {
+        log: ActivityLog;
+        actor: ActivityActor;
+        sentence: ActivitySentence;
+        time: ReturnType<typeof formatActivityTime>;
+        /** How many identical entries this row stands for. */
+        count: number;
+        /** Timestamp of the oldest entry folded into this row. */
+        fromAt: string;
+      }[];
+    }[] = [];
+    for (const log of shown) {
+      const day = formatActivityDay(log.createdAt, now);
       const actor = resolve(log);
-      return {
+      const item = {
         log,
         actor,
-        sentence: buildActivitySentence(log, actor),
+        sentence: buildActivitySentence(log, actor, context),
         time: formatActivityTime(log.createdAt, now),
+        count: 1,
+        fromAt: log.createdAt,
       };
-    });
-  }, [shown, resolve]);
+      const last = result[result.length - 1];
+      if (last && last.day === day) {
+        // Old "edited the …" rows say nothing about what changed, so a run of
+        // them by the same person folds into one row instead of padding the
+        // feed. Nothing is hidden: the count and time range stay visible.
+        const prev = last.items[last.items.length - 1];
+        if (
+          prev &&
+          isFoldable(prev.sentence) &&
+          isFoldable(item.sentence) &&
+          prev.sentence.text === item.sentence.text &&
+          prev.actor.id === item.actor.id &&
+          prev.actor.name === item.actor.name
+        ) {
+          prev.count += 1;
+          prev.fromAt = log.createdAt;
+        } else {
+          last.items.push(item);
+        }
+      } else result.push({ day, items: [item] });
+    }
+    return result;
+  }, [shown, resolve, context]);
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
@@ -377,7 +347,7 @@ export function ActivityTimeline({
         <div className="flex flex-col gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-start gap-3">
-              <Skeleton className="size-7 rounded-full" />
+              <Skeleton className="size-6 rounded-full" />
               <div className="flex-1 flex flex-col gap-1.5">
                 <Skeleton className="h-3 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />
@@ -391,34 +361,46 @@ export function ActivityTimeline({
           <p className="text-xs text-muted-foreground">No activity yet.</p>
         </div>
       ) : (
-        <ol className="relative flex flex-col">
-          {/* vertical spine, centred under the avatar column */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-3 top-3 bottom-3 w-px bg-border-subtle"
-          />
-          {items.map((item, idx) => (
-            <ActivityItem
-              key={item.log._id ?? idx}
-              log={item.log}
-              actor={item.actor}
-              sentence={item.sentence}
-              time={item.time}
-              showResourceIcon={showResourceIcon}
-              compact={compact}
-            />
+        <div className="flex flex-col gap-4">
+          {groups.map(group => (
+            <section key={group.day} className="flex flex-col">
+              <h5 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {group.day}
+              </h5>
+              <ol className="flex flex-col divide-y divide-border/50">
+                {group.items.map((item, idx) => (
+                  <ActivityItem
+                    key={item.log._id ?? idx}
+                    log={item.log}
+                    actor={item.actor}
+                    sentence={item.sentence}
+                    time={item.time}
+                    count={item.count}
+                    fromAt={item.fromAt}
+                    showResourceIcon={showResourceIcon}
+                    compact={compact}
+                  />
+                ))}
+              </ol>
+            </section>
           ))}
-        </ol>
+        </div>
       )}
     </div>
   );
 }
 
+/**
+ * One row: who (avatar + name) · what (one short sentence, optional detail
+ * line) · when (clock time; the day heading above carries the date).
+ */
 function ActivityItem({
   log,
   actor,
   sentence,
   time,
+  count,
+  fromAt,
   showResourceIcon,
   compact,
 }: {
@@ -426,135 +408,75 @@ function ActivityItem({
   actor: ActivityActor;
   sentence: ActivitySentence;
   time: ReturnType<typeof formatActivityTime>;
+  count: number;
+  fromAt: string;
   showResourceIcon?: boolean;
   compact?: boolean;
 }) {
-  const tone = TONE_STYLES[sentence.tone];
-  const isImpersonal = actor.kind === 'system';
-  const isLegacy = sentence.isLegacy;
-
-  // Lines rendered UNDER the main sentence. They are what makes the text
-  // column taller than the avatar — see the alignment note on the content
-  // wrapper below.
-  const hasDetailLine = Boolean(sentence.detail);
-  const hasResourceLine = showResourceIcon && Boolean(log.resourceType);
-  const isSingleLine = !hasDetailLine && !hasResourceLine;
-
-  // Whether this row names a performer. `sentence.actor` is the single source
-  // of truth for that decision (see `showActor` in `activity-sentence.ts`) —
-  // every row that names nobody, from a public application to an edit whose
-  // actor was never recorded, arrives here with `actor: null`.
+  // `sentence.actor` is the single source of truth for whether a performer is
+  // named (see `showActor` in `activity-sentence.ts`). A row that names nobody
+  // gets the event glyph in the avatar slot instead of a person.
   const hasActor = sentence.actor !== null;
 
-  // The avatar answers "who did this". When no performer is named there is no
-  // "who", so the event glyph itself takes that slot (see `ActorAvatar`) and
-  // the corner badge is dropped — it would print the same glyph twice, at two
-  // sizes. Legacy rows keep theirs regardless: the question mark is the only
-  // thing marking them as uninterpreted.
-  const showBadge = hasActor || isLegacy;
-
   return (
-    <li
-      className={cn(
-        'relative flex items-start gap-3 rounded-lg px-2 -mx-2 transition-colors hover:bg-muted/40',
-        compact ? 'py-2' : 'py-2.5'
-      )}
-    >
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="relative z-10 shrink-0">
-              <ActorAvatar
-                actor={actor}
-                icon={sentence.icon}
-                tone={sentence.tone}
-                impersonal={!hasActor}
-              />
-              {showBadge && (
-                <ActivityBadge
-                  icon={sentence.icon}
-                  tone={sentence.tone}
-                  isLegacy={isLegacy}
-                />
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xs">
-            <p className="text-xs">{time.absolute || 'Unknown time'}</p>
-            {!isImpersonal && (
-              <p className="text-xs text-muted-foreground">
-                {actor.isViewer ? 'You' : actor.name}
-              </p>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <li className={cn('flex items-start gap-3', compact ? 'py-2' : 'py-2.5')}>
+      <ActorAvatar
+        actor={actor}
+        icon={sentence.icon}
+        tone={sentence.tone}
+        impersonal={!hasActor}
+      />
 
-      <div
-        // The avatar is a fixed 26px square. A row with a detail/resource line
-        // grows taller than that, so top-alignment reads correctly; a row with
-        // ONLY the main sentence is ~19px and would otherwise hug the top with
-        // dead space under it. Forcing the single-line row to the avatar's
-        // height and centring its contents keeps the ink optically parallel to
-        // the avatar in both cases.
-        style={isSingleLine ? { minHeight: ACTOR_AVATAR_SIZE } : undefined}
-        className={cn(
-          'flex min-w-0 flex-1 gap-3',
-          isSingleLine ? 'items-center' : 'items-start'
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          {/* `first-letter:uppercase` keeps the guarantee in one place whether
-              the row leads with an actor name or an impersonal clause —
-              sentence fragments themselves stay lowercase for composition. */}
-          <p className="text-sm leading-snug break-words first-letter:uppercase">
-            {sentence.actor && (
-              <span className="font-medium text-foreground">
-                {sentence.actor}{' '}
-              </span>
-            )}
-            <span className="text-foreground/90">{sentence.text}</span>
+      <div className="min-w-0 flex-1">
+        {/* `first-letter:uppercase` keeps the capital in one place whether the
+            row leads with a name or an impersonal clause. */}
+        <p className="text-sm leading-snug break-words first-letter:uppercase">
+          {sentence.actor && (
+            <span className="font-medium text-foreground">
+              {sentence.actor}{' '}
+            </span>
+          )}
+          <span className="text-foreground/80">{sentence.text}</span>
+          {count > 1 && (
+            <span className="text-muted-foreground tabular-nums">
+              {' '}
+              ×{count}
+            </span>
+          )}
+        </p>
+
+        {sentence.detail && (
+          <p className="mt-0.5 text-xs leading-relaxed break-words text-muted-foreground">
+            {sentence.detail}
           </p>
+        )}
 
-          {sentence.detail && (
-            <p className="mt-0.5 text-xs leading-relaxed break-words text-muted-foreground">
-              {sentence.detail}
-            </p>
-          )}
-
-          {showResourceIcon && log.resourceType && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] capitalize text-muted-foreground">
-              {RESOURCE_ICON[log.resourceType] ?? (
-                <ActivityIcon className="size-3" />
-              )}
-              <span>{log.resourceType.replace(/_/g, ' ')}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Timestamp sits in its own right-aligned column so it reads as
-            metadata rather than as part of the sentence. The 1px nudge only
-            applies to top-aligned rows — a centred single-line row needs no
-            compensation. */}
-        {time.label && (
-          <time
-            dateTime={time.dateTime}
-            title={time.absolute}
-            className={cn(
-              'shrink-0 whitespace-nowrap text-[11px] leading-snug tabular-nums',
-              !isSingleLine && 'pt-px',
-              time.isRecent ? tone.accent : 'text-muted-foreground/80'
+        {showResourceIcon && log.resourceType && (
+          <div className="mt-1 flex items-center gap-1 text-[11px] capitalize text-muted-foreground">
+            {RESOURCE_ICON[log.resourceType] ?? (
+              <ActivityIcon className="size-3" />
             )}
-          >
-            {time.label}
-          </time>
+            <span>{log.resourceType.replace(/_/g, ' ')}</span>
+          </div>
         )}
       </div>
+
+      {time.label && (
+        <time
+          dateTime={time.dateTime}
+          title={time.absolute}
+          className="shrink-0 pt-px text-[11px] leading-snug tabular-nums text-muted-foreground"
+        >
+          {count > 1
+            ? `${formatActivityClock(fromAt)}\u2013${formatActivityClock(log.createdAt)}`
+            : formatActivityClock(log.createdAt)}
+        </time>
+      )}
     </li>
   );
 }
 
-const ACTOR_AVATAR_SIZE = 26;
+const ACTOR_AVATAR_SIZE = 24;
 
 /**
  * Actor avatar — who performed the event.
@@ -597,7 +519,7 @@ function ActorAvatar({
         style={size}
         className={cn(
           'grid shrink-0 place-items-center rounded-full bg-muted',
-          TONE_STYLES[tone].accent
+          TONE_ACCENT[tone]
         )}
       >
         <EventIcon className="size-3.5" />

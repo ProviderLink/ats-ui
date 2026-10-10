@@ -1,5 +1,6 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
 import { ChangeJobDialog } from '@/components/change-job-dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { PortfolioSection } from '@/components/portfolio-section';
@@ -2366,6 +2367,10 @@ export function CandidateDetailSheet({
     );
   });
 
+  const emailActivity = useCandidateEmailActivity(
+    (current ?? candidate)?._id
+  );
+
   if (!candidate) return null;
 
   const c = current ?? candidate;
@@ -3410,6 +3415,7 @@ export function CandidateDetailSheet({
                 <ActivityTimeline
                   resourceType="candidate"
                   resourceId={c._id}
+                  extraLogs={emailActivity}
                   compact
                 />
               </div>
