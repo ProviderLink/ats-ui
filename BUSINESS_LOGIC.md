@@ -263,7 +263,7 @@ Distributed lock for cron jobs; documents expire after 5 minutes.
 | dashboard | read | read | read | — | read | — | — |
 | team | read | read | read | read | — | — | — |
 | pipelineTemplates / emailTemplates | read | read | read | — | — | — | — |
-| activityLogs | — | — | — | — | read | — | — |
+| activityLogs | — | — | — | — | read (no effect: the API needs ATS access) | — | — |
 | assignments | — | — | — | — | manage | read | read |
 | reports | — | — | — | — | manage | read | — |
 | eod | — | — | — | — | approve | read | write |
@@ -273,6 +273,7 @@ Admin gets everything. Permissions can be edited per user (`PATCH /shared/users/
 
 ### Admin-only rules
 
+- The activity-log API needs ATS access. A record's own activity is readable with that record's read permission (candidate and application: `candidates.read`, interview: `interviews.read`, job: `jobs.read`, client: `clients.read`); the global list and other record types need `activityLogs.read`. Account managers cannot read it.
 - Only an admin may assign the `admin` role, or edit, remove or revoke an admin account.
 - Admin-only routes: candidate eligibility, restore and legal hold; permanently-ineligible list and delete; client notes; VA notes. (The disposition-reasons settings page is also admin-only in the UI; the API needs `settings.write`.)
 - A user cannot remove or revoke themselves.
