@@ -25,4 +25,3 @@ dist-ssr
 *.sw?
 SCHEMA.md
 DATA_MODELS.md
-BUSINESS_LOGIC.md
