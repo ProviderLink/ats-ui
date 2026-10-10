@@ -1375,8 +1375,24 @@ export function buildActivitySentence(
       );
     }
 
-    case 'scorecard_generated':
-      return finish('generated interview scorecards');
+    case 'scorecard_generated': {
+      // The weekly VA productivity scorecards (CRM), not interview scorecards.
+      const count = num(metadata['count']);
+      const week = str(metadata['weekStart']);
+      const weekDate = week ? new Date(`${week}T12:00:00`) : null;
+      const weekLabel =
+        weekDate && !Number.isNaN(weekDate.getTime())
+          ? `Week of ${new Intl.DateTimeFormat(LOCALE, DAY_MONTH_FORMAT).format(weekDate)}`
+          : null;
+      const parts = [
+        count !== null ? `${count} scorecard${count === 1 ? '' : 's'}` : null,
+        weekLabel,
+      ].filter(Boolean);
+      return finish(
+        'generated the weekly scorecards',
+        parts.join(' \u00b7 ')
+      );
+    }
 
     // ── Notes ────────────────────────────────────────────────────────
     case 'note_added':

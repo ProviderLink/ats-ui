@@ -240,6 +240,7 @@ export function ActivityTimeline({
 }: ActivityTimelineProps) {
   const feeds = useActivityLogStore(s => s.feeds);
   const storeLoading = useActivityLogStore(s => s.loading);
+  const loadError = useActivityLogStore(s => s.error);
   const fetchForEntity = useActivityLogStore(s => s.fetchForEntity);
   const { resolve } = useActivityActors();
 
@@ -358,7 +359,13 @@ export function ActivityTimeline({
       ) : shown.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-8 text-center">
           <ActivityIcon className="size-5 text-muted-foreground/50" />
-          <p className="text-xs text-muted-foreground">No activity yet.</p>
+          <p className="text-xs text-muted-foreground">
+            {!isControlled && loadError
+              ? /permission/i.test(loadError)
+                ? 'You don\u2019t have access to this activity.'
+                : 'Couldn\u2019t load activity.'
+              : 'No activity yet.'}
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
