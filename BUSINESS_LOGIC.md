@@ -554,7 +554,7 @@ Tag ◄── Candidate, Job, Client
 
 Keyed by `resourceType` + `action`. Entries are written by services, AI jobs and cron; the UI only reads them. Entries without a `description` are rendered from the action name.
 
-**Resource types:** `candidate`, `client`, `job`, `application`, `interview`, `user`, `assignment`, `eod`, `performance_review`, `survey`, `tag`, `work_entry`, `settings`, `scorecards`, `vaProfile`, `client_account`.
+**Resource types:** `candidate`, `client`, `job`, `application`, `interview`, `user`, `assignment`, `eod`, `performance_review`, `survey`, `tag`, `work_entry`, `settings`, `scorecards`, `vaProfile`, `client_account`, `pipeline_template`, `email_template`, `report`.
 
 | Action(s) | Resource | Source |
 | --------- | -------- | ------ |
@@ -569,7 +569,14 @@ Keyed by `resourceType` + `action`. Entries are written by services, AI jobs and
 | interview scorecard created/updated | candidate (related: `interview_scorecard`) | scorecard service |
 | `pipeline_changed` | job | job service |
 | `contact_added/updated/removed`, `crm_profile_updated`, `note_added/updated/deleted` | client | client service |
-| `permissions_updated`, `deactivated`, `provisioned_va`, `provisioned_client`, `revoked_crm` | user | user service |
+| `permissions_updated`, `deactivated` (legacy), `provisioned_va`, `provisioned_client`, `revoked_crm` | user | user service |
+| `deleted` (removed team member; metadata keeps name, email, roles) | user | user service |
+| `login`, `login_failed` (existing account only; app, ip, reason), `password_changed`, `password_reset`, `invite_accepted` | user | auth service |
+| `created`, `updated` (with `changes`), `deleted` | pipeline_template, email_template | template services |
+| `survey_created`, `survey_updated` | survey | survey reminder service |
+| `eod_updated` | eod | EOD service |
+| `review_updated`, `review_regenerated`, `review_exported` | performance_review | review service/controller |
+| `report_exported` (report, format, date range) | report | reports controller |
 | `ended` | assignment | assignment service |
 | `review_generated`, `review_completed`, `review_deleted` | performance_review | review service |
 | `eod_submitted`, `eod_deleted` | eod | EOD service |
@@ -585,6 +592,8 @@ Keyed by `resourceType` + `action`. Entries are written by services, AI jobs and
 
 ```
 Login          POST /auth/login { email, password, app? }  (app defaults to 'ats')
+               (successful and failed sign-ins for an existing account are written to the
+                activity log with app, ip and reason; unknown emails are not logged)
                → unknown user / wrong password → generic error; inactive → USER_INACTIVE
                → access JWT (roles, appAccess, permissions, refs) in the response body
                → refresh JWT in an httpOnly cookie: refreshTokenAts or refreshTokenCrm

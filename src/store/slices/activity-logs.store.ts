@@ -17,6 +17,10 @@ function feedKey(resourceType: string, resourceId: string): string {
 interface ActivityLogState {
   /** Per-entity activity feeds keyed by `${resourceType}|${resourceId}`. */
   feeds: Record<string, ActivityLog[]>;
+  /** How many entries exist on the server for each feed (all pages). */
+  totals: Record<string, number>;
+  /** Last page loaded for each feed. */
+  pages: Record<string, number>;
   loading: boolean;
   error: string | null;
 }
@@ -29,6 +33,11 @@ interface ActivityLogActions {
     resourceId: string,
     opts?: { page?: number; limit?: number; force?: boolean }
   ) => Promise<void>;
+  /** Load the next (older) page of a feed and append it. */
+  fetchMore: (
+    resourceType: ActivityResourceType | string,
+    resourceId: string
+  ) => Promise<void>;
   reset: () => void;
   /** Optimistically prepend a locally-known event so UI updates instantly
    * after a mutation, before the next fetch lands. */
@@ -39,8 +48,15 @@ interface ActivityLogActions {
   ) => void;
 }
 
+const PAGE_SIZE = 50;
+
+/** Feeds currently loading an older page, so a double click cannot fetch twice. */
+const loadingMore = new Set<string>();
+
 const initialState: ActivityLogState = {
   feeds: {},
+  totals: {},
+  pages: {},
   loading: false,
   error: null,
 };
@@ -57,6 +73,13 @@ const initialState: ActivityLogState = {
  * Only the array is returned: nothing consumes the counts, and the feed is
  * cached whole per entity, so there is no page state to track.
  */
+function totalOf(
+  res: ActivityLog[] | ActivityLogListResponse,
+  fallback: number
+): number {
+  return Array.isArray(res) ? fallback : (res.total ?? fallback);
+}
+
 function normaliseLogs(
   res: ActivityLog[] | ActivityLogListResponse
 ): ActivityLog[] {
@@ -94,11 +117,13 @@ export const useActivityLogStore = create<
         try {
           const res = await getJson<ActivityLog[] | ActivityLogListResponse>(
             `/shared/activity-logs/${resourceType}/${resourceId}`,
-            { page: opts?.page ?? 1, limit: opts?.limit ?? 50 }
+            { page: opts?.page ?? 1, limit: opts?.limit ?? PAGE_SIZE }
           );
           const logs = normaliseLogs(res);
           set(s => {
             s.feeds[key] = logs;
+            s.totals[key] = totalOf(res, logs.length);
+            s.pages[key] = 1;
             s.loading = false;
           });
         } catch (e) {
@@ -106,6 +131,42 @@ export const useActivityLogStore = create<
             s.loading = false;
             s.error = (e as Error).message;
           });
+        }
+      },
+
+      fetchMore: async (resourceType, resourceId) => {
+        const key = feedKey(resourceType, resourceId);
+        if (!isValidObjectId(resourceId) || loadingMore.has(key)) return;
+        const state = useActivityLogStore.getState();
+        const total = state.totals[key] ?? 0;
+        const loaded = (state.feeds[key] ?? []).filter(
+          l => !String(l._id).startsWith('local-')
+        ).length;
+        if (loaded >= total) return;
+
+        loadingMore.add(key);
+        try {
+          const page = (state.pages[key] ?? 1) + 1;
+          const res = await getJson<ActivityLog[] | ActivityLogListResponse>(
+            `/shared/activity-logs/${resourceType}/${resourceId}`,
+            { page, limit: PAGE_SIZE }
+          );
+          const older = normaliseLogs(res);
+          set(s => {
+            const have = new Set((s.feeds[key] ?? []).map(l => l._id));
+            s.feeds[key] = [
+              ...(s.feeds[key] ?? []),
+              ...older.filter(l => !have.has(l._id)),
+            ];
+            s.totals[key] = totalOf(res, s.totals[key] ?? 0);
+            s.pages[key] = page;
+          });
+        } catch (e) {
+          set(s => {
+            s.error = (e as Error).message;
+          });
+        } finally {
+          loadingMore.delete(key);
         }
       },
 
@@ -123,14 +184,18 @@ export const useActivityLogStore = create<
       name: 'ats-activity-logs',
       storage: createJSONStorage(() => localStorage),
       // Only persist the per-entity feed cache, not loading flags.
-      partialize: s => ({ feeds: s.feeds }),
+      partialize: s => ({
+        feeds: s.feeds,
+        totals: s.totals,
+        pages: s.pages,
+      }),
       // Bump when the shape or meaning of a cached entry changes, so stale
       // rows are discarded rather than rendered with a fallback label.
       // v1 → v2: the backend migrated legacy `type`-only rows to `action`, and
       // `stage_changed` / `status_changed` gained new metadata key names that
       // older cached entries do not carry.
-      version: 2,
-      migrate: () => ({ feeds: {} }),
+      version: 3,
+      migrate: () => ({ feeds: {}, totals: {}, pages: {} }),
     }
   )
 );

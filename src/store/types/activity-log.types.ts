@@ -15,6 +15,9 @@ export const ActivityResourceType = {
   tag: 'tag',
   work_entry: 'work_entry',
   settings: 'settings',
+  pipeline_template: 'pipeline_template',
+  email_template: 'email_template',
+  report: 'report',
 } as const;
 export type ActivityResourceType =
   (typeof ActivityResourceType)[keyof typeof ActivityResourceType];

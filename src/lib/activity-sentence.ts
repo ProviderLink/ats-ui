@@ -228,6 +228,18 @@ const KNOWN_ACTIONS = new Set([
   'email_received',
   'email_bounced',
   'email_failed',
+  'login',
+  'login_failed',
+  'password_changed',
+  'password_reset',
+  'invite_accepted',
+  'eod_updated',
+  'review_updated',
+  'review_regenerated',
+  'review_exported',
+  'survey_created',
+  'survey_updated',
+  'report_exported',
 ]);
 
 /**
@@ -317,6 +329,7 @@ const DANGER_ACTIONS = new Set([
   'note_deleted',
   'email_bounced',
   'email_failed',
+  'login_failed',
 ]);
 
 /**
@@ -543,6 +556,20 @@ const ICON_BY_ACTION: Record<string, ActivityIconName> = {
   email_received: 'message-plus',
   email_bounced: 'alert',
   email_failed: 'alert',
+
+  // sign-in, account security and admin work
+  login: 'user-check',
+  login_failed: 'shield-x',
+  password_changed: 'lock',
+  password_reset: 'lock',
+  invite_accepted: 'user-plus',
+  eod_updated: 'pen-line',
+  review_updated: 'pen-line',
+  review_regenerated: 'sparkles',
+  review_exported: 'notes',
+  survey_created: 'mail',
+  survey_updated: 'mail',
+  report_exported: 'notes',
 };
 
 /**
@@ -619,6 +646,9 @@ const RESOURCE_LABEL: Record<string, string> = {
   eod: 'the EOD report',
   performance_review: 'the performance review',
   settings: 'the workspace settings',
+  pipeline_template: 'the pipeline template',
+  email_template: 'the email template',
+  report: 'a report',
 };
 
 function resourceLabel(resourceType: string): string {
@@ -1144,6 +1174,25 @@ export function buildActivitySentence(
         const reason = describeReason('deleted', metadata);
         if (reason) return finish(reason.text, reason.detail ?? '');
       }
+      if (
+        log.resourceType === 'pipeline_template' ||
+        log.resourceType === 'email_template'
+      ) {
+        const name = pick(metadata, 'name');
+        return finish(
+          `deleted ${resourceLabel(log.resourceType)}${name ? ` \u201c${name}\u201d` : ''}`
+        );
+      }
+      if (log.resourceType === 'user') {
+        const name = pick(metadata, 'name');
+        const roles = strArray(metadata['roles']);
+        return finish(
+          name ? `removed the team member ${name}` : 'removed a team member',
+          roles.length > 0
+            ? `Roles: ${roles.map(r => humanEnum(r)).join(', ')}`
+            : ''
+        );
+      }
       return finish(`deleted ${resourceLabel(log.resourceType)}`);
     }
 
@@ -1187,6 +1236,15 @@ export function buildActivitySentence(
         const reason = describeReason('added', metadata);
         if (reason) return finish(reason.text, reason.detail ?? '');
       }
+      if (
+        log.resourceType === 'pipeline_template' ||
+        log.resourceType === 'email_template'
+      ) {
+        const name = pick(metadata, 'name');
+        return finish(
+          `created ${resourceLabel(log.resourceType)}${name ? ` \u201c${name}\u201d` : ''}`
+        );
+      }
       if (log.resourceType === 'tag') return finish('created the tag');
       if (log.resourceType === 'assignment')
         return finish('created the assignment');
@@ -1220,7 +1278,20 @@ export function buildActivitySentence(
         if (reason) return finish(reason.text, reason.detail ?? '');
       }
       const edit = summariseChanges(changes);
-      if (edit) return finish(edit.headline, edit.detail ?? '');
+      if (edit) {
+        const templateName =
+          log.resourceType === 'pipeline_template' ||
+          log.resourceType === 'email_template'
+            ? pick(metadata, 'name')
+            : null;
+        const detailLine = [
+          edit.detail,
+          templateName ? `Template: ${templateName}` : null,
+        ]
+          .filter(Boolean)
+          .join(' \u00b7 ');
+        return finish(edit.headline, detailLine);
+      }
       if (log.resourceType === 'tag') return finish('renamed the tag');
       if (log.resourceType === 'user')
         return finish('edited the team member');
@@ -1496,6 +1567,108 @@ export function buildActivitySentence(
 
     case 'survey_dispatched':
       return finish('dispatched a satisfaction survey');
+
+    // ── Sign-in and account security ─────────────────────────────────
+    case 'login': {
+      // The IP is stored for investigations but kept off the row: a long list
+      // of sign-ins is easier to scan one line each.
+      const app = str(metadata['app']);
+      return finish(app ? `signed in to the ${app.toUpperCase()}` : 'signed in');
+    }
+
+    case 'login_failed': {
+      const app = str(metadata['app']);
+      const reason = str(metadata['reason']);
+      const ip = str(metadata['ip']);
+      const parts = [
+        app ? app.toUpperCase() : null,
+        reason === 'inactive'
+          ? 'account deactivated'
+          : reason === 'wrong_password'
+            ? 'wrong password'
+            : null,
+        ip,
+      ].filter(Boolean);
+      return impersonal('failed sign-in attempt', parts.join(' \u00b7 '));
+    }
+
+    case 'password_changed':
+      return finish('changed their password');
+
+    case 'password_reset':
+      return finish('reset their password');
+
+    case 'invite_accepted':
+      return finish('accepted the invitation and set a password');
+
+    // ── CRM edits and exports ────────────────────────────────────────
+    case 'eod_updated': {
+      const edit = summariseChanges(changes);
+      return edit
+        ? finish(`edited an end-of-day report: ${edit.fields}`, edit.detail ?? '')
+        : finish('edited an end-of-day report');
+    }
+
+    case 'review_updated': {
+      const edit = summariseChanges(changes);
+      return edit
+        ? finish(edit.headline, edit.detail ?? '')
+        : finish('edited the performance review');
+    }
+
+    case 'review_regenerated': {
+      const section = str(metadata['section']);
+      return finish(
+        section
+          ? `regenerated the review ${section}`
+          : 'regenerated part of the review'
+      );
+    }
+
+    case 'review_exported':
+      return finish('exported the review as PDF');
+
+    case 'survey_created': {
+      const type = pick(metadata, 'surveyType');
+      return finish(
+        type
+          ? `created a ${humanEnum(type)} survey reminder`
+          : 'created a survey reminder'
+      );
+    }
+
+    case 'survey_updated': {
+      const type = pick(metadata, 'surveyType');
+      const edit = summariseChanges(changes);
+      return edit
+        ? finish(
+            edit.headline,
+            [type ? `${upperFirst(humanEnum(type))} survey` : null, edit.detail]
+              .filter(Boolean)
+              .join(' \u00b7 ')
+          )
+        : finish('edited a survey reminder');
+    }
+
+    case 'report_exported': {
+      const labels: Record<string, string> = {
+        work_entries: 'work entries',
+        eod_submissions: 'end-of-day',
+        performance: 'performance review',
+        dispositions: 'rejections',
+      };
+      const report = str(metadata['report']) ?? '';
+      const format = pick(metadata, 'format');
+      const start = pick(metadata, 'startDate');
+      const end = pick(metadata, 'endDate');
+      const range = start || end ? `${start ?? '\u2026'} to ${end ?? '\u2026'}` : null;
+      return finish(
+        `exported the ${labels[report] ?? 'data'} report`,
+        [format ? format.toUpperCase() : null, range]
+          .filter(Boolean)
+          .join(' \u00b7 ')
+      );
+    }
 
     // ── Email (derived from the emails collection) ───────────────────
     case 'email_sent': {

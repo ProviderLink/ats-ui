@@ -1,4 +1,5 @@
 import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActivityActors } from '@/hooks/use-activity-actors';
 import {
@@ -74,7 +75,7 @@ import {
   XCircleIcon,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 /**
  * Ink colour per semantic tone. Only the glyph that stands in for a missing
@@ -203,6 +204,18 @@ export interface ActivityTimelineProps {
   /** Extra entries merged into the feed by time — e.g. a candidate's emails,
    * which live in their own collection rather than in the activity log. */
   extraLogs?: ActivityLog[];
+  /** Optional views over the feed ("Sign-ins", "Changes"). An "All" view is
+   * always added first. */
+  filters?: ActivityFilter[];
+  /** How many entries to show at first, and how many more each "Show more"
+   * click reveals. Older pages are fetched from the server as needed. */
+  pageSize?: number;
+}
+
+export interface ActivityFilter {
+  id: string;
+  label: string;
+  match: (log: ActivityLog) => boolean;
 }
 
 /**
@@ -237,12 +250,17 @@ export function ActivityTimeline({
   logs: controlledLogs,
   loading: controlledLoading,
   extraLogs,
+  filters,
+  pageSize = 10,
 }: ActivityTimelineProps) {
   const feeds = useActivityLogStore(s => s.feeds);
   const storeLoading = useActivityLogStore(s => s.loading);
   const loadError = useActivityLogStore(s => s.error);
   const fetchForEntity = useActivityLogStore(s => s.fetchForEntity);
+  const fetchMore = useActivityLogStore(s => s.fetchMore);
+  const serverTotal = useActivityLogStore(s => s.totals[`${resourceType}|${resourceId}`]);
   const { resolve } = useActivityActors();
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const key = `${resourceType}|${resourceId}`;
   const isControlled = controlledLogs !== undefined;
@@ -276,8 +294,56 @@ export function ActivityTimeline({
     void fetchForEntity(resourceType, resourceId);
   }, [isControlled, resourceType, resourceId, fetchForEntity]);
 
-  const shown = useMemo(() => logs.slice(0, maxItems), [logs, maxItems]);
+  // The selected view and how many entries are revealed are kept per feed, so
+  // opening another record starts again from the newest entries.
+  const [view, setView] = useState({ key, filterId: 'all', visible: pageSize });
+  const current =
+    view.key === key ? view : { key, filterId: 'all', visible: pageSize };
+  const activeFilter = filters?.find(f => f.id === current.filterId);
+  const matches = (log: ActivityLog) => !activeFilter || activeFilter.match(log);
+
+  const filtered = useMemo(
+    () => logs.filter(log => !activeFilter || activeFilter.match(log)),
+    [logs, activeFilter]
+  );
+  const shown = useMemo(
+    () => filtered.slice(0, Math.min(current.visible, maxItems)),
+    [filtered, current.visible, maxItems]
+  );
   const isLoading = loading && logs.length === 0;
+
+  const loadedFromServer = baseLogs.filter(
+    l => !String(l._id).startsWith('local-')
+  ).length;
+  const serverHasMore =
+    !isControlled && serverTotal !== undefined && loadedFromServer < serverTotal;
+  const canShowMore =
+    filtered.length > shown.length && shown.length < maxItems
+      ? true
+      : serverHasMore;
+
+  async function showMore() {
+    const target = current.visible + pageSize;
+    setView({ ...current, visible: target });
+    if (isControlled || filtered.length >= target) return;
+
+    // The loaded pages do not hold enough entries for this view; fetch older
+    // pages until they do, or the feed runs out.
+    setLoadingMore(true);
+    try {
+      for (let i = 0; i < 10; i++) {
+        const state = useActivityLogStore.getState();
+        const base = state.feeds[key] ?? [];
+        const loaded = base.filter(l => !String(l._id).startsWith('local-'));
+        if (loaded.length >= (state.totals[key] ?? 0)) break;
+        const extra = (extraLogs ?? []).filter(e => e.resourceId === resourceId);
+        if ([...base, ...extra].filter(matches).length >= target) break;
+        await fetchMore(resourceType, resourceId);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   // Build the render model once per data change, grouped by calendar day so the
   // rows themselves only need to show a clock time.
@@ -344,6 +410,30 @@ export function ActivityTimeline({
         </div>
       )}
 
+      {filters && filters.length > 0 && (
+        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Activity view">
+          {[{ id: 'all', label: 'All' }, ...filters].map(f => (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={current.filterId === f.id}
+              onClick={() =>
+                setView({ key, filterId: f.id, visible: pageSize })
+              }
+              className={cn(
+                'rounded-full px-2.5 py-1 text-xs transition-colors',
+                current.filterId === f.id
+                  ? 'bg-muted font-medium text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex flex-col gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -364,7 +454,9 @@ export function ActivityTimeline({
               ? /permission/i.test(loadError)
                 ? 'You don\u2019t have access to this activity.'
                 : 'Couldn\u2019t load activity.'
-              : 'No activity yet.'}
+              : current.filterId !== 'all'
+                ? 'Nothing here yet.'
+                : 'No activity yet.'}
           </p>
         </div>
       ) : (
@@ -391,6 +483,17 @@ export function ActivityTimeline({
               </ol>
             </section>
           ))}
+          {canShowMore && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 self-start px-2 text-xs text-muted-foreground"
+              disabled={loadingMore}
+              onClick={() => void showMore()}
+            >
+              {loadingMore ? 'Loading\u2026' : 'Show more'}
+            </Button>
+          )}
         </div>
       )}
     </div>
