@@ -1823,22 +1823,44 @@ export function CandidatesTable() {
     []
   );
 
+  // candidateId → Set of jobIds the candidate is attached to, per tab.
+  //  - In Review: the job they applied to (`appliedJobId`, set even though no
+  //    application exists yet for public applies) plus any pending application.
+  //  - In Pipeline: jobs with an approved (live) application.
+  //  - Hired / other: any non-rejected application.
+  // Used by both the ?jobId= filter and the job-title search so the two agree.
+  const jobIdsForTab = useCallback(
+    (c: Candidate, tab: string): Set<string> => {
+      const ids = new Set<string>();
+      for (const a of allApps) {
+        if (a.candidateId !== c._id) continue;
+        if (tab === 'pending') {
+          if (a.phase === 'pending') ids.add(a.jobId);
+        } else if (tab === 'approved') {
+          if (a.phase === 'approved') ids.add(a.jobId);
+        } else if (a.phase !== 'rejected') {
+          ids.add(a.jobId);
+        }
+      }
+      if (tab === 'pending' && c.appliedJobId) ids.add(c.appliedJobId);
+      return ids;
+    },
+    [allApps]
+  );
+
   // ── Tab counts derived from local data ──────────────────────────
   const counts = useMemo(() => {
-    const base = jobIdFilter
-      ? (() => {
-          const ids = new Set(
-            allApps.filter(a => a.jobId === jobIdFilter).map(a => a.candidateId)
-          );
-          return items.filter(c => ids.has(c._id));
-        })()
-      : items;
+    const inJob = (c: Candidate, tab: string) =>
+      !jobIdFilter || jobIdsForTab(c, tab).has(jobIdFilter);
     return {
-      pending: base.filter(isInReview).length,
-      approved: base.filter(c => effectivePipelineIds.has(c._id)).length,
-      hired: base.filter(c => c.status === 'hired').length,
+      pending: items.filter(c => isInReview(c) && inJob(c, 'pending')).length,
+      approved: items.filter(
+        c => effectivePipelineIds.has(c._id) && inJob(c, 'approved')
+      ).length,
+      hired: items.filter(c => c.status === 'hired' && inJob(c, 'hired'))
+        .length,
     };
-  }, [items, jobIdFilter, allApps, effectivePipelineIds, isInReview]);
+  }, [items, jobIdFilter, jobIdsForTab, effectivePipelineIds, isInReview]);
 
   // ── Client-side filtering by tab + search ────────────────────────
   // After boot, ALL candidates are in the store. We filter by activeTab
@@ -1857,15 +1879,18 @@ export function CandidatesTable() {
 
     // Filter by job if jobId URL param is present
     if (jobIdFilter) {
-      const candidateIdsForJob = new Set(
-        allApps.filter(a => a.jobId === jobIdFilter).map(a => a.candidateId)
+      result = result.filter(c =>
+        jobIdsForTab(c, activeTab).has(jobIdFilter)
       );
-      result = result.filter(c => candidateIdsForJob.has(c._id));
     }
 
     // Then apply search
     const q = query.trim().toLowerCase();
     if (q) {
+      const jobById = new Map(allJobs.map(j => [j._id, j]));
+      const clientNameById = new Map(
+        allClients.map(c => [c._id, c.companyName])
+      );
       result = result.filter(c => {
         const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
         if (fullName.includes(q)) return true;
@@ -1876,7 +1901,13 @@ export function CandidatesTable() {
         const exp = c.parsedData?.experience?.[0];
         if (exp?.title?.toLowerCase().includes(q)) return true;
         if (exp?.company?.toLowerCase().includes(q)) return true;
-        if (c.appliedJobId?.toLowerCase().includes(q)) return true;
+        for (const jobId of jobIdsForTab(c, activeTab)) {
+          const job = jobById.get(jobId);
+          if (!job) continue;
+          if (job.title?.toLowerCase().includes(q)) return true;
+          const client = clientNameById.get(job.clientId);
+          if (client?.toLowerCase().includes(q)) return true;
+        }
         return false;
       });
     }
@@ -1886,7 +1917,9 @@ export function CandidatesTable() {
     query,
     activeTab,
     jobIdFilter,
-    allApps,
+    jobIdsForTab,
+    allJobs,
+    allClients,
     effectivePipelineIds,
     isInReview,
   ]);
