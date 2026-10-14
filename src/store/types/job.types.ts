@@ -56,7 +56,7 @@ export interface CreateJobDto {
   title: string;
   description: string;
   clientId: string;
-  pipelineId?: string;
+  pipelineTemplateId?: string;
   jobType: JobType;
   locationType: LocationType;
   location?: string;
