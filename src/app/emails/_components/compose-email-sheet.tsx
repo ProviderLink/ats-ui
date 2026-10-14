@@ -256,23 +256,50 @@ export function ComposeEmailSheet({
     const ccList = parseEmails(finalCc);
     const bccList = parseEmails(finalBcc);
 
+    const message = {
+      cc: ccList.length ? ccList : undefined,
+      bcc: bccList.length ? bccList : undefined,
+      subject: subject.trim(),
+      // Escape the body: it is plain text being wrapped as HTML, so `<` must
+      // not be sent to the recipient as markup.
+      bodyHtml: `<pre style="font-family:inherit">${escapeHtml(body)}</pre>`,
+      bodyText: body,
+      templateId,
+      context: prefill?.context,
+      variables: prefill?.variables,
+      inReplyTo: replyEmail?._id,
+      threadId: replyEmail?.threadId ?? forwardEmail?.threadId,
+      attachments: attachments.length ? attachments : undefined,
+    };
+
+    // A bulk candidate send (several addresses prefilled from a table) goes out
+    // as one message per recipient, so candidates never see each other's
+    // addresses in the To line.
+    if (prefill && toList.length > 1) {
+      const failedAddresses: string[] = [];
+      for (const address of toList) {
+        try {
+          await send({ ...message, to: [address] });
+        } catch {
+          failedAddresses.push(address);
+        }
+      }
+      if (failedAddresses.length === 0) {
+        toast.success(`Sent ${toList.length} emails.`);
+        onOpenChange(false);
+      } else {
+        // Keep the sheet open with only the failed addresses so a retry does
+        // not email the successful ones again.
+        setTo(failedAddresses.join(', '));
+        toast.error(
+          `Failed to send to ${failedAddresses.length} of ${toList.length} recipients.`
+        );
+      }
+      return;
+    }
+
     try {
-      await send({
-        to: toList,
-        cc: ccList.length ? ccList : undefined,
-        bcc: bccList.length ? bccList : undefined,
-        subject: subject.trim(),
-        // Escape the body: it is plain text being wrapped as HTML, so `<` must
-        // not be sent to the recipient as markup.
-        bodyHtml: `<pre style="font-family:inherit">${escapeHtml(body)}</pre>`,
-        bodyText: body,
-        templateId,
-        context: prefill?.context,
-        variables: prefill?.variables,
-        inReplyTo: replyEmail?._id,
-        threadId: replyEmail?.threadId ?? forwardEmail?.threadId,
-        attachments: attachments.length ? attachments : undefined,
-      });
+      await send({ ...message, to: toList });
       toast.success('Email sent.');
       onOpenChange(false);
     } catch {
