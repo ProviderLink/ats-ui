@@ -90,6 +90,13 @@ const initialState: InterviewState = {
   filters: { page: 1, limit: 20 },
 };
 
+// True while `items` holds a server-filtered subset (e.g. a calendar status
+// filter or one candidate's interviews) rather than the full post-boot list.
+// The post-boot no-op in `fetch` must not trust `items` in that state, or a
+// later unfiltered fetch could never restore the full list. Not persisted:
+// after a reload `isBooted` is false and the boot fetch reloads everything.
+let itemsAreSubset = false;
+
 export const useInterviewStore = create<InterviewState & InterviewActions>()(
   persist(
     immer((set, get) => ({
@@ -105,7 +112,8 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
         if (
           useBootStore.getState().isBooted &&
           get().items.length > 0 &&
-          !hasExplicitFilter
+          !hasExplicitFilter &&
+          !itemsAreSubset
         )
           return;
 
@@ -113,7 +121,20 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
       },
 
       refresh: async params => {
-        const filters = { ...get().filters, ...params };
+        // Params are authoritative: scoping filters (candidateId, status, ...)
+        // from a previous call must not leak into this one, or an unfiltered
+        // refresh would silently stay scoped. Only page/limit fall back to the
+        // cached values.
+        const base = get().filters;
+        const filters: InterviewFilters = {
+          page: params?.page ?? base.page,
+          limit: params?.limit ?? base.limit,
+          candidateId: params?.candidateId,
+          jobId: params?.jobId,
+          applicationId: params?.applicationId,
+          status: params?.status,
+          interviewerId: params?.interviewerId,
+        };
         const hasData = get().items.length > 0;
         // When the status filter changes, treat it as a fresh load so the
         // view shows a skeleton instead of stale data from the old filter.
@@ -124,12 +145,15 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
           if (hasData && !filterChanged) s.isRefreshing = true;
           else s.loading = true;
           s.error = null;
-          if (params) s.filters = { ...s.filters, ...params };
+          if (params) s.filters = filters;
         });
         try {
           const res = await getJson<{ data: Interview[] } & Pagination>(
             '/ats/interviews',
             filters as Record<string, unknown>
+          );
+          itemsAreSubset = Object.entries(filters).some(
+            ([k, v]) => k !== 'page' && k !== 'limit' && v !== undefined
           );
           set(s => {
             s.items = res.data;
