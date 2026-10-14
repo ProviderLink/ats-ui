@@ -20,15 +20,9 @@ interface WeekViewProps {
   currentDate: Date;
   events: Interview[];
   onEventClick: (event: Interview) => void;
-  onSlotClick?: (date: string) => void;
 }
 
-export function WeekView({
-  currentDate,
-  events,
-  onEventClick,
-  onSlotClick,
-}: WeekViewProps) {
+export function WeekView({ currentDate, events, onEventClick }: WeekViewProps) {
   const weekStart = getWeekStart(currentDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -86,14 +80,6 @@ export function WeekView({
                 'p-1.5 flex flex-col gap-1 overflow-y-auto',
                 isToday(day) && 'bg-primary/5'
               )}
-              onClick={() => {
-                if (dayEvents.length === 0 && onSlotClick) {
-                  onSlotClick(toISO(day));
-                }
-              }}
-              role={
-                dayEvents.length === 0 && onSlotClick ? 'button' : undefined
-              }
             >
               {dayEvents.length === 0 ? (
                 <div className="flex items-center justify-center h-16 text-muted-foreground/30 text-xs select-none">

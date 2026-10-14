@@ -94,21 +94,18 @@ export default function CalendarPage() {
             currentDate={currentDate}
             events={interviews}
             onEventClick={openEventDetail}
-            onSlotClick={date => openCreateEvent(date)}
           />
         ) : view === 'week' ? (
           <WeekView
             currentDate={currentDate}
             events={interviews}
             onEventClick={openEventDetail}
-            onSlotClick={date => openCreateEvent(date)}
           />
         ) : (
           <AgendaView
             currentDate={currentDate}
             events={interviews}
             onEventClick={openEventDetail}
-            onSlotClick={date => openCreateEvent(date)}
           />
         )}
       </div>

@@ -1,3 +1,8 @@
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { Interview } from '@/store/types';
 import {
@@ -17,14 +22,12 @@ interface MonthViewProps {
   currentDate: Date;
   events: Interview[];
   onEventClick: (event: Interview) => void;
-  onSlotClick?: (date: string) => void;
 }
 
 export function MonthView({
   currentDate,
   events,
   onEventClick,
-  onSlotClick,
 }: MonthViewProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -100,14 +103,6 @@ export function MonthView({
                 !current && 'bg-muted/20',
                 idx % 7 === 6 && 'border-r-0'
               )}
-              onClick={() => {
-                if (dayEvents.length === 0 && onSlotClick) {
-                  onSlotClick(toISO(date));
-                }
-              }}
-              role={
-                dayEvents.length === 0 && onSlotClick ? 'button' : undefined
-              }
             >
               <span
                 className={cn(
@@ -129,18 +124,34 @@ export function MonthView({
                 />
               ))}
               {more > 0 && (
-                <button
-                  type="button"
-                  className="text-xs text-left text-muted-foreground/70 px-1.5 hover:text-foreground hover:underline"
-                  onClick={e => {
-                    // Without this the overflow was unreachable: the cell-level
-                    // handler only fires when the day is empty.
-                    e.stopPropagation();
-                    onSlotClick?.(toISO(date));
-                  }}
-                >
-                  +{more} more
-                </button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-xs text-left text-muted-foreground/70 px-1.5 hover:text-foreground hover:underline"
+                    >
+                      +{more} more
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-64 p-2">
+                    <div className="text-xs font-medium text-muted-foreground px-1 pb-1.5">
+                      {date.toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </div>
+                    <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+                      {dayEvents.map(e => (
+                        <EventCard
+                          key={e._id}
+                          event={e}
+                          onClick={onEventClick}
+                        />
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           );
