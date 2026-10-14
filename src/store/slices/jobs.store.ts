@@ -72,6 +72,13 @@ const initialState: JobState = {
   filters: { page: 1, limit: 20 },
 };
 
+// True while `items` holds a server-filtered subset (e.g. `{ clientId }` or
+// `{ status: 'open' }`) rather than the full post-boot list. The post-boot
+// no-op in `fetch` must not trust `items` in that state, otherwise a later
+// unfiltered fetch can never restore the full list. Not persisted: after a
+// reload `isBooted` is false and the boot fetch reloads everything anyway.
+let itemsAreSubset = false;
+
 export const useJobStore = create<JobState & JobActions>()(
   persist(
     immer((set, get) => ({
@@ -92,7 +99,8 @@ export const useJobStore = create<JobState & JobActions>()(
         if (
           useBootStore.getState().isBooted &&
           get().items.length > 0 &&
-          !hasExplicitFilter
+          !hasExplicitFilter &&
+          !itemsAreSubset
         )
           return;
 
@@ -126,6 +134,9 @@ export const useJobStore = create<JobState & JobActions>()(
                 limit: res.limit,
                 totalPages: res.totalPages,
               };
+          itemsAreSubset = Object.entries(filters).some(
+            ([k, v]) => k !== 'page' && k !== 'limit' && v !== undefined
+          );
           set(s => {
             s.items = data;
             s.pagination = pag;
