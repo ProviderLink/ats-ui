@@ -624,7 +624,7 @@ export function NewJobSheet({
       title: title.trim(),
       description: description.trim(),
       clientId,
-      pipelineId: pipelineId || undefined,
+      pipelineTemplateId: pipelineId || undefined,
       jobType: jobType as CreateJobDto['jobType'],
       locationType: locationType as CreateJobDto['locationType'],
       location: location.trim() || undefined,
