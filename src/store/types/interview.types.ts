@@ -32,9 +32,8 @@ export interface Interview {
   status: InterviewStatus;
   scheduledAt: string;
   /**
-   * Server-managed. A fixed default is applied on create and the schedule form
-   * no longer asks for it, but it is still rendered and used to compute the
-   * interview's end time.
+   * Minutes. Chosen in the schedule form on create (default 60), immutable
+   * afterwards; used to compute the interview's end time.
    */
   duration: number;
   /**
@@ -67,6 +66,8 @@ export interface CreateInterviewDto {
   title: string;
   type: InterviewType;
   scheduledAt: string;
+  /** Minutes: 10, 15, 30 or 60. Backend defaults to 60 when omitted. */
+  duration?: number;
   interviewerIds: string[];
   meetingDetails?: MeetingDetails;
 }
@@ -78,6 +79,8 @@ export interface CreateNestedInterviewDto {
   type: InterviewType;
   jobId?: string;
   scheduledAt: string;
+  /** Minutes: 10, 15, 30 or 60. Backend defaults to 60 when omitted. */
+  duration?: number;
   interviewerIds: string[];
   meetingDetails?: MeetingDetails;
 }

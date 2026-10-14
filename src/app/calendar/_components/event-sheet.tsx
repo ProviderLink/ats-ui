@@ -636,6 +636,7 @@ export function EventSheet({
         title: data.title,
         type: data.type as Interview['type'],
         scheduledAt,
+        duration: data.duration,
         interviewerIds: data.interviewerIds,
         meetingDetails: {
           link: data.meetingLink || null,
@@ -718,6 +719,7 @@ export function EventSheet({
             type: event!.type,
             date: getZonedDate(event!.scheduledAt, event!.timezone),
             time: getZonedTime(event!.scheduledAt, event!.timezone),
+            duration: event!.duration,
             meetingLink: event!.meetingDetails?.link ?? '',
             phoneNumber: event!.meetingDetails?.phoneNumber ?? '',
             address: event!.meetingDetails?.address ?? '',

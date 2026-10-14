@@ -1166,6 +1166,7 @@ function PipelineActionsMenu({
         type: data.type as Interview['type'],
         jobId: data.jobId || undefined,
         scheduledAt,
+        duration: data.duration,
         // Empty is valid — the backend falls back to the organiser.
         interviewerIds: data.interviewerIds,
         meetingDetails: {

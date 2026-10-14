@@ -41,6 +41,8 @@ export interface ScheduleInterviewInput {
   type: string;
   jobId: string;
   scheduledAt: string;
+  /** Minutes. */
+  duration: number;
   interviewerIds: string[];
   meetingLink: string;
   phoneNumber: string;
@@ -60,11 +62,16 @@ export interface ScheduleInterviewInitial {
   jobId?: string;
   date: string;
   time: string;
+  /** Not editable in edit mode; shown read-only. */
+  duration?: number;
   meetingLink: string;
   phoneNumber: string;
   address: string;
   interviewerIds: string[];
 }
+
+export const DURATION_OPTIONS = [10, 15, 30, 60] as const;
+const DEFAULT_DURATION = 60;
 
 export type ScheduleInterviewMode = 'create' | 'edit';
 
@@ -103,7 +110,6 @@ function nextHourDefaults(timezone: string) {
  * Deliberately does NOT collect:
  * - **Round** — interviews are not numbered.
  * - **Stage / interviewType** — removed from the product.
- * - **Duration** — a fixed value is applied server-side.
  * - **Timezone** — always the company timezone from Settings. It is *shown*
  *   (read-only) so the user can see which clock the times refer to.
  *
@@ -187,6 +193,9 @@ export function ScheduleInterviewDialog({
   const [time, setTime] = useState(() => initial?.time ?? defaultTime);
   // The organiser is the implicit interviewer, so the field starts pre-filled
   // instead of empty — an empty list used to block the Schedule button.
+  const [duration, setDuration] = useState<number>(
+    () => initial?.duration ?? DEFAULT_DURATION
+  );
   const [interviewerIds, setInterviewerIds] = useState<string[]>(() =>
     initial ? initial.interviewerIds : currentUser?._id ? [currentUser._id] : []
   );
@@ -292,7 +301,7 @@ export function ScheduleInterviewDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="si-when">Date</Label>
               <Input
@@ -310,6 +319,29 @@ export function ScheduleInterviewDialog({
                 value={time}
                 onChange={e => setTime(e.target.value)}
               />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="si-duration">Duration</Label>
+              <Select
+                value={String(duration)}
+                onValueChange={v => setDuration(Number(v))}
+                disabled={isEdit}
+              >
+                <SelectTrigger id="si-duration" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Legacy records may hold a length outside the new list. */}
+                  {(DURATION_OPTIONS.some(d => d === duration)
+                    ? [...DURATION_OPTIONS]
+                    : [...DURATION_OPTIONS, duration].sort((a, b) => a - b)
+                  ).map(d => (
+                    <SelectItem key={d} value={String(d)}>
+                      {d} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -522,6 +554,7 @@ export function ScheduleInterviewDialog({
                 type,
                 jobId,
                 scheduledAt,
+                duration,
                 interviewerIds,
                 meetingLink,
                 phoneNumber,

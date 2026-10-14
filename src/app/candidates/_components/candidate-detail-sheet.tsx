@@ -2329,6 +2329,7 @@ export function CandidateDetailSheet({
         type: data.type as Interview['type'],
         jobId: data.jobId || undefined,
         scheduledAt,
+        duration: data.duration,
         interviewerIds: data.interviewerIds,
         meetingDetails: {
           link: data.meetingLink || null,
