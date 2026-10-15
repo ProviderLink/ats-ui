@@ -1,12 +1,12 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { ChangeJobDialog } from '@/components/change-job-dialog';
+import { HireCandidateDialog } from '@/components/hire-candidate-dialog';
+import { MoveStageDialog } from '@/components/move-stage-dialog';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { ScheduleInterviewDialog, type ScheduleInterviewInput } from '@/components/schedule-interview-dialog';
+import { TalentPoolToggleDialog } from '@/components/talent-pool-toggle-dialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInterviewerOptions } from '@/hooks/use-interviewer-options';
 import { DEFAULT_TIMEZONE, zonedWallClockToUtc } from '@/lib/timezones';
 import { useApplicationStore } from '@/store/slices/applications.store';
@@ -17,7 +17,7 @@ import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useSettingsStore } from '@/store/slices/settings.store';
 import type { Application, Candidate, Interview, Job } from '@/store/types';
 import { ArrowRightLeftIcon, CalendarIcon, EllipsisVerticalIcon, GitCommitHorizontalIcon, MailIcon, PlusIcon, StarIcon, UserCheckIcon, XIcon } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 export function PipelineActionsMenu({
@@ -83,7 +83,6 @@ export function PipelineActionsMenu({
     () => allJobs.filter(j => j.status === 'open'),
     [allJobs]
   );
-  const stageSelectRef = useRef<HTMLButtonElement>(null);
 
   const name = `${candidate.firstName} ${candidate.lastName}`;
 
@@ -499,78 +498,26 @@ export function PipelineActionsMenu({
         mode={buildComposeMode()}
       />
 
-      {/* Move Stage Dialog */}
-      <Dialog open={stageOpen} onOpenChange={setStageOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Move Stage</DialogTitle>
-            <DialogDescription>
-              Advance <span className="font-medium">{name}</span> to the next
-              pipeline stage.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label>Select Stage</Label>
-            <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-              <SelectTrigger ref={stageSelectRef}>
-                <SelectValue placeholder="Choose a stage..." />
-              </SelectTrigger>
-              <SelectContent>
-                {stages
-                  .filter(s => s.isActive !== false)
-                  .map(s => (
-                    <SelectItem key={s._id} value={s._id}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: s.color }}
-                        />
-                        {s.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStageOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleMoveStage}
-              disabled={
-                !selectedStageId ||
-                acting ||
-                selectedStageId === application?.currentStage?.stageId
-              }
-            >
-              {acting ? 'Moving…' : 'Move Stage'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MoveStageDialog
+        open={stageOpen}
+        onOpenChange={setStageOpen}
+        candidateName={name}
+        stages={stages}
+        selectedStageId={selectedStageId}
+        onSelectedStageIdChange={setSelectedStageId}
+        currentStageId={application?.currentStage?.stageId}
+        loading={acting}
+        onConfirm={handleMoveStage}
+      />
 
-      {/* Hire Confirm Dialog */}
-      <Dialog open={hireOpen} onOpenChange={setHireOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Hire Candidate</DialogTitle>
-            <DialogDescription>
-              Mark <span className="font-medium">{name}</span> as hired for{' '}
-              <span className="font-medium">{job?.title ?? 'this job'}</span>?
-              This completes the pipeline.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setHireOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleHire} disabled={acting}>
-              {acting ? 'Hiring…' : 'Confirm Hire'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <HireCandidateDialog
+        open={hireOpen}
+        onOpenChange={setHireOpen}
+        candidateName={name}
+        jobTitle={job?.title}
+        loading={acting}
+        onConfirm={handleHire}
+      />
 
       {/* Reject Dialog — structured reason + destination */}
       <RejectDialog
@@ -624,51 +571,14 @@ export function PipelineActionsMenu({
         loading={acting}
       />
 
-      {/* Talent Pool Confirm */}
-      <Dialog
+      <TalentPoolToggleDialog
         open={talentPoolConfirmOpen}
         onOpenChange={setTalentPoolConfirmOpen}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {candidate.inTalentPool
-                ? 'Remove from Talent Pool'
-                : 'Add to Talent Pool'}
-            </DialogTitle>
-            <DialogDescription>
-              {candidate.inTalentPool ? (
-                <>
-                  Remove <span className="font-medium">{name}</span> from the
-                  talent pool? They will no longer appear in saved candidates.
-                </>
-              ) : (
-                <>
-                  Add <span className="font-medium">{name}</span> to the talent
-                  pool? They will be saved for future opportunities.
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setTalentPoolConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setTalentPoolConfirmOpen(false);
-                handleTalentPool();
-              }}
-              disabled={acting}
-            >
-              {candidate.inTalentPool ? 'Remove' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        candidateName={name}
+        inTalentPool={!!candidate.inTalentPool}
+        loading={acting}
+        onConfirm={handleTalentPool}
+      />
     </>
   );
 }
