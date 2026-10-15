@@ -36,7 +36,21 @@ import { ProtectedRoute } from '@/components/auth/protected-route';
 import { RoleGuard } from '@/components/auth/role-guard';
 import { Layout } from '@/components/layout';
 import { PublicShell } from '@/components/public-shell';
+import type { UserRole } from '@/store/types/enums';
+import type { ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+
+const ADMIN_ONLY: UserRole[] = ['admin'];
+const STAFF_ROLES: UserRole[] = [
+  'admin',
+  'hiring_manager',
+  'recruiter',
+  'coordinator',
+];
+
+const guarded = (allowedRoles: UserRole[], page: ReactNode) => (
+  <RoleGuard allowedRoles={allowedRoles}>{page}</RoleGuard>
+);
 
 export const router = createBrowserRouter([
   // Public careers portal — no auth required
@@ -89,28 +103,13 @@ export const router = createBrowserRouter([
               { path: 'hired', element: <HiredPage /> },
               {
                 path: 'permanently-ineligible',
-                element: (
-                  <RoleGuard allowedRoles={['admin']}>
-                    <PermanentlyIneligiblePage />
-                  </RoleGuard>
-                ),
+                element: guarded(ADMIN_ONLY, <PermanentlyIneligiblePage />),
               },
               { path: 'calendar', element: <CalendarPage /> },
-              {
-                path: 'team',
-                element: (
-                  <RoleGuard allowedRoles={['admin']}>
-                    <TeamPage />
-                  </RoleGuard>
-                ),
-              },
+              { path: 'team', element: guarded(ADMIN_ONLY, <TeamPage />) },
               {
                 path: 'team/:id',
-                element: (
-                  <RoleGuard allowedRoles={['admin']}>
-                    <TeamMemberPage />
-                  </RoleGuard>
-                ),
+                element: guarded(ADMIN_ONLY, <TeamMemberPage />),
               },
               {
                 path: 'settings',
@@ -118,26 +117,11 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'settings/general',
-                element: (
-                  <RoleGuard
-                    allowedRoles={[
-                      'admin',
-                      'hiring_manager',
-                      'recruiter',
-                      'coordinator',
-                    ]}
-                  >
-                    <SettingsGeneralPage />
-                  </RoleGuard>
-                ),
+                element: guarded(STAFF_ROLES, <SettingsGeneralPage />),
               },
               {
                 path: 'settings/disposition-reasons',
-                element: (
-                  <RoleGuard allowedRoles={['admin']}>
-                    <SettingsDispositionReasonsPage />
-                  </RoleGuard>
-                ),
+                element: guarded(ADMIN_ONLY, <SettingsDispositionReasonsPage />),
               },
               { path: 'account', element: <SettingsAccountPage /> },
               { path: 'tags', element: <TagsPage /> },
