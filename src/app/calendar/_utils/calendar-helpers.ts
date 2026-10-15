@@ -6,6 +6,8 @@ import {
 } from '@/lib/timezones';
 import type { Interview } from '@/store/types';
 
+export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export function toISO(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -13,12 +15,17 @@ export function toISO(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+export function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 /**
  * Calendar day an interview falls on, in the zone it was scheduled in.
- *
- * `timezone` is optional so existing callers keep compiling, but it SHOULD be
- * passed: `scheduledAt` is a UTC instant, so slicing it put a 23:00-UTC
- * interview on the wrong day for anyone east of UTC.
+ * `scheduledAt` is a UTC instant, so always pass `timezone`: slicing it put a
+ * 23:00-UTC interview on the wrong day for anyone east of UTC.
  */
 export function getInterviewDate(
   scheduledAt: string,
@@ -27,7 +34,6 @@ export function getInterviewDate(
   return getZonedDate(scheduledAt, timezone);
 }
 
-/** Wall-clock start time in the interview's own timezone. */
 export function getInterviewStartTime(
   scheduledAt: string,
   timezone?: string | null
@@ -36,8 +42,6 @@ export function getInterviewStartTime(
 }
 
 /**
- * Wall-clock end time in the interview's own timezone.
- *
  * Derives from the same `getZonedTime` as the start rather than adding minutes
  * to UTC fields, so a 23:30 start plus 60 minutes correctly reads 00:30 instead
  * of mixing zones.
@@ -53,10 +57,7 @@ export function getInterviewEndTime(
   return getZonedTime(end.toISOString(), timezone);
 }
 
-/**
- * Long-form date label in the interview's own timezone, so the date shown next
- * to a time never belongs to a different day than that time.
- */
+/** Rendered in the interview's own timezone so the date never disagrees with the time shown beside it. */
 export function formatScheduledAt(
   scheduledAt: string,
   timezone?: string | null
@@ -94,4 +95,18 @@ export function getMeetingLocation(interview: Interview): string | null {
   if (m.phoneNumber) return m.phoneNumber;
   if (m.address) return m.address;
   return null;
+}
+
+export function sortByStartTime(events: Interview[]): Interview[] {
+  return [...events].sort((a, b) =>
+    getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
+      getInterviewStartTime(b.scheduledAt, b.timezone)
+    )
+  );
+}
+
+export function getEventsOnDate(events: Interview[], isoDate: string) {
+  return sortByStartTime(
+    events.filter(e => getInterviewDate(e.scheduledAt, e.timezone) === isoDate)
+  );
 }

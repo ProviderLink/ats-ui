@@ -7,10 +7,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { INTERVIEW_STATUS_LABELS } from '@/lib/interview-styles';
 import type { InterviewStatus } from '@/store/types';
-import { ChevronLeftIcon, ChevronRightIcon, FilterIcon, PlusIcon } from 'lucide-react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  FilterIcon,
+  PlusIcon,
+} from 'lucide-react';
+import { getWeekStart } from '../_utils/calendar-helpers';
 
 export type CalendarView = 'month' | 'week' | 'agenda';
+
+const VIEW_OPTIONS: { value: CalendarView; label: string }[] = [
+  { value: 'month', label: 'Month' },
+  { value: 'week', label: 'Week' },
+  { value: 'agenda', label: 'Agenda' },
+];
 
 const MONTHS = [
   'January',
@@ -29,8 +42,7 @@ const MONTHS = [
 
 function getTitle(date: Date, view: CalendarView): string {
   if (view === 'week') {
-    const start = new Date(date);
-    start.setDate(date.getDate() - date.getDay());
+    const start = getWeekStart(date);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
 
@@ -105,10 +117,11 @@ export function CalendarHeader({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-            <SelectItem value="no_show">No Show</SelectItem>
+            {Object.entries(INTERVIEW_STATUS_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -118,21 +131,15 @@ export function CalendarHeader({
           onValueChange={v => v && onViewChange(v as CalendarView)}
           className="hidden sm:flex"
         >
-          <ToggleGroupItem
-            value="month"
-            className="text-xs px-3 h-8 rounded-md"
-          >
-            Month
-          </ToggleGroupItem>
-          <ToggleGroupItem value="week" className="text-xs px-3 h-8 rounded-md">
-            Week
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="agenda"
-            className="text-xs px-3 h-8 rounded-md"
-          >
-            Agenda
-          </ToggleGroupItem>
+          {VIEW_OPTIONS.map(({ value, label }) => (
+            <ToggleGroupItem
+              key={value}
+              value={value}
+              className="text-xs px-3 h-8 rounded-md"
+            >
+              {label}
+            </ToggleGroupItem>
+          ))}
         </ToggleGroup>
 
         <Button size="sm" onClick={onNewEvent}>

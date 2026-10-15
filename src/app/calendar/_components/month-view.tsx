@@ -6,13 +6,11 @@ import {
 import { cn } from '@/lib/utils';
 import type { Interview } from '@/store/types';
 import {
-  getInterviewDate,
-  getInterviewStartTime,
+  getEventsOnDate,
   toISO,
+  WEEKDAY_LABELS,
 } from '../_utils/calendar-helpers';
 import { EventCard } from './event-card';
-
-const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -54,20 +52,6 @@ export function MonthView({
     cells.push({ date: new Date(year, month + 1, nextDay++), current: false });
   }
 
-  // Sorted by start time, like WeekView and AgendaView. The API returns
-  // `scheduledAt: -1`, so without this a day cell showed the day's LATEST three
-  // interviews and hid the morning ones.
-  function eventsFor(date: Date) {
-    const iso = toISO(date);
-    return events
-      .filter(e => getInterviewDate(e.scheduledAt, e.timezone) === iso)
-      .sort((a, b) =>
-        getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
-          getInterviewStartTime(b.scheduledAt, b.timezone)
-        )
-      );
-  }
-
   function isToday(date: Date) {
     return (
       date.getFullYear() === today.getFullYear() &&
@@ -79,7 +63,7 @@ export function MonthView({
   return (
     <div className="flex flex-col flex-1 overflow-hidden min-h-0">
       <div className="grid grid-cols-7 border-b bg-muted/30 shrink-0">
-        {WEEK_DAYS.map(d => (
+        {WEEKDAY_LABELS.map(d => (
           <div
             key={d}
             className="py-2 text-center text-xs font-medium text-muted-foreground select-none"
@@ -91,7 +75,8 @@ export function MonthView({
 
       <div className="grid grid-cols-7 grid-rows-6 flex-1 overflow-auto">
         {cells.map(({ date, current }, idx) => {
-          const dayEvents = eventsFor(date);
+          // The API returns `scheduledAt: -1`; sorted so a cell's first three are the earliest.
+          const dayEvents = getEventsOnDate(events, toISO(date));
           const visible = dayEvents.slice(0, 3);
           const more = dayEvents.length - visible.length;
 

@@ -1,20 +1,12 @@
 import { cn } from '@/lib/utils';
 import type { Interview } from '@/store/types';
 import {
-  getInterviewDate,
-  getInterviewStartTime,
+  getEventsOnDate,
+  getWeekStart,
   toISO,
+  WEEKDAY_LABELS,
 } from '../_utils/calendar-helpers';
 import { EventCard } from './event-card';
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() - d.getDay());
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 interface WeekViewProps {
   currentDate: Date;
@@ -33,16 +25,6 @@ export function WeekView({ currentDate, events, onEventClick }: WeekViewProps) {
     return d;
   });
 
-  function eventsFor(date: Date) {
-    return events
-      .filter(e => getInterviewDate(e.scheduledAt, e.timezone) === toISO(date))
-      .sort((a, b) =>
-        getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
-          getInterviewStartTime(b.scheduledAt, b.timezone)
-        )
-      );
-  }
-
   function isToday(date: Date) {
     return date.getTime() === today.getTime();
   }
@@ -56,7 +38,7 @@ export function WeekView({ currentDate, events, onEventClick }: WeekViewProps) {
             className="py-3 flex flex-col items-center gap-0.5 border-r last:border-r-0"
           >
             <span className="text-xs font-medium text-muted-foreground select-none">
-              {DAY_NAMES[day.getDay()]}
+              {WEEKDAY_LABELS[day.getDay()]}
             </span>
             <span
               className={cn(
@@ -72,7 +54,7 @@ export function WeekView({ currentDate, events, onEventClick }: WeekViewProps) {
 
       <div className="grid grid-cols-7 flex-1 divide-x overflow-auto">
         {days.map((day, i) => {
-          const dayEvents = eventsFor(day);
+          const dayEvents = getEventsOnDate(events, toISO(day));
           return (
             <div
               key={i}

@@ -1,7 +1,11 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { useInterviewStore } from '@/store/slices/interviews.store';
-import type { Interview, InterviewStatus } from '@/store/types';
+import type {
+  Interview,
+  InterviewFilters,
+  InterviewStatus,
+} from '@/store/types';
 import { useCallback, useEffect, useState } from 'react';
 import { AgendaView } from './_components/agenda-view';
 import {
@@ -30,29 +34,20 @@ export default function CalendarPage() {
   useSocketRoom('interviews');
 
   const loadInterviews = useCallback(() => {
-    const params: Record<string, unknown> = { limit: 200 };
+    const params: InterviewFilters = { limit: 200 };
     if (statusFilter !== 'all') params.status = statusFilter;
-    fetchInterviews(params as Parameters<typeof fetchInterviews>[0]);
+    fetchInterviews(params);
   }, [fetchInterviews, statusFilter]);
 
   useEffect(() => {
     loadInterviews();
   }, [loadInterviews]);
 
-  function handlePrev() {
+  function shiftDate(direction: 1 | -1) {
     setCurrentDate(d => {
       const next = new Date(d);
-      if (view === 'week') next.setDate(d.getDate() - 7);
-      else next.setMonth(d.getMonth() - 1);
-      return next;
-    });
-  }
-
-  function handleNext() {
-    setCurrentDate(d => {
-      const next = new Date(d);
-      if (view === 'week') next.setDate(d.getDate() + 7);
-      else next.setMonth(d.getMonth() + 1);
+      if (view === 'week') next.setDate(d.getDate() + 7 * direction);
+      else next.setMonth(d.getMonth() + direction);
       return next;
     });
   }
@@ -75,8 +70,8 @@ export default function CalendarPage() {
         currentDate={currentDate}
         view={view}
         statusFilter={statusFilter}
-        onPrev={handlePrev}
-        onNext={handleNext}
+        onPrev={() => shiftDate(-1)}
+        onNext={() => shiftDate(1)}
         onToday={() => setCurrentDate(new Date())}
         onViewChange={setView}
         onStatusFilterChange={setStatusFilter}
