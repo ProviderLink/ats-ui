@@ -1,24 +1,20 @@
-import { Button } from '@/components/ui/button';
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/slices/auth.store';
-import {
-  CheckCircleIcon,
-  EyeIcon,
-  EyeOffIcon,
-  Loader2Icon,
-  XCircleIcon,
-} from 'lucide-react';
+import { CheckCircleIcon, Loader2Icon, XCircleIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { AuthCard } from '../_components/auth-card';
+import { AuthInvalidCard } from '../_components/auth-invalid-card';
+import { AuthStatusCard } from '../_components/auth-status-card';
+import { AuthSubmitButton } from '../_components/auth-submit-button';
+import { NewPasswordFields } from '../_components/new-password-fields';
+import { validateNewPassword } from '../_utils/validate-new-password';
 
 export default function VerifyEmailPage() {
   const { token } = useParams<{ token: string }>();
@@ -32,8 +28,6 @@ export default function VerifyEmailPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const called = useRef(false);
@@ -54,12 +48,9 @@ export default function VerifyEmailPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password !== confirm) {
-      toast.error('Passwords do not match.');
-      return;
-    }
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters.');
+    const validationError = validateNewPassword(password, confirm);
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
     if (!token) return;
@@ -80,74 +71,48 @@ export default function VerifyEmailPage() {
 
   if (!token) {
     return (
-      <Card className="rounded-xl shadow-lg border-border/60 bg-card/80 backdrop-blur-md">
-        <CardContent className="flex flex-col items-center gap-4 pt-8 pb-8 text-center">
-          <p className="text-sm text-destructive">
-            Invalid or missing invitation link.
-          </p>
-          <Link
-            to="/ats/login"
-            className="text-sm text-primary hover:underline"
-          >
-            Back to sign in
-          </Link>
-        </CardContent>
-      </Card>
+      <AuthInvalidCard
+        message="Invalid or missing invitation link."
+        linkTo="/ats/login"
+        linkLabel="Back to sign in"
+      />
     );
   }
 
   if (done) {
     return (
-      <Card className="rounded-xl shadow-lg border-border/60 bg-card/80 backdrop-blur-md">
-        <CardContent className="flex flex-col items-center gap-4 pt-8 pb-8 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-accent">
-            <CheckCircleIcon className="size-6 text-primary" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-base font-semibold">Account created</p>
-            <p className="text-sm text-muted-foreground">
-              Redirecting you to sign in…
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <AuthStatusCard
+        icon={CheckCircleIcon}
+        title="Account created"
+        description="Redirecting you to sign in…"
+      />
     );
   }
 
   if (step === 'verifying') {
     return (
-      <Card className="rounded-xl shadow-lg border-border/60 bg-card/80 backdrop-blur-md">
-        <CardContent className="flex flex-col items-center gap-4 pt-8 pb-8 text-center">
-          <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
-          <div className="flex flex-col gap-1">
-            <p className="text-base font-semibold">Verifying your email</p>
-            <p className="text-sm text-muted-foreground">
-              Please wait while we confirm your invitation…
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <AuthStatusCard
+        icon={Loader2Icon}
+        tone="loading"
+        title="Verifying your email"
+        description="Please wait while we confirm your invitation…"
+      />
     );
   }
 
   if (step === 'error') {
     return (
-      <Card className="rounded-xl shadow-lg border-border/60 bg-card/80 backdrop-blur-md">
-        <CardContent className="flex flex-col items-center gap-4 pt-8 pb-8 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
-            <XCircleIcon className="size-6 text-destructive" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-base font-semibold">Verification failed</p>
-            <p className="text-sm text-muted-foreground">{errorMsg}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <AuthStatusCard
+        icon={XCircleIcon}
+        tone="error"
+        title="Verification failed"
+        description={errorMsg}
+      />
     );
   }
 
   return (
-    <Card className="rounded-xl shadow-lg border-border/60 bg-card/80 backdrop-blur-md">
+    <AuthCard>
       <CardHeader className="pb-4">
         <div className="flex justify-center mb-4">
           <div className="flex size-12 items-center justify-center rounded-full bg-accent">
@@ -163,68 +128,16 @@ export default function VerifyEmailPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="pr-9"
-              />
-              <button
-                type="button"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setShowPassword(v => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeOffIcon className="size-4" />
-                ) : (
-                  <EyeIcon className="size-4" />
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="confirm">Confirm password</Label>
-            <div className="relative">
-              <Input
-                id="confirm"
-                type={showConfirm ? 'text' : 'password'}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                required
-                className="pr-9"
-              />
-              <button
-                type="button"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setShowConfirm(v => !v)}
-                aria-label={
-                  showConfirm
-                    ? 'Hide confirm password'
-                    : 'Show confirm password'
-                }
-              >
-                {showConfirm ? (
-                  <EyeOffIcon className="size-4" />
-                ) : (
-                  <EyeIcon className="size-4" />
-                )}
-              </button>
-            </div>
-          </div>
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading && <Loader2Icon className="size-4 mr-2 animate-spin" />}
+          <NewPasswordFields
+            passwordLabel="Password"
+            password={password}
+            confirm={confirm}
+            onPasswordChange={setPassword}
+            onConfirmChange={setConfirm}
+          />
+          <AuthSubmitButton loading={loading} className="mt-0">
             Set password &amp; sign in
-          </Button>
+          </AuthSubmitButton>
         </form>
         <p className="text-xs text-muted-foreground mt-4 text-center">
           Already have an account?{' '}
@@ -233,6 +146,6 @@ export default function VerifyEmailPage() {
           </Link>
         </p>
       </CardContent>
-    </Card>
+    </AuthCard>
   );
 }
