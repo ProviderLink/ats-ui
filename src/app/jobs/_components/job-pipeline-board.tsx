@@ -1,4 +1,4 @@
-import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
+import { avatarBg } from '@/lib/candidate-styles';
 import { RejectDialog, type RejectPayload } from '@/components/reject-dialog';
 import { getJson } from '@/lib/api-client';
 import { cn } from '@/lib/utils';

@@ -2,7 +2,7 @@ import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-det
 import {
   avatarBg,
   phaseConfig,
-} from '@/app/candidates/_utils/candidate-styles';
+} from '@/lib/candidate-styles';
 import {
   DropdownMenu,
   DropdownMenuContent,

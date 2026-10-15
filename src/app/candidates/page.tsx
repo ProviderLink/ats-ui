@@ -1,20 +1,19 @@
 import { Button } from '@/components/ui/button';
 import { useJobStore } from '@/store';
 import { XIcon } from 'lucide-react';
-import { Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CandidatesTable } from './_components/candidates-table';
 
-function CandidatesPageContent() {
+export default function CandidatesPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const jobId = searchParams.get('jobId') ?? '';
 
-  const { fetch: fetchJobs, items: jobs } = useJobStore();
+  const fetchJobs = useJobStore(s => s.fetch);
+  const jobs = useJobStore(s => s.items);
 
-  // Only pre-fetch jobs when a jobId filter is active — the table needs
-  // them just to render the "filtered by job" banner.
-  // Candidate fetching is handled server-side inside CandidatesTable.
+  // Jobs are only needed for the "filtered by job" banner.
   useEffect(() => {
     if (jobId) fetchJobs({ page: 1, limit: 9999 });
   }, [fetchJobs, jobId]);
@@ -40,13 +39,5 @@ function CandidatesPageContent() {
       )}
       <CandidatesTable />
     </div>
-  );
-}
-
-export default function CandidatesPage() {
-  return (
-    <Suspense>
-      <CandidatesPageContent />
-    </Suspense>
   );
 }

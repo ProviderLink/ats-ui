@@ -2,7 +2,7 @@ import {
   avatarBg,
   scoreTextColor,
   statusConfig,
-} from '@/app/candidates/_utils/candidate-styles';
+} from '@/lib/candidate-styles';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

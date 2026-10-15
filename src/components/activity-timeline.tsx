@@ -1,4 +1,4 @@
-import { avatarBg } from '@/app/candidates/_utils/candidate-styles';
+import { avatarBg } from '@/lib/candidate-styles';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActivityActors } from '@/hooks/use-activity-actors';

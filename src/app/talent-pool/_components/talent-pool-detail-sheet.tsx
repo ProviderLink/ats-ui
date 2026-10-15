@@ -61,7 +61,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { avatarBg } from '../../candidates/_utils/candidate-styles';
+import { avatarBg } from '@/lib/candidate-styles';
 
 /** One `text-sm leading-relaxed` line — the editor's minimum height. */
 const NOTES_EDIT_MIN_HEIGHT = 23;

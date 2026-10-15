@@ -1,9 +1,7 @@
-import {
-  CandidateCell,
-  ColHeader,
-  SortHeader,
-  TableSkeleton,
-} from '@/app/candidates/_components/candidates-table';
+import { CandidateCell } from '@/components/candidate-table/candidate-cell';
+import { ColHeader } from '@/components/candidate-table/col-header';
+import { SortHeader } from '@/components/candidate-table/sort-header';
+import { TableSkeleton } from '@/components/candidate-table/table-skeleton';
 import {
   ComposeEmailSheet,
   type ComposeMode,
