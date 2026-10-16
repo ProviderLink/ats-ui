@@ -306,6 +306,8 @@ export function EmailsList() {
 
   const [tab, setTab] = useState<TabValue>('all');
   const [query, setQuery] = useState('');
+  // What the box shows; `query` (debounced) drives the server fetch.
+  const [inputValue, setInputValue] = useState('');
   const [statusFilter, setStatusFilter] = useState<EmailStatus | 'all'>('all');
   const [selected, setSelected] = useState<Email | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -444,6 +446,7 @@ export function EmailsList() {
   }
 
   function handleQuery(v: string) {
+    setInputValue(v);
     // Email search is SERVER-side, so every keystroke was a full round-trip.
     // Debounce it like every other search box in the app (300 ms).
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -451,6 +454,7 @@ export function EmailsList() {
   }
 
   function handleQueryImmediate(v: string) {
+    setInputValue(v);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     applyQuery(v);
   }
@@ -608,7 +612,7 @@ export function EmailsList() {
               <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search subject, sender, recipient..."
-                value={query}
+                value={inputValue}
                 onChange={e => handleQuery(e.target.value)}
                 className="pl-8 h-9"
               />
