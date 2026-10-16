@@ -88,6 +88,7 @@ export interface CreateNestedInterviewDto {
 export interface UpdateInterviewDto {
   title?: string;
   scheduledAt?: string;
+  duration?: number;
   interviewerIds?: string[];
   meetingDetails?: MeetingDetails;
   status?: InterviewStatus;

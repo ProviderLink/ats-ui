@@ -50,6 +50,7 @@ export function EditEventDialog({
           title: data.title,
           type: resolved.type,
           scheduledAt: resolved.scheduledAt,
+          duration: data.duration,
           interviewerIds: data.interviewerIds,
           meetingDetails: resolved.meetingDetails,
         },

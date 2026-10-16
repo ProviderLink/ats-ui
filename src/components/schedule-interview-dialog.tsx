@@ -325,7 +325,6 @@ export function ScheduleInterviewDialog({
               <Select
                 value={String(duration)}
                 onValueChange={v => setDuration(Number(v))}
-                disabled={isEdit}
               >
                 <SelectTrigger id="si-duration" className="w-full">
                   <SelectValue />
