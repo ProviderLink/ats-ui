@@ -1,33 +1,32 @@
-import { Badge } from '@/components/ui/badge';
+import { EducationEditor } from '@/components/candidate-form/education-editor';
+import { EnglishProficiencySelect } from '@/components/candidate-form/english-proficiency-select';
+import { ExperienceEditor } from '@/components/candidate-form/experience-editor';
+import { Field } from '@/components/candidate-form/field';
+import { TagsInput } from '@/components/candidate-form/tags-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { postForm, postJson } from '@/lib/api-client';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
-import type { CandidateParsedData } from '@/store/types';
+import type {
+  CandidateParsedData,
+  ParsedEducation,
+  ParsedExperience,
+} from '@/store/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowLeftIcon,
   ChevronsUpDownIcon,
   FileTextIcon,
   Loader2Icon,
-  PlusIcon,
   SearchIcon,
   TriangleAlertIcon,
   UploadIcon,
@@ -46,20 +45,6 @@ import { z } from 'zod';
 
 // --- Types ---
 
-type ParsedExperience = {
-  company: string;
-  title: string;
-  duration: string;
-  description: string;
-};
-
-type ParsedEducation = {
-  institution: string;
-  degree: string;
-  field: string;
-  year: string;
-};
-
 type ReviewData = {
   summary: string;
   skills: string[];
@@ -76,7 +61,9 @@ const inputSchema = z.object({
   lastName: z.string().min(1, 'Required').max(50),
   email: z.string().min(1, 'Required').email('Invalid email'),
   phone: z.string().min(1, 'Required'),
-  yearsOfExperience: z.number().min(0, 'Must be 0 or more'),
+  yearsOfExperience: z
+    .number({ error: 'Enter a number' })
+    .min(0, 'Must be 0 or more'),
   jobId: z.string().min(1, 'Job assignment is required'),
   videoIntroUrl: z
     .string()
@@ -97,254 +84,6 @@ const inputSchema = z.object({
 });
 
 type InputFormValues = z.infer<typeof inputSchema>;
-
-// --- Shared utility ---
-
-function Field({
-  label,
-  required,
-  error,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label>
-        {label}
-        {required && <span className="ml-0.5 text-destructive">*</span>}
-      </Label>
-      {children}
-      {error && (
-        <p className="text-xs text-destructive" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// --- Tag input ---
-
-function TagsInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string[];
-  onChange: (tags: string[]) => void;
-  placeholder?: string;
-}) {
-  const [input, setInput] = useState('');
-
-  function add() {
-    const tag = input.trim();
-    if (tag && !value.includes(tag)) onChange([...value, tag]);
-    setInput('');
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {value.map(tag => (
-            <Badge key={tag} variant="outline" className="gap-1">
-              {tag}
-              <button
-                type="button"
-                className="rounded-full hover:bg-muted"
-                onClick={() => onChange(value.filter(t => t !== tag))}
-              >
-                <XIcon className="size-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              add();
-            }
-          }}
-          placeholder={placeholder ?? 'Type and press Enter or Add'}
-          className="flex-1"
-        />
-        <Button type="button" variant="outline" size="sm" onClick={add}>
-          <PlusIcon />
-          Add
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// --- Experience editor ---
-
-function ExperienceEditor({
-  entries,
-  onChange,
-}: {
-  entries: ParsedExperience[];
-  onChange: (entries: ParsedExperience[]) => void;
-}) {
-  function update(index: number, field: keyof ParsedExperience, val: string) {
-    onChange(entries.map((e, i) => (i === index ? { ...e, [field]: val } : e)));
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {entries.map((entry, i) => (
-        <Card key={i}>
-          <CardContent className="flex flex-col gap-3 pt-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Experience {i + 1}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onChange(entries.filter((_, idx) => idx !== i))}
-                aria-label={`Remove experience ${i + 1}`}
-              >
-                <XIcon className="size-3" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Company">
-                <Input
-                  value={entry.company}
-                  onChange={e => update(i, 'company', e.target.value)}
-                />
-              </Field>
-              <Field label="Title">
-                <Input
-                  value={entry.title}
-                  onChange={e => update(i, 'title', e.target.value)}
-                />
-              </Field>
-            </div>
-            <Field label="Duration">
-              <Input
-                value={entry.duration}
-                onChange={e => update(i, 'duration', e.target.value)}
-              />
-            </Field>
-            <Field label="Description">
-              <Textarea
-                rows={3}
-                value={entry.description}
-                onChange={e => update(i, 'description', e.target.value)}
-                className="resize-none"
-              />
-            </Field>
-          </CardContent>
-        </Card>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-fit"
-        onClick={() =>
-          onChange([
-            ...entries,
-            { company: '', title: '', duration: '', description: '' },
-          ])
-        }
-      >
-        <PlusIcon />
-        Add Experience
-      </Button>
-    </div>
-  );
-}
-
-// --- Education editor ---
-
-function EducationEditor({
-  entries,
-  onChange,
-}: {
-  entries: ParsedEducation[];
-  onChange: (entries: ParsedEducation[]) => void;
-}) {
-  function update(index: number, field: keyof ParsedEducation, val: string) {
-    onChange(entries.map((e, i) => (i === index ? { ...e, [field]: val } : e)));
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {entries.map((entry, i) => (
-        <Card key={i}>
-          <CardContent className="flex flex-col gap-3 pt-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Education {i + 1}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onChange(entries.filter((_, idx) => idx !== i))}
-                aria-label={`Remove education ${i + 1}`}
-              >
-                <XIcon className="size-3" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Institution">
-                <Input
-                  value={entry.institution}
-                  onChange={e => update(i, 'institution', e.target.value)}
-                />
-              </Field>
-              <Field label="Degree">
-                <Input
-                  value={entry.degree}
-                  onChange={e => update(i, 'degree', e.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Field of Study">
-                <Input
-                  value={entry.field}
-                  onChange={e => update(i, 'field', e.target.value)}
-                />
-              </Field>
-              <Field label="Year">
-                <Input
-                  value={entry.year}
-                  onChange={e => update(i, 'year', e.target.value)}
-                />
-              </Field>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-fit"
-        onClick={() =>
-          onChange([
-            ...entries,
-            { institution: '', degree: '', field: '', year: '' },
-          ])
-        }
-      >
-        <PlusIcon />
-        Add Education
-      </Button>
-    </div>
-  );
-}
 
 // --- Job search select ---
 
@@ -597,27 +336,10 @@ function InputStep({
                     control={control}
                     name="englishProficiency"
                     render={({ field }) => (
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={v => field.onChange(v || null)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select level..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="basic">Basic</SelectItem>
-                          <SelectItem value="conversational">
-                            Conversational
-                          </SelectItem>
-                          <SelectItem value="professional">
-                            Professional Working
-                          </SelectItem>
-                          <SelectItem value="fluent">Fluent</SelectItem>
-                          <SelectItem value="native">
-                            Native / Bilingual
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <EnglishProficiencySelect
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     )}
                   />
                 </Field>

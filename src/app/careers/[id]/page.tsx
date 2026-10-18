@@ -12,9 +12,7 @@ import {
   toBullets,
   toChips,
 } from '@/lib/job-format';
-import { publicApi } from '@/lib/public-api';
 import { cn, timeAgo } from '@/lib/utils';
-import type { Job } from '@/store';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -22,41 +20,17 @@ import {
   MapPinIcon,
   UsersIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CareersDoodles } from '../_components/careers-doodles';
 import { JobClosedNotice } from '../_components/job-closed-notice';
 import { JobFacts, type JobFact } from '../_components/job-facts';
 import { SectionNav, type NavSection } from '../_components/section-nav';
+import { usePublicJob } from '../_utils/use-public-job';
 
 export default function CareerJobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await publicApi.get<Job>(`/ats/jobs/${id}`);
-        if (cancelled) return;
-        setJob(data);
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  const { job, loading, error } = usePublicJob(id);
 
   if (loading) return <DetailSkeleton />;
   if (error || !job) {

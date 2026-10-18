@@ -167,7 +167,7 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 function JobCard({ job }: { job: Job }) {
-  const excerpt = plainText(job.description);
+  const excerpt = useMemo(() => plainText(job.description), [job.description]);
 
   return (
     <Link
