@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -32,6 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { TableSkeleton } from '@/components/candidate-table/table-skeleton';
 import { usePermission } from '@/hooks/use-permission';
 import { useSearchWithPageRestore } from '@/hooks/use-search-with-page-restore';
 import { useSocketRoom } from '@/hooks/use-socket-room';
@@ -211,24 +211,6 @@ function ContactCell({ contacts }: { contacts: ClientContact[] }) {
         {primary.position || primary.email}
       </p>
     </div>
-  );
-}
-
-// ─── Table skeleton ────────────────────────────────────────────────────────
-
-function TableSkeleton() {
-  return (
-    <>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <TableRow key={i} className="border-b last:border-0">
-          {Array.from({ length: 8 }).map((_, j) => (
-            <TableCell key={j} className="px-4 py-3">
-              <Skeleton className={cn('h-4', j === 0 ? 'w-36' : 'w-20')} />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
   );
 }
 
@@ -868,7 +850,7 @@ export function ClientsTable() {
               )}
               <TableBody>
                 {loading && data.length === 0 ? (
-                  <TableSkeleton />
+                  <TableSkeleton cols={8} />
                 ) : table.getRowModel().rows.length > 0 ? (
                   table.getRowModel().rows.map(row => (
                     <TableRow

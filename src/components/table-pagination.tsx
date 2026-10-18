@@ -15,6 +15,7 @@ import {
   ChevronRightIcon,
 } from 'lucide-react';
 import { useMemo } from 'react';
+import { DEFAULT_PAGE_SIZES } from '@/hooks/use-table-pagination';
 
 interface TablePaginationProps<TData> {
   table?: Table<TData>;
@@ -29,7 +30,7 @@ interface TablePaginationProps<TData> {
   onPageChange?: (index: number) => void;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 50];
+const PAGE_SIZE_OPTIONS: readonly number[] = DEFAULT_PAGE_SIZES;
 
 function usePageList(pageIndex: number, pageCount: number) {
   return useMemo(() => {

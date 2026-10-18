@@ -26,12 +26,8 @@ import {
   Undo2Icon,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { ToolbarButton } from './rich-text-toolbar-button';
 
-/**
- * Convert pasted markdown (e.g. AI-generated job descriptions) into rich text.
- * Only runs when no rich HTML is on the clipboard, so pasting from Word/Google
- * Docs still preserves its native formatting.
- */
 function handleMarkdownPaste(
   editor: Editor | null,
   event: ClipboardEvent
@@ -45,36 +41,6 @@ function handleMarkdownPaste(
   return true;
 }
 
-function ToolbarButton({
-  onClick,
-  active = false,
-  disabled = false,
-  label,
-  children,
-}: {
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'inline-flex size-7 items-center justify-center rounded text-muted-foreground transition-colors',
-        'hover:bg-accent hover:text-foreground disabled:opacity-40',
-        active && 'bg-accent text-foreground'
-      )}
-    >
-      {children}
-    </button>
-  );
-}
 
 const EDITOR_CLASS = cn(
   'min-h-[140px] rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs',
