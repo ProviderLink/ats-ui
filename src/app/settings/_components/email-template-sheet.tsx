@@ -100,7 +100,7 @@ export function EmailTemplateSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[30vw] flex flex-col gap-0 p-0">
+      <SheetContent className="w-full sm:max-w-sm flex flex-col gap-0 p-0">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle className="text-base">
             {isEdit ? 'Edit Template' : 'New Email Template'}

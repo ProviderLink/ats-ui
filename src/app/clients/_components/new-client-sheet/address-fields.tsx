@@ -14,7 +14,7 @@ export function AddressFields({ register }: AddressFieldsProps) {
         <Input placeholder="123 Main St" {...register('address.street')} />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="City">
           <Input placeholder="e.g. New York" {...register('address.city')} />
         </FormField>
@@ -23,7 +23,7 @@ export function AddressFields({ register }: AddressFieldsProps) {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Country">
           <Input placeholder="e.g. USA" {...register('address.country')} />
         </FormField>

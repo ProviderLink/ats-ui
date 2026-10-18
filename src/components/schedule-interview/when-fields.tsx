@@ -20,7 +20,7 @@ export function WhenFields({
   onDurationChange,
 }: WhenFieldsProps) {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="si-when">Date</Label>
         <Input

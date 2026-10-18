@@ -24,7 +24,7 @@ export function ContactForm({
 
   return (
     <div className="rounded-lg border bg-muted/30 p-4 flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           <Label>Name *</Label>
           <Input
@@ -42,7 +42,7 @@ export function ContactForm({
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           <Label>Email *</Label>
           <Input

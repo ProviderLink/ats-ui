@@ -17,7 +17,7 @@ interface JobAttributeFieldsProps {
 export function JobAttributeFields({ form, patch }: JobAttributeFieldsProps) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Job Type" required>
           <LabelSelect
             value={form.jobType}
@@ -42,7 +42,7 @@ export function JobAttributeFields({ form, patch }: JobAttributeFieldsProps) {
         />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Experience Level" required>
           <LabelSelect
             value={form.experienceLevel}

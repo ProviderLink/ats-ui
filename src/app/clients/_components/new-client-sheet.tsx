@@ -129,7 +129,7 @@ export function NewClientSheet({
               />
             </FormField>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="Email *" error={errors.email?.message}>
                 <Input
                   type="email"
@@ -142,7 +142,7 @@ export function NewClientSheet({
               </FormField>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="Industry">
                 <Input
                   placeholder="e.g. Technology"

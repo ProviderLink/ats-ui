@@ -94,7 +94,7 @@ export function InviteTeamSheet({ open, onOpenChange }: Props) {
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="First Name">
               <Input
                 placeholder="First name"

@@ -26,7 +26,7 @@ export function JobCandidatePicker({
   onCandidateChange,
 }: JobCandidatePickerProps) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="flex flex-col gap-1.5">
         <Label>Job *</Label>
         <Select value={jobId} onValueChange={onJobChange}>

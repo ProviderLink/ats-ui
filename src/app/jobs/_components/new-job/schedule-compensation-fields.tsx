@@ -23,7 +23,7 @@ export function ScheduleCompensationFields({
 }: ScheduleCompensationFieldsProps) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Openings">
           <Input
             type="number"
@@ -50,7 +50,7 @@ export function ScheduleCompensationFields({
         />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Min Salary">
           <Input
             type="number"
@@ -69,7 +69,7 @@ export function ScheduleCompensationFields({
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Currency">
           <Input
             placeholder="USD"
