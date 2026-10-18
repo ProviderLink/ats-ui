@@ -1,5 +1,3 @@
-'use client';
-
 import { useUserStore } from '@/store/slices/users.store';
 import { useEffect } from 'react';
 import { toast } from 'sonner';

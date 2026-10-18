@@ -1,5 +1,3 @@
-'use client';
-
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -19,6 +17,13 @@ import {
   ShieldCheckIcon,
   TrashIcon,
 } from 'lucide-react';
+import {
+  PERMISSION_MATRIX,
+  RESOURCE_LABELS,
+  ROLES,
+  ROLE_GROUPS,
+  ROLE_LABELS,
+} from '../_data/permission-guide';
 
 type Props = {
   open: boolean;
@@ -39,226 +44,6 @@ const ACTION_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
   read: 'outline',
   schedule: 'secondary',
   approve: 'secondary',
-};
-
-type CellValue = string | string[] | null;
-
-const PERMISSION_MATRIX: Record<string, Record<string, CellValue>> = {
-  candidates: {
-    admin: 'manage',
-    hiring_manager: 'manage',
-    recruiter: 'manage',
-    coordinator: 'write',
-    interviewer: 'read',
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  jobs: {
-    admin: 'manage',
-    hiring_manager: 'manage',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: null,
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  interviews: {
-    admin: 'schedule',
-    hiring_manager: 'write',
-    recruiter: 'write',
-    coordinator: ['write', 'schedule'],
-    interviewer: 'write',
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  clients: {
-    admin: 'manage',
-    hiring_manager: 'read',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: null,
-    account_manager: 'write',
-    client: 'read',
-    va: null,
-  },
-  emails: {
-    admin: 'write',
-    hiring_manager: 'write',
-    recruiter: 'write',
-    coordinator: 'write',
-    interviewer: null,
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  tags: {
-    admin: 'manage',
-    hiring_manager: 'write',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: 'read',
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  settings: {
-    admin: 'write',
-    hiring_manager: 'read',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: null,
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  dashboard: {
-    admin: 'read',
-    hiring_manager: 'read',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: null,
-    account_manager: 'read',
-    client: null,
-    va: null,
-  },
-  team: {
-    admin: 'manage',
-    hiring_manager: null,
-    recruiter: null,
-    coordinator: null,
-    interviewer: null,
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  pipelineTemplates: {
-    admin: 'write',
-    hiring_manager: 'read',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: null,
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  emailTemplates: {
-    admin: 'write',
-    hiring_manager: 'read',
-    recruiter: 'read',
-    coordinator: 'read',
-    interviewer: null,
-    account_manager: null,
-    client: null,
-    va: null,
-  },
-  activityLogs: {
-    admin: 'read',
-    hiring_manager: null,
-    recruiter: null,
-    coordinator: null,
-    interviewer: null,
-    account_manager: 'read',
-    client: null,
-    va: null,
-  },
-  assignments: {
-    admin: 'manage',
-    hiring_manager: null,
-    recruiter: null,
-    coordinator: null,
-    interviewer: null,
-    account_manager: 'manage',
-    client: 'read',
-    va: 'read',
-  },
-  reports: {
-    admin: 'manage',
-    hiring_manager: null,
-    recruiter: null,
-    coordinator: null,
-    interviewer: null,
-    account_manager: 'manage',
-    client: 'read',
-    va: null,
-  },
-  eod: {
-    admin: 'approve',
-    hiring_manager: null,
-    recruiter: null,
-    coordinator: null,
-    interviewer: null,
-    account_manager: 'approve',
-    client: 'read',
-    va: 'write',
-  },
-  performanceReview: {
-    admin: 'approve',
-    hiring_manager: null,
-    recruiter: null,
-    coordinator: null,
-    interviewer: null,
-    account_manager: 'approve',
-    client: null,
-    va: null,
-  },
-};
-
-const ROLES = [
-  'admin',
-  'hiring_manager',
-  'recruiter',
-  'coordinator',
-  'interviewer',
-  'account_manager',
-  'client',
-  'va',
-] as const;
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin',
-  hiring_manager: 'Hiring Mgr',
-  recruiter: 'Recruiter',
-  coordinator: 'Coordinator',
-  interviewer: 'Interviewer',
-  account_manager: 'Acct Mgr',
-  client: 'Client',
-  va: 'VA',
-};
-
-const ROLE_GROUPS: { label: string; roles: string[] }[] = [
-  {
-    label: 'ATS',
-    roles: [
-      'admin',
-      'hiring_manager',
-      'recruiter',
-      'coordinator',
-      'interviewer',
-    ],
-  },
-  { label: 'CRM', roles: ['account_manager', 'client', 'va'] },
-];
-
-const RESOURCE_LABELS: Record<string, string> = {
-  candidates: 'Candidates',
-  jobs: 'Jobs',
-  interviews: 'Interviews',
-  clients: 'Clients',
-  emails: 'Emails',
-  tags: 'Tags',
-  settings: 'Settings',
-  dashboard: 'Dashboard',
-  team: 'Team',
-  pipelineTemplates: 'Pipeline Templates',
-  emailTemplates: 'Email Templates',
-  activityLogs: 'Activity Logs',
-  assignments: 'Assignments',
-  reports: 'Reports',
-  eod: 'EOD',
-  performanceReview: 'Perf. Review',
 };
 
 function ActionBadge({ action }: { action: string }) {

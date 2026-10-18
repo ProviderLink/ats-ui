@@ -1,9 +1,6 @@
-'use client';
-
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Sheet,
   SheetContent,
@@ -21,27 +18,13 @@ import { toast } from 'sonner';
 import type { UserRole } from '../_data/team';
 import { ROLE_LABELS } from '@/lib/role-labels';
 import { ALL_ROLES } from '../_data/team';
+import { Field } from './team-field';
 
 type Props = {
   member: User | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 };
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
 
 export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
   const { update, mutating } = useUserStore();

@@ -1,8 +1,5 @@
-'use client';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -20,32 +17,17 @@ import {
 } from '@/components/ui/sheet';
 import { logOptimisticActivity } from '@/lib/activity';
 import { useUserStore } from '@/store/slices/users.store';
-import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { UserRole } from '../_data/team';
 import { ROLE_LABELS } from '@/lib/role-labels';
 import { ALL_ROLES } from '../_data/team';
+import { Field } from './team-field';
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
 };
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
 
 const EMPTY = {
   firstName: '',
