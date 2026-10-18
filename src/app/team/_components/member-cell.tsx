@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { User } from '@/store/types/user.types';
-import { AVATAR_BG } from '../_data/team';
+import { memberAvatarClass } from '../_utils/member-avatar';
 
 export function MemberCell({
   member,
@@ -12,11 +12,7 @@ export function MemberCell({
   const first = member.firstName ?? '';
   const last = member.lastName ?? '';
   const initials = ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || '?';
-  const bg =
-    AVATAR_BG[
-      ((first.charCodeAt(0) || 0) + (last.charCodeAt(0) || 0)) %
-        AVATAR_BG.length
-    ];
+  const bg = memberAvatarClass(first, last);
   return (
     <div className="flex items-start gap-3 min-w-0">
       <div
