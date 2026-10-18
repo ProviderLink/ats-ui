@@ -1,5 +1,5 @@
 import { PlusIcon } from 'lucide-react';
-import { Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -12,14 +12,14 @@ import { DashFunnel } from './_components/dash-funnel';
 import { DashHiringTrend } from './_components/dash-hiring-trend';
 import { DashMetricCards } from './_components/dash-metric-cards';
 
-function DashboardContent() {
+export default function Dashboard() {
   const { fetch, error, setActive } = useDashboardStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     setActive(true);
-    // Raw lists are no longer persisted, so always refresh on mount to show
-    // current data. `fetch` no-ops if a fetch/refresh is already in flight.
+    // Raw lists aren't persisted, so refresh on every mount; `fetch` no-ops
+    // while one is already in flight.
     fetch();
     return () => setActive(false);
   }, [fetch, setActive]);
@@ -30,7 +30,6 @@ function DashboardContent() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4">
         <h1 className="text-2xl font-light tracking-tight text-foreground">
           Hiring Dashboard
@@ -48,12 +47,9 @@ function DashboardContent() {
 
       <Separator />
 
-      {/* Main content */}
       <div className="flex flex-col gap-5 p-6">
-        {/* Three metric cards */}
         <DashMetricCards />
 
-        {/* Two large chart cards */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <DashAppliedChart />
@@ -63,17 +59,8 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Full-width recruitment health snapshot */}
         <DashFunnel />
       </div>
     </div>
-  );
-}
-
-export default function Dashboard() {
-  return (
-    <Suspense>
-      <DashboardContent />
-    </Suspense>
   );
 }

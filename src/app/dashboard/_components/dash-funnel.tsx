@@ -151,13 +151,10 @@ export function DashFunnel() {
                     key={stage.key}
                     className="group relative flex flex-col gap-3 p-5 transition-colors hover:bg-muted/30"
                   >
-                    {/* color accent bar at top */}
                     <div
                       className="absolute inset-x-0 top-0 h-0.5 rounded-t-sm opacity-60"
                       style={{ backgroundColor: stage.color }}
                     />
-
-                    {/* count + conversion badge */}
                     <div className="flex items-start justify-between gap-2">
                       <span
                         className="text-4xl font-light tabular-nums leading-none"
@@ -172,8 +169,6 @@ export function DashFunnel() {
                         </div>
                       )}
                     </div>
-
-                    {/* labels */}
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium text-foreground leading-none">
                         {stage.label}
@@ -182,8 +177,6 @@ export function DashFunnel() {
                         {stage.sub}
                       </span>
                     </div>
-
-                    {/* progress bar */}
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full transition-all duration-700"
@@ -194,8 +187,6 @@ export function DashFunnel() {
                         }}
                       />
                     </div>
-
-                    {/* pct of total */}
                     <span className="text-[11px] tabular-nums text-muted-foreground/60">
                       {stage.key !== 'talentPool'
                         ? `${Math.round((count / denominator) * 100)}% of total candidates`

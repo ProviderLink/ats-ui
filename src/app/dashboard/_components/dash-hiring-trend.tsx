@@ -21,40 +21,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Application } from '@/store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 
+import { countByMonth } from '../_utils/month-buckets';
+
 const HIRE_COLOR = '#34d399';
 
 const chartConfig = {
   hires: { label: 'Hires', color: HIRE_COLOR },
 } satisfies ChartConfig;
 
-function hiredDate(app: Application): string | undefined {
-  // Only trust the actual hire date — falling back to `updatedAt`/`appliedAt`
-  // would plot the hire in the wrong month when `hiredAt` is missing.
-  return app.hiredAt ?? undefined;
-}
-
 function buildMonthlyData(applications: Application[], months: number) {
-  const now = new Date();
-  const buckets: { date: string; hires: number }[] = [];
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    buckets.push({
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`,
-      hires: 0,
-    });
-  }
-  const idx = new Map(buckets.map((b, i) => [b.date.slice(0, 7), i]));
-  for (const app of applications) {
-    if (app.phase !== 'hired') continue;
-    const raw = hiredDate(app);
-    if (!raw) continue;
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const i = idx.get(key);
-    if (i !== undefined) buckets[i].hires += 1;
-  }
-  return buckets;
+  // Only trust the actual hire date; falling back to `updatedAt`/`appliedAt`
+  // would plot the hire in the wrong month when `hiredAt` is missing.
+  const hireDates = applications
+    .filter(app => app.phase === 'hired')
+    .map(app => app.hiredAt);
+  return countByMonth(hireDates, months).map(b => ({
+    date: b.date,
+    hires: b.count,
+  }));
 }
 
 export function DashHiringTrend() {
@@ -66,17 +50,14 @@ export function DashHiringTrend() {
   );
 
   const totalHires = kpi?.hiredCount ?? data.reduce((s, d) => s + d.hires, 0);
-  // `data` is oldest-first; the last bucket is the current (partial) month,
-  // so "last month" is the second-to-last bucket.
+  // The last bucket is the current (partial) month.
   const lastMonthHires = data[data.length - 2]?.hires ?? 0;
 
   const tickFormatter = (value: string) =>
     new Date(value).toLocaleDateString('en-US', { month: 'short' });
 
-  // Recharts types the tooltip `label` as a ReactNode (so it includes
-  // undefined), while we only ever feed it the date string from the data.
-  // Widening the parameter and guarding keeps the types honest without an
-  // `any` cast, which previously hid this mismatch.
+  // Recharts types the tooltip `label` as a ReactNode, but it is always the
+  // date string from `data`.
   const labelFormatter = (value: ReactNode) =>
     typeof value === 'string'
       ? new Date(value).toLocaleDateString('en-US', {

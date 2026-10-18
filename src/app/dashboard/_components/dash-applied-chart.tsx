@@ -19,6 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Application } from '@/store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 
+import { countByMonth } from '../_utils/month-buckets';
+
 const chartConfig = {
   applied: { label: 'Applications', color: 'var(--chart-1)' },
 } satisfies ChartConfig;
@@ -58,25 +60,10 @@ function buildDailyData(applications: Application[], days: number) {
 }
 
 function buildMonthlyData(applications: Application[], months: number) {
-  const now = new Date();
-  const buckets: { date: string; applied: number }[] = [];
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    buckets.push({
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`,
-      applied: 0,
-    });
-  }
-  const idx = new Map(buckets.map((b, i) => [b.date.slice(0, 7), i]));
-  for (const app of applications) {
-    if (!app.appliedAt) continue;
-    const d = new Date(app.appliedAt);
-    if (isNaN(d.getTime())) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const i = idx.get(key);
-    if (i !== undefined) buckets[i].applied += 1;
-  }
-  return buckets;
+  return countByMonth(
+    applications.map(app => app.appliedAt),
+    months
+  ).map(b => ({ date: b.date, applied: b.count }));
 }
 
 export function DashAppliedChart() {
@@ -113,10 +100,8 @@ export function DashAppliedChart() {
     return d.toLocaleDateString('en-US', { month: 'short' });
   };
 
-  // Recharts types the tooltip `label` as a ReactNode (so it includes
-  // undefined), while we only ever feed it the date string from the data.
-  // Widening the parameter and guarding keeps the types honest without an
-  // `any` cast, which previously hid this mismatch.
+  // Recharts types the tooltip `label` as a ReactNode, but it is always the
+  // date string from `data`.
   const labelFormatter = (value: ReactNode) => {
     if (typeof value !== 'string') return '';
     const d = new Date(value);
