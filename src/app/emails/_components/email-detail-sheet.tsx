@@ -1,157 +1,23 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { cn, formatDate, formatFileSize } from '@/lib/utils';
 import { useEmailStore } from '@/store';
-import type { Email, EmailAttachment, EmailStatus } from '@/store/types';
-import {
-  ArrowDownLeftIcon,
-  ArrowUpRightIcon,
-  BriefcaseIcon,
-  ClockIcon,
-  DownloadIcon,
-  FileIcon,
-  ForwardIcon,
-  PaperclipIcon,
-  RefreshCwIcon,
-  ReplyIcon,
-  Trash2Icon,
-  UserIcon,
-} from 'lucide-react';
+import type { Email } from '@/store/types';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { EMAIL_STATUS_STYLES } from '@/lib/status-styles';
+import { EmailBody } from './email-detail-sheet/email-body';
+import { EmailDetailFooter } from './email-detail-sheet/email-detail-footer';
+import { EmailDetailHeader } from './email-detail-sheet/email-detail-header';
+import { EmailSenderBlock } from './email-detail-sheet/email-sender-block';
 
-function StatusBadge({
-  status,
-  failureReason,
-}: {
-  status: EmailStatus;
-  failureReason?: string | null;
-}) {
-  const { label, dot, cls } = EMAIL_STATUS_STYLES[status];
-  const badge = (
-    <Badge
-      className={cn(
-        'border font-medium bg-transparent cursor-default gap-1.5',
-        cls
-      )}
-    >
-      <span className={cn('size-1.5 rounded-full', dot)} aria-hidden />
-      {label}
-    </Badge>
-  );
-
-  if (status === 'failed' && failureReason) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{badge}</TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs text-xs">
-          {failureReason}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return badge;
-}
-
-function initialsFor(address: string): string {
-  const user = address.split('@')[0];
-  return user
-    .split(/[._+\-]/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(s => s[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
-function avatarColor(address: string): string {
-  const palette = [
-    'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
-    'bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300',
-    'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
-    'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300',
-    'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
-    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
-  ];
-  const idx =
-    address.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) %
-    palette.length;
-  return palette[idx];
-}
-
-function ContextChip({ email }: { email: Email }) {
-  const { context } = email;
-  if (!context) return null;
-
-  if (context.candidateId) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
-        <UserIcon className="size-3" />
-        Candidate #{context.candidateId}
-        {context.jobId && (
-          <>
-            <span className="text-border">·</span>
-            <BriefcaseIcon className="size-3" />
-            Job #{context.jobId}
-          </>
-        )}
-      </span>
-    );
-  }
-
-  if (context.jobId) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
-        <BriefcaseIcon className="size-3" />
-        Job #{context.jobId}
-      </span>
-    );
-  }
-
-  return null;
-}
-
-function AttachmentItem({ attachment }: { attachment: EmailAttachment }) {
-  return (
-    <a
-      href={attachment.url}
-      download={attachment.filename}
-      className="group flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 transition-colors hover:border-foreground/20 hover:bg-muted/40"
-    >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <FileIcon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium leading-tight">
-          {attachment.filename}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {formatFileSize(attachment.size)}
-        </p>
-      </div>
-      <DownloadIcon className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
-    </a>
-  );
-}
-
-type Props = {
+interface EmailDetailSheetProps {
   email: Email | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onReply: (email: Email) => void;
   onForward: (email: Email) => void;
   onResend?: (id: string) => void;
-};
+}
 
 export function EmailDetailSheet({
   email,
@@ -160,31 +26,16 @@ export function EmailDetailSheet({
   onReply,
   onForward,
   onResend,
-}: Props) {
+}: EmailDetailSheetProps) {
   const remove = useEmailStore(s => s.remove);
   const mutating = useEmailStore(s => s.mutating);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (!email) return null;
 
-  const isOutbound = email.direction === 'outbound';
-  const senderAddress = email.from;
-  const senderInitials = initialsFor(senderAddress);
-  const senderColor = avatarColor(senderAddress);
-  const date = email.sentAt ?? email.receivedAt ?? email.createdAt;
-  const formattedDate = formatDate(date);
-  const timeString = date
-    ? new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }).format(new Date(date))
-    : '';
-  const recipients = Array.isArray(email.to) ? email.to : [email.to];
-
-  async function handleDelete() {
+  async function handleDelete(id: string) {
     try {
-      await remove(email!._id);
+      await remove(id);
       toast.success('Email deleted');
       onOpenChange(false);
     } catch {
@@ -198,198 +49,22 @@ export function EmailDetailSheet({
         style={{ width: '44rem', maxWidth: '100vw' }}
         className="flex flex-col gap-0 p-0 overflow-hidden"
       >
-        {/* Visually-hidden title for a11y; subject rendered in header */}
         <SheetTitle className="sr-only">{email.subject}</SheetTitle>
 
-        {/* Header — subject, status, direction */}
-        <div className="shrink-0 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 px-6 pt-5 pb-4">
-          <div className="flex items-start gap-3">
-            <div
-              className={cn(
-                'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg',
-                isOutbound
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-blue-500/10 text-blue-500 dark:bg-blue-500/15 dark:text-blue-400'
-              )}
-              aria-hidden
-            >
-              {isOutbound ? (
-                <ArrowUpRightIcon className="size-4" />
-              ) : (
-                <ArrowDownLeftIcon className="size-4" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-lg font-semibold leading-snug tracking-tight text-foreground wrap-break-word">
-                {email.subject}
-              </h2>
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <StatusBadge
-                  status={email.status}
-                  failureReason={email.failureReason}
-                />
-                <ContextChip email={email} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sender block — modern, like Gmail/Spark */}
-        <div className="shrink-0 px-6 py-4">
-          <div className="flex items-start gap-3">
-            <Avatar className="size-10 shrink-0 rounded-full">
-              <AvatarFallback
-                className={cn(
-                  'rounded-full text-sm font-semibold select-none',
-                  senderColor
-                )}
-              >
-                {senderInitials || '?'}
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {isOutbound ? 'You' : senderAddress}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {isOutbound ? (
-                      <span className="truncate">from {senderAddress}</span>
-                    ) : (
-                      <span className="truncate">
-                        to {recipients.join(', ')}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
-                  <ClockIcon className="size-3" />
-                  <time dateTime={date ?? undefined}>
-                    {formattedDate} · {timeString}
-                  </time>
-                </div>
-              </div>
-
-              {isOutbound && recipients.length > 0 && (
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  To: {recipients.join(', ')}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {email.cc?.length || email.bcc?.length ? (
-            <div className="mt-3 space-y-1 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              {email.cc && email.cc.length > 0 && (
-                <p className="wrap-break-word">
-                  <span className="font-semibold text-foreground/70">Cc:</span>{' '}
-                  {email.cc.join(', ')}
-                </p>
-              )}
-              {email.bcc && email.bcc.length > 0 && (
-                <p className="wrap-break-word">
-                  <span className="font-semibold text-foreground/70">Bcc:</span>{' '}
-                  {email.bcc.join(', ')}
-                </p>
-              )}
-            </div>
-          ) : null}
-        </div>
+        <EmailDetailHeader email={email} />
+        <EmailSenderBlock email={email} />
 
         <Separator />
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {email.bodyHtml ? (
-            <div className="px-6 py-1">
-              <iframe
-                srcDoc={email.bodyHtml}
-                sandbox="allow-same-origin"
-                className="w-full min-h-64 border-0"
-                title="Email body"
-              />
-            </div>
-          ) : (
-            <div className="px-6 py-5">
-              <div className="text-sm leading-relaxed text-foreground/90">
-                {(email.bodyText ?? '(no content)')
-                  .split('\n')
-                  .map((line, i) => (
-                    <p key={i} className="min-h-5">
-                      {line || '\u00A0'}
-                    </p>
-                  ))}
-              </div>
-            </div>
-          )}
+        <EmailBody email={email} />
 
-          {/* Attachments */}
-          {email.attachments && email.attachments.length > 0 && (
-            <div className="px-6 pb-6 pt-2">
-              <div className="mb-3 flex items-center gap-2">
-                <PaperclipIcon className="size-3.5 text-muted-foreground" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {email.attachments.length} Attachment
-                  {email.attachments.length > 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {email.attachments.map((att, i) => (
-                  <AttachmentItem key={i} attachment={att} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        <div className="shrink-0 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2Icon className="size-4" />
-              <span className="hidden sm:inline">Delete</span>
-            </Button>
-            <div className="flex items-center gap-2">
-              {email.status === 'failed' ? (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => onResend?.(email._id)}
-                >
-                  <RefreshCwIcon className="size-4" />
-                  <span className="hidden sm:inline">Resend</span>
-                </Button>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => onReply(email)}
-                >
-                  <ReplyIcon className="size-4" />
-                  <span className="hidden sm:inline">Reply</span>
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => onForward(email)}
-              >
-                <ForwardIcon className="size-4" />
-                <span className="hidden sm:inline">Forward</span>
-              </Button>
-            </div>
-          </div>
-        </div>
+        <EmailDetailFooter
+          email={email}
+          onDelete={() => setDeleteOpen(true)}
+          onReply={onReply}
+          onForward={onForward}
+          onResend={onResend}
+        />
       </SheetContent>
 
       <ConfirmDialog
@@ -405,7 +80,7 @@ export function EmailDetailSheet({
         confirmLabel="Delete"
         variant="destructive"
         loading={mutating}
-        onConfirm={handleDelete}
+        onConfirm={() => handleDelete(email._id)}
       />
     </Sheet>
   );
