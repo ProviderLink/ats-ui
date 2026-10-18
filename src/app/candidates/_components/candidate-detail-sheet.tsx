@@ -11,7 +11,7 @@ import { useCandidateLookups } from '../_hooks/use-candidate-lookups';
 import { useCandidatePipelineActions } from '../_hooks/use-candidate-pipeline-actions';
 import { useCandidateTagEditing } from '../_hooks/use-candidate-tag-editing';
 import { useCandidateReviewActions } from '../_hooks/use-candidate-review-actions';
-import { useIneligibleActions } from '../_hooks/use-ineligible-actions';
+import { useIneligibleSheetActions } from '../_hooks/use-ineligible-sheet-actions';
 import { useInterviewActions } from '../_hooks/use-interview-actions';
 import { useLatestCandidate } from '../_hooks/use-latest-candidate';
 import { usePipelineNotes } from '../_hooks/use-pipeline-notes';
@@ -80,7 +80,7 @@ export function CandidateDetailSheet({
     jobs,
     refreshInterviews
   );
-  const ineligible = useIneligibleActions(candidate, fullName, () =>
+  const ineligible = useIneligibleSheetActions(candidate, () =>
     onOpenChange(false)
   );
   const notes = usePipelineNotes(activePipelineApp);

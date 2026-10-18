@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import type { Candidate } from '@/store/types';
 import type { useCandidatePipelineActions } from '../_hooks/use-candidate-pipeline-actions';
 import type { useCandidateReviewActions } from '../_hooks/use-candidate-review-actions';
-import type { useIneligibleActions } from '../_hooks/use-ineligible-actions';
+import type { useIneligibleSheetActions } from '../_hooks/use-ineligible-sheet-actions';
 import { ApprovedActionsBar } from './approved-actions-bar';
 import { HiredActionsBar } from './hired-actions-bar';
 import { IneligibleActions } from './ineligible-actions';
@@ -16,7 +16,7 @@ interface CandidateSheetFooterProps {
   appMutating: boolean;
   review: ReturnType<typeof useCandidateReviewActions>;
   pipeline: ReturnType<typeof useCandidatePipelineActions>;
-  ineligible: ReturnType<typeof useIneligibleActions>;
+  ineligible: ReturnType<typeof useIneligibleSheetActions>;
   hasActiveApp: boolean;
   hasStages: boolean;
   hasOpenJobs: boolean;

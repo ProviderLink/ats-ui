@@ -3,6 +3,7 @@ import { ClearableSearchInput } from '@/components/clearable-search-input';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useDebouncedSearch } from '@/hooks/use-debounced-search';
+import { useIneligibleActions } from '@/hooks/use-ineligible-actions';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -17,7 +18,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useIneligibleRestoreOptions } from '../_hooks/use-ineligible-restore-options';
 import { filterIneligible } from '../_utils/filter-ineligible';
-import { useIneligibleActions } from '../_utils/use-ineligible-actions';
 import { PermanentDeleteDialog } from './permanent-delete-dialog';
 import { buildIneligibleColumns } from './permanently-ineligible-table/ineligible-columns';
 import { IneligibleDataTable } from './permanently-ineligible-table/ineligible-data-table';
