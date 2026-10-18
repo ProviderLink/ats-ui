@@ -3,6 +3,13 @@ import { EMAIL_TEMPLATE_TYPES } from '@/lib/email-templates';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -14,9 +21,8 @@ import {
   CheckIcon,
   ChevronDownIcon,
   FileTextIcon,
-  SearchIcon,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const typeColorMap: Record<string, string> = {
   interview: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -72,7 +78,6 @@ export function TemplateSelector({
   const templates = useEmailTemplateStore(s => s.items);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const activeTemplates = useMemo(
     () => templates.filter(t => t.isActive),
@@ -180,115 +185,102 @@ export function TemplateSelector({
         className="w-(--radix-popover-trigger-width) p-0"
         align="start"
         sideOffset={6}
-        onOpenAutoFocus={e => {
-          // Radix focuses the content container first; send it to the search
-          // field instead so the user can type immediately.
-          e.preventDefault();
-          searchRef.current?.focus();
-        }}
       >
-        <div className="flex items-center gap-2 border-b px-3">
-          <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
-          <input
-            ref={searchRef}
+        <Command shouldFilter={false}>
+          <CommandInput
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onValueChange={setSearch}
             placeholder="Search templates…"
-            className="h-9 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
-        </div>
-
-        <div className="max-h-72 overflow-y-auto overscroll-contain p-1">
-          <button
-            type="button"
-            className={cn(
-              'flex items-center w-full gap-3 px-3 py-2.5 text-sm rounded-sm hover:bg-accent transition-colors text-left',
-              !value && 'bg-accent'
-            )}
-            onClick={handleClear}
-          >
-            <FileTextIcon className="size-4 text-muted-foreground shrink-0" />
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm">No template</span>
-              <span className="text-[11px] text-muted-foreground">
-                Start with a blank email
-              </span>
-            </div>
-            {!value && (
-              <CheckIcon className="size-4 ml-auto text-primary shrink-0" />
-            )}
-          </button>
-
-          {groups.map(({ meta, items }) => (
-            <div key={meta.value}>
-              <div className="flex items-center gap-2 px-3 pt-3 pb-1">
-                <span className="shrink-0 text-xs">
-                  {typeIconMap[meta.value] || '📧'}
+          <CommandList className="max-h-72 overscroll-contain p-1">
+            <CommandItem
+              value="none"
+              onSelect={handleClear}
+              className={cn('gap-3 px-3 py-2.5', !value && 'bg-accent')}
+            >
+              <FileTextIcon className="text-muted-foreground" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm">No template</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Start with a blank email
                 </span>
-                <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                  {meta.label}
-                </span>
-                <Badge
-                  className={cn(
-                    'text-[10px] px-1.5 py-0 font-medium rounded-sm leading-5 shrink-0',
-                    typeColorMap[meta.value] || ''
-                  )}
-                >
-                  {items.length}
-                </Badge>
               </div>
-              {items.map(tmpl => {
-                const isSelected = tmpl._id === value;
-                return (
-                  <button
-                    key={tmpl._id}
-                    type="button"
-                    className={cn(
-                      'flex items-center w-full gap-2 px-3 py-2 text-sm rounded-sm hover:bg-accent transition-colors text-left',
-                      isSelected && 'bg-accent'
-                    )}
-                    onClick={() => handleSelect(tmpl)}
-                  >
-                    <CheckIcon
-                      className={cn(
-                        'size-3.5 shrink-0 text-primary',
-                        !isSelected && 'invisible'
-                      )}
-                    />
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="truncate text-sm font-medium">
-                        {tmpl.name}
-                      </span>
-                      <span className="truncate text-[11px] text-muted-foreground">
-                        {tmpl.subject}
-                      </span>
-                    </div>
-                    {tmpl.isDefault && (
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] h-4 px-1 shrink-0"
-                      >
-                        Default
-                      </Badge>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+              {!value && <CheckIcon className="ml-auto text-primary" />}
+            </CommandItem>
 
-          {!hasAnyTemplate && (
-            <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-              No email templates configured. Add them under Settings → Email
-              Templates.
-            </p>
-          )}
-          {matchCount === 0 && hasAnyTemplate && (
-            <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-              No templates match &ldquo;{search}&rdquo;
-            </p>
-          )}
-        </div>
+            {groups.map(({ meta, items }) => (
+              <CommandGroup
+                key={meta.value}
+                className="p-0"
+                heading={
+                  <div className="flex items-center gap-2 px-1 pt-2">
+                    <span className="shrink-0 text-xs">
+                      {typeIconMap[meta.value] || '📧'}
+                    </span>
+                    <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                      {meta.label}
+                    </span>
+                    <Badge
+                      className={cn(
+                        'text-[10px] px-1.5 py-0 font-medium rounded-sm leading-5 shrink-0',
+                        typeColorMap[meta.value] || ''
+                      )}
+                    >
+                      {items.length}
+                    </Badge>
+                  </div>
+                }
+              >
+                {items.map(tmpl => {
+                  const isSelected = tmpl._id === value;
+                  return (
+                    <CommandItem
+                      key={tmpl._id}
+                      value={tmpl._id}
+                      onSelect={() => handleSelect(tmpl)}
+                      className={cn('px-3 py-2', isSelected && 'bg-accent')}
+                    >
+                      <CheckIcon
+                        className={cn(
+                          'size-3.5 text-primary',
+                          !isSelected && 'invisible'
+                        )}
+                      />
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate text-sm font-medium">
+                          {tmpl.name}
+                        </span>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {tmpl.subject}
+                        </span>
+                      </div>
+                      {tmpl.isDefault && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-4 px-1 shrink-0"
+                        >
+                          Default
+                        </Badge>
+                      )}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            ))}
+
+            {!hasAnyTemplate && (
+              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+                No email templates configured. Add them under Settings → Email
+                Templates.
+              </p>
+            )}
+            {matchCount === 0 && hasAnyTemplate && (
+              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+                No templates match &ldquo;{search}&rdquo;
+              </p>
+            )}
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );

@@ -28,6 +28,7 @@ import {
 import { PlusIcon, SearchIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { useTagActions } from '../_hooks/use-tag-actions';
 import { TagFormSheet } from './tag-form-sheet';
 import { TagsBulkActions } from './tags-bulk-actions';
 import { buildTagColumns } from './tags-columns';
@@ -39,9 +40,6 @@ export function TagsTable() {
   const mutating = useTagStore(s => s.mutating);
   const error = useTagStore(s => s.error);
   const fetch = useTagStore(s => s.fetch);
-  const create = useTagStore(s => s.create);
-  const update = useTagStore(s => s.update);
-  const remove = useTagStore(s => s.remove);
   const users = useUserStore(s => s.items);
   const fetchUsers = useUserStore(s => s.fetch);
 
@@ -73,6 +71,7 @@ export function TagsTable() {
   const [editingTag, setEditingTag] = useState<Tag | undefined>(undefined);
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
   const [bulkDeleteCount, setBulkDeleteCount] = useState<number | null>(null);
+  const { deleteTag, saveTag, deleteTags } = useTagActions(editingTag);
 
   useEffect(() => {
     fetch();
@@ -87,29 +86,6 @@ export function TagsTable() {
   function handleNew() {
     setEditingTag(undefined);
     setSheetOpen(true);
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await remove(id);
-      toast.success('Tag deleted');
-    } catch (e) {
-      toast.error((e as Error).message || 'Failed to delete tag');
-    }
-  }
-
-  async function handleSave(name: string, color: string) {
-    try {
-      if (editingTag) {
-        await update(editingTag._id, { name, color });
-        toast.success('Tag updated');
-      } else {
-        await create({ name, color });
-        toast.success('Tag created');
-      }
-    } catch (e) {
-      toast.error((e as Error).message || 'Failed to save tag');
-    }
   }
 
   const columns = useMemo(
@@ -150,19 +126,10 @@ export function TagsTable() {
   });
 
   async function handleDeleteSelected() {
-    const selectedIds = table
-      .getSelectedRowModel()
-      .rows.map(r => r.original._id);
-    try {
-      await Promise.all(selectedIds.map(id => remove(id)));
-      toast.success(
-        `${selectedIds.length} tag${selectedIds.length === 1 ? '' : 's'} deleted`
-      );
-      setRowSelection({});
-      setBulkDeleteCount(null);
-    } catch (e) {
-      toast.error((e as Error).message || 'Failed to delete tags');
-    }
+    const ids = table.getSelectedRowModel().rows.map(r => r.original._id);
+    if (!(await deleteTags(ids))) return;
+    setRowSelection({});
+    setBulkDeleteCount(null);
   }
 
   const selectedCount = Object.keys(rowSelection).length;
@@ -276,7 +243,7 @@ export function TagsTable() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         tag={editingTag}
-        onSave={handleSave}
+        onSave={saveTag}
       />
 
       <ConfirmDialog
@@ -296,7 +263,7 @@ export function TagsTable() {
         loading={mutating}
         onConfirm={async () => {
           if (!deleteTarget) return;
-          await handleDelete(deleteTarget._id);
+          await deleteTag(deleteTarget._id);
           setDeleteTarget(null);
         }}
       />

@@ -2,7 +2,6 @@ import { RichText } from '@/components/rich-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   experienceLevelLabel,
   formatDeadline,
@@ -12,16 +11,22 @@ import {
   toBullets,
   toChips,
 } from '@/lib/job-format';
-import { cn, timeAgo } from '@/lib/utils';
+import { timeAgo } from '@/lib/utils';
 import {
   ArrowLeftIcon,
   CalendarIcon,
-  CheckCircleIcon,
   MapPinIcon,
   UsersIcon,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ApplyButton } from '../_components/apply-button';
 import { CareersDoodles } from '../_components/careers-doodles';
+import {
+  BulletList,
+  CheckList,
+  Section,
+} from '../_components/job-detail-sections';
+import { JobDetailSkeleton } from '../_components/job-detail-skeleton';
 import { JobClosedNotice } from '../_components/job-closed-notice';
 import { JobFacts, type JobFact } from '../_components/job-facts';
 import { SectionNav, type NavSection } from '../_components/section-nav';
@@ -32,7 +37,7 @@ export default function CareerJobDetailPage() {
   const navigate = useNavigate();
   const { job, loading, error } = usePublicJob(id);
 
-  if (loading) return <DetailSkeleton />;
+  if (loading) return <JobDetailSkeleton />;
   if (error || !job) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 lg:px-10">
@@ -195,97 +200,6 @@ export default function CareerJobDetailPage() {
           <ApplyButton expired={expired} onClick={apply} className="w-full" />
         </div>
       </div>
-    </div>
-  );
-}
-
-function Section({
-  id,
-  title,
-  children,
-}: {
-  id: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      className="flex scroll-mt-20 flex-col gap-4 border-b border-border p-6 sm:p-8 lg:scroll-mt-8"
-    >
-      <h2 className="font-heading text-xl font-semibold">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function ApplyButton({
-  expired,
-  onClick,
-  className,
-}: {
-  expired: boolean;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <Button
-      size="lg"
-      disabled={expired}
-      onClick={onClick}
-      className={cn(
-        'bg-careers-accent px-8 text-careers hover:bg-careers-accent/90',
-        className
-      )}
-    >
-      {expired ? 'Applications closed' : 'Apply now'}
-    </Button>
-  );
-}
-
-function BulletList({ items }: { items: string[] }) {
-  return (
-    <ul className="space-y-3">
-      {items.map((item, i) => (
-        <li
-          key={i}
-          className="flex items-start gap-3 text-base text-foreground"
-        >
-          <span className="mt-2 size-1.5 rounded-full bg-muted-foreground shrink-0" />
-          <span className="leading-relaxed">{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function CheckList({ items }: { items: string[] }) {
-  return (
-    <ul className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-      {items.map((item, i) => (
-        <li
-          key={i}
-          className="flex items-start gap-3 text-base text-foreground"
-        >
-          <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-careers" />
-          <span className="leading-relaxed">{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10 sm:px-10 sm:py-14 lg:px-12">
-      <Skeleton className="h-4 w-32 rounded-sm bg-white/10" />
-      <div className="flex flex-col gap-5">
-        <Skeleton className="h-10 w-2/3 rounded-sm bg-white/10" />
-        <Skeleton className="h-4 w-1/2 rounded-sm bg-white/10" />
-      </div>
-      <Skeleton className="h-28 w-full rounded-2xl bg-white/10" />
-      <Skeleton className="h-48 w-full rounded-2xl bg-white/10" />
-      <Skeleton className="h-32 w-2/3 rounded-2xl bg-white/10" />
     </div>
   );
 }
