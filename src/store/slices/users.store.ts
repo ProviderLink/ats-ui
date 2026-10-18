@@ -6,50 +6,15 @@ import {
   postJson,
 } from '@/lib/api-client';
 import { isValidObjectId } from '@/lib/utils';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type {
-  CreateUserDto,
-  UpdateUserDto,
-  User,
-  UserFilters,
-  UserPermissions,
-} from '../types';
+import type { User } from '../types';
 import { useAuthStore } from './auth.store';
 import { useBootStore } from './boot.store';
-
-interface UserState {
-  items: User[];
-  loading: boolean;
-  isRefreshing: boolean;
-  mutating: boolean;
-  error: string | null;
-}
-
-interface UserActions {
-  fetch: (params?: UserFilters) => Promise<void>;
-  create: (data: CreateUserDto) => Promise<User>;
-  update: (id: string, data: UpdateUserDto) => Promise<void>;
-  updateMe: (data: {
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-  }) => Promise<User>;
-  uploadAvatar: (file: File) => Promise<User>;
-  remove: (id: string) => Promise<void>;
-  updatePermissions: (
-    id: string,
-    permissions: UserPermissions
-  ) => Promise<void>;
-  provisionClient: (clientId: string) => Promise<User>;
-  provisionVA: (candidateId: string) => Promise<User>;
-  revokeCrmAccess: (userId: string) => Promise<User>;
-  reset: () => void;
-  _patch: (user: User) => void;
-  _remove: (id: string) => void;
-}
+import { createMutate, withToast } from './mutation';
+import { replaceUser, upsertUser } from './users.store.helpers';
+import type { UserActions, UserState } from './users.store.types';
 
 const initialState: UserState = {
   items: [],
@@ -61,324 +26,182 @@ const initialState: UserState = {
 
 export const useUserStore = create<UserState & UserActions>()(
   persist(
-    immer((set, get) => ({
-      ...initialState,
+    immer((set, get) => {
+      const mutate = createMutate<UserState>(set);
 
-      fetch: async params => {
-        // No-op after boot for an UNFILTERED refresh only. An explicit scoping
-        // filter (e.g. `{ role }`) must still reach the server; returning early
-        // made such a call silently resolve to the full list. Mirrors
-        // `hasExplicitFilter` in `candidates.store.ts`.
-        const hasExplicitFilter =
-          params &&
-          Object.keys(params).some(k => {
-            if (k === 'page' || k === 'limit') return false;
-            return (params as Record<string, unknown>)[k] !== undefined;
-          });
-        if (
-          useBootStore.getState().isBooted &&
-          get().items.length > 0 &&
-          !hasExplicitFilter
-        )
-          return;
+      return {
+        ...initialState,
 
-        const hasData = get().items.length > 0;
-        set(s => {
-          if (hasData) s.isRefreshing = true;
-          else s.loading = true;
-          s.error = null;
-        });
-        try {
-          const res = await getJson<User[] | { data: User[] }>(
-            '/shared/users',
-            params as Record<string, unknown>
-          );
-          const data = Array.isArray(res)
-            ? res
-            : ((res as { data: User[] }).data ?? []);
+        fetch: async params => {
+          // No-op after boot for an UNFILTERED refresh only. An explicit scoping
+          // filter (e.g. `{ role }`) must still reach the server; returning early
+          // made such a call silently resolve to the full list. Mirrors
+          // `hasExplicitFilter` in `candidates.store.ts`.
+          const hasExplicitFilter =
+            params &&
+            Object.keys(params).some(k => {
+              if (k === 'page' || k === 'limit') return false;
+              return (params as Record<string, unknown>)[k] !== undefined;
+            });
+          if (
+            useBootStore.getState().isBooted &&
+            get().items.length > 0 &&
+            !hasExplicitFilter
+          )
+            return;
+
+          const hasData = get().items.length > 0;
           set(s => {
-            s.items = data;
-            s.loading = false;
-            s.isRefreshing = false;
+            if (hasData) s.isRefreshing = true;
+            else s.loading = true;
+            s.error = null;
           });
-        } catch (e) {
-          set(s => {
-            s.loading = false;
-            s.isRefreshing = false;
-            s.error = (e as Error).message;
-          });
-        }
-      },
+          try {
+            const res = await getJson<User[] | { data: User[] }>(
+              '/shared/users',
+              params as Record<string, unknown>
+            );
+            const data = Array.isArray(res)
+              ? res
+              : ((res as { data: User[] }).data ?? []);
+            set(s => {
+              s.items = data;
+              s.loading = false;
+              s.isRefreshing = false;
+            });
+          } catch (e) {
+            set(s => {
+              s.loading = false;
+              s.isRefreshing = false;
+              s.error = (e as Error).message;
+            });
+          }
+        },
 
-      create: async data => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
+        create: async data => {
           const inviter = useAuthStore.getState().user;
           const payload = {
             ...data,
             invitedBy: inviter
-              ? {
-                  firstName: inviter.firstName,
-                  lastName: inviter.lastName,
-                }
+              ? { firstName: inviter.firstName, lastName: inviter.lastName }
               : undefined,
           };
-          const response = await postJson<{ user: User; inviteToken?: string }>(
-            '/shared/users',
-            payload
+          return mutate(
+            async () => {
+              const response = await postJson<{
+                user: User;
+                inviteToken?: string;
+              }>('/shared/users', payload);
+              // POST /shared/users returns { user, inviteToken } — extract the user
+              const apiUser = response.user ?? (response as unknown as User);
+              return {
+                ...apiUser,
+                roles: apiUser.roles ?? data.roles ?? [],
+                appAccess: apiUser.appAccess ?? data.appAccess ?? [],
+              };
+            },
+            (s, user) => upsertUser(s, user)
           );
-          // POST /shared/users returns { user, inviteToken } — extract the user
-          const apiUser = response.user ?? (response as unknown as User);
-          const user: User = {
-            ...apiUser,
-            roles: apiUser.roles ?? data.roles ?? [],
-            appAccess: apiUser.appAccess ?? data.appAccess ?? [],
-          };
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === user._id);
-            if (idx !== -1) s.items[idx] = user;
-            else s.items.push(user);
-            s.mutating = false;
-          });
-          return user;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
+        },
 
-      update: async (id, data) => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          if (!isValidObjectId(id)) {
-            throw new Error(
-              'Cannot update this member — their invitation is still pending. They must accept the invite before edits can be made.'
-            );
-          }
-          const user = await patchJson<User>(`/shared/users/${id}`, data);
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = user;
-            s.mutating = false;
-          });
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      updateMe: async data => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const user = await patchJson<User>('/shared/users/me', data);
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === user._id);
-            if (idx !== -1) s.items[idx] = user;
-            s.mutating = false;
-          });
-          return user;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      uploadAvatar: async file => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          const user = await postForm<User>(
-            '/shared/users/me/avatar',
-            formData
+        update: async (id, data) => {
+          await mutate(
+            async () => {
+              if (!isValidObjectId(id)) {
+                throw new Error(
+                  'Cannot update this member — their invitation is still pending. They must accept the invite before edits can be made.'
+                );
+              }
+              return patchJson<User>(`/shared/users/${id}`, data);
+            },
+            (s, user) => replaceUser(s, id, user)
           );
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === user._id);
-            if (idx !== -1) s.items[idx] = user;
-            s.mutating = false;
-          });
-          return user;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
+        },
 
-      remove: async id => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          if (!isValidObjectId(id)) {
-            throw new Error(
-              'Cannot remove this member — their invitation is still pending.'
-            );
-          }
-          await deleteJson(`/shared/users/${id}`);
+        updateMe: data =>
+          mutate(
+            () => patchJson<User>('/shared/users/me', data),
+            (s, user) => replaceUser(s, user._id, user)
+          ),
+
+        uploadAvatar: file =>
+          mutate(
+            () => {
+              const formData = new FormData();
+              formData.append('file', file);
+              return postForm<User>('/shared/users/me/avatar', formData);
+            },
+            (s, user) => replaceUser(s, user._id, user)
+          ),
+
+        remove: async id => {
+          await withToast('Team member removed', () =>
+            mutate(
+              async () => {
+                if (!isValidObjectId(id)) {
+                  throw new Error(
+                    'Cannot remove this member — their invitation is still pending.'
+                  );
+                }
+                await deleteJson(`/shared/users/${id}`);
+              },
+              s => {
+                s.items = s.items.filter(x => x._id !== id);
+              }
+            )
+          );
+        },
+
+        updatePermissions: async (id, permissions) => {
+          await withToast('Permissions updated', () =>
+            mutate(
+              async () => {
+                if (!isValidObjectId(id)) {
+                  throw new Error(
+                    "Cannot update permissions — this member's invitation is still pending."
+                  );
+                }
+                return patchJson<User>(`/shared/users/${id}/permissions`, {
+                  permissions,
+                });
+              },
+              (s, user) => replaceUser(s, id, user),
+              false
+            )
+          );
+        },
+
+        provisionClient: clientId =>
+          mutate(
+            () => postJson<User>('/shared/users/provision-client', { clientId }),
+            (s, user) => upsertUser(s, user)
+          ),
+
+        provisionVA: candidateId =>
+          mutate(
+            () => postJson<User>('/shared/users/provision-va', { candidateId }),
+            (s, user) => upsertUser(s, user)
+          ),
+
+        revokeCrmAccess: userId =>
+          mutate(
+            () => postJson<User>(`/shared/users/${userId}/revoke-crm`, {}),
+            (s, user) => replaceUser(s, userId, user)
+          ),
+
+        reset: () =>
+          set(s => {
+            Object.assign(s, initialState);
+          }),
+
+        _patch: user => set(s => upsertUser(s, user)),
+
+        _remove: id =>
           set(s => {
             s.items = s.items.filter(x => x._id !== id);
-            s.mutating = false;
-          });
-          toast.success('Team member removed');
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          toast.error((e as Error).message);
-          throw e;
-        }
-      },
-
-      updatePermissions: async (id, permissions) => {
-        set(s => {
-          s.mutating = true;
-        });
-        try {
-          if (!isValidObjectId(id)) {
-            throw new Error(
-              "Cannot update permissions — this member's invitation is still pending."
-            );
-          }
-          const user = await patchJson<User>(
-            `/shared/users/${id}/permissions`,
-            {
-              permissions,
-            }
-          );
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = user;
-            s.mutating = false;
-          });
-          toast.success('Permissions updated');
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          toast.error((e as Error).message);
-          throw e;
-        }
-      },
-
-      provisionClient: async clientId => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const user = await postJson<User>('/shared/users/provision-client', {
-            clientId,
-          });
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === user._id);
-            if (idx !== -1) s.items[idx] = user;
-            else s.items.push(user);
-            s.mutating = false;
-          });
-          return user;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      provisionVA: async candidateId => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const user = await postJson<User>('/shared/users/provision-va', {
-            candidateId,
-          });
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === user._id);
-            if (idx !== -1) s.items[idx] = user;
-            else s.items.push(user);
-            s.mutating = false;
-          });
-          return user;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      revokeCrmAccess: async userId => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const user = await postJson<User>(
-            `/shared/users/${userId}/revoke-crm`,
-            {}
-          );
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === userId);
-            if (idx !== -1) s.items[idx] = user;
-            s.mutating = false;
-          });
-          return user;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
-
-      reset: () =>
-        set(s => {
-          Object.assign(s, initialState);
-        }),
-
-      _patch: user =>
-        set(s => {
-          const idx = s.items.findIndex(x => x._id === user._id);
-          if (idx !== -1) s.items[idx] = user;
-          else s.items.push(user);
-        }),
-
-      _remove: id =>
-        set(s => {
-          s.items = s.items.filter(x => x._id !== id);
-        }),
-    })),
+          }),
+      };
+    }),
     {
       name: 'ats-users',
       storage: createJSONStorage(() => localStorage),

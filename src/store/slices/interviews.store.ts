@@ -1,5 +1,4 @@
 import { deleteJson, getJson, patchJson, postJson } from '@/lib/api-client';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -19,7 +18,7 @@ import type {
   InterviewActions,
   InterviewState,
 } from './interviews.store.types';
-import { createMutate } from './mutation';
+import { createMutate, withToast } from './mutation';
 
 const initialState: InterviewState = {
   items: [],
@@ -39,21 +38,6 @@ const initialState: InterviewState = {
 // later unfiltered fetch could never restore the full list. Not persisted:
 // after a reload `isBooted` is false and the boot fetch reloads everything.
 let itemsAreSubset = false;
-
-/** Run a mutation, toasting its outcome. Failures are rethrown to the caller. */
-async function withToast<R>(
-  successMessage: string,
-  run: () => Promise<R>
-): Promise<R> {
-  try {
-    const result = await run();
-    toast.success(successMessage);
-    return result;
-  } catch (e) {
-    toast.error((e as Error).message);
-    throw e;
-  }
-}
 
 export const useInterviewStore = create<InterviewState & InterviewActions>()(
   persist(
