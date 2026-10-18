@@ -1,9 +1,6 @@
 import { avatarBg } from '@/lib/candidate-styles';
-import {
-  type ActivityActor,
-  type ActivityIconName,
-  type ActivityTone,
-} from '@/lib/activity-sentence';
+import type { ActivityIconName } from '@/lib/activity-actions';
+import type { ActivityActor, ActivityTone } from '@/lib/activity-sentence';
 import { cn } from '@/lib/utils';
 import { CogIcon, SparklesIcon } from 'lucide-react';
 import { TONE_ACCENT, ACTIVITY_ICON } from './activity-config';

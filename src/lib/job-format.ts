@@ -57,16 +57,6 @@ export function formatSalary(sr: SalaryRange): string {
   return `${fmt(sr.min)} – ${fmt(sr.max)} / ${salaryPeriodLabel[sr.period]}`;
 }
 
-export function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 export function formatDeadline(deadline: string): {
   text: string;
   destructive: boolean;

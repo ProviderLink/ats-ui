@@ -1,7 +1,5 @@
-import {
-  type ActivityIconName,
-  type ActivityTone,
-} from '@/lib/activity-sentence';
+import type { ActivityIconName } from '@/lib/activity-actions';
+import type { ActivityTone } from '@/lib/activity-sentence';
 import {
   ActivityResourceType,
   type ActivityResourceType as ActivityResourceTypeValue,

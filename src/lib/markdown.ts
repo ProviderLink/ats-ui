@@ -1,13 +1,7 @@
 import { marked } from 'marked';
+import { looksLikeHtml } from './html';
 
 marked.setOptions({ gfm: true, breaks: true });
-
-const HTML_TAG_RE = /<[a-zA-Z][^>]*>/;
-
-/** True when the string already contains HTML markup. */
-export function looksLikeHtml(value: string): boolean {
-  return HTML_TAG_RE.test(value);
-}
 
 /** True when plain text looks like markdown (list / bold / heading markers). */
 export function looksLikeMarkdown(text: string): boolean {

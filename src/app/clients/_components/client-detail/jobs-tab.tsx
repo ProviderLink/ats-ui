@@ -5,7 +5,8 @@ import { useApplicationStore, useJobStore } from '@/store';
 import { CheckCircleIcon, UserIcon, UsersIcon } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDate, jobStatusConfig } from './config';
+import { formatDate } from '@/lib/utils';
+import { jobStatusConfig } from './config';
 import { SectionTitle } from './primitives';
 
 export function JobsTab({ clientId }: { clientId: string }) {

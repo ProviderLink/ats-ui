@@ -1,9 +1,5 @@
-import {
-  formatActivityClock,
-  formatActivityTime,
-  type ActivityActor,
-  type ActivitySentence,
-} from '@/lib/activity-sentence';
+import { formatActivityClock, formatActivityTime } from '@/lib/activity-time';
+import type { ActivityActor, ActivitySentence } from '@/lib/activity-sentence';
 import { cn } from '@/lib/utils';
 import { type ActivityLog } from '@/store/types';
 import { ActivityIcon } from 'lucide-react';

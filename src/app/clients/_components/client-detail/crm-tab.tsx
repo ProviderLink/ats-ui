@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { formatDate, healthConfig } from './config';
+import { formatDate } from '@/lib/utils';
+import { healthConfig } from './config';
 import {
   BoolIndicator,
   Dash,

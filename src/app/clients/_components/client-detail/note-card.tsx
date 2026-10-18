@@ -5,7 +5,8 @@ import { useUserStore } from '@/store';
 import type { ClientNote } from '@/store/types';
 import { PencilIcon, Trash2Icon } from 'lucide-react';
 import { useEffect } from 'react';
-import { formatDate, noteMethodConfig } from './config';
+import { formatDate } from '@/lib/utils';
+import { noteMethodConfig } from './config';
 
 function NoteAuthor({ authorId }: { authorId?: string }) {
   const users = useUserStore(s => s.items);

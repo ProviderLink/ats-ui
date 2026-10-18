@@ -8,7 +8,7 @@ import {
   PhoneIcon,
   UserIcon,
 } from 'lucide-react';
-import { formatDate } from './config';
+import { formatDate } from '@/lib/utils';
 import { Dash, InfoRow, SectionTitle } from './primitives';
 import { UserCell } from './user-cell';
 

@@ -3,12 +3,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useActivityActors } from '@/hooks/use-activity-actors';
 import {
   buildActivitySentence,
-  formatActivityDay,
-  formatActivityTime,
   type ActivityActor,
   type ActivityContext,
   type ActivitySentence,
 } from '@/lib/activity-sentence';
+import { formatActivityDay, formatActivityTime } from '@/lib/activity-time';
 import { cn } from '@/lib/utils';
 import { useActivityLogStore } from '@/store/slices/activity-logs.store';
 import { useJobStore } from '@/store/slices/jobs.store';
