@@ -1,3 +1,4 @@
+import { SkillsCell } from '@/app/candidates/_components/skills-cell';
 import { AssignJobDialog } from '@/components/assign-job-dialog';
 import { TagFilter } from '@/components/tag-filter';
 import { CandidateCell } from '@/components/candidate-table/candidate-cell';
@@ -14,14 +15,6 @@ import { TagList } from '@/components/tag-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -60,144 +53,15 @@ import {
   BriefcaseIcon,
   EllipsisIcon,
   MailIcon,
-  MousePointerClickIcon,
   SearchIcon,
   XIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { CurrentRoleCell } from './current-role-cell';
+import { RemoveTalentPoolConfirmDialog } from './remove-talent-pool-dialog';
 import { TalentPoolDetailSheet } from './talent-pool-detail-sheet';
-
-function CurrentRoleCell({ candidate }: { candidate: Candidate }) {
-  const exp = candidate.parsedData?.experience?.[0];
-  const role = exp?.title?.trim();
-  const company = exp?.company?.trim();
-  const duration = exp?.duration?.trim();
-
-  if (!role) return <span className="text-xs text-muted-foreground">—</span>;
-  return (
-    <div className="flex flex-col min-w-0 max-w-48">
-      <span className="text-sm text-foreground leading-tight line-clamp-2 whitespace-normal wrap-break-word">
-        {role}
-      </span>
-      {company && (
-        <span className="text-xs text-muted-foreground leading-tight whitespace-normal wrap-break-word mt-0.5">
-          {company}
-        </span>
-      )}
-      {duration && (
-        <span className="text-xs text-muted-foreground leading-tight whitespace-normal wrap-break-word mt-0.5 tp-duration">
-          {duration}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function SkillsCell({ candidate }: { candidate: Candidate }) {
-  const skills = candidate.parsedData?.skills ?? [];
-  if (skills.length === 0) {
-    return <span className="text-xs text-muted-foreground">—</span>;
-  }
-  const MAX = 3;
-  const visible = skills.slice(0, MAX);
-  const overflow = skills.length - MAX;
-  return (
-    <div className="flex items-center gap-1 flex-wrap min-w-0 max-w-48">
-      {visible.map(skill => (
-        <span
-          key={skill}
-          className="inline-flex items-center h-5 rounded-md border px-1.5 text-xs leading-none text-muted-foreground bg-muted/40 max-w-full"
-        >
-          <span className="truncate">{skill}</span>
-        </span>
-      ))}
-      {overflow > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex items-center gap-1 h-5 shrink-0 rounded-md border px-1.5 text-xs leading-none text-muted-foreground bg-muted/40 cursor-default border-dashed">
-              +{overflow} more
-              <MousePointerClickIcon className="size-3 text-warning" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="right" align="start" className="p-2.5 max-w-72">
-            <div className="flex flex-wrap gap-1">
-              {skills.map(s => (
-                <span
-                  key={s}
-                  className="inline-flex items-center min-h-5 rounded-md border border-current/25 px-1.5 text-xs leading-snug text-current/85 whitespace-normal wrap-break-word"
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      )}
-    </div>
-  );
-}
-
-function TalentPoolNotesCell({ candidate }: { candidate: Candidate }) {
-  const notes = candidate.talentPoolNotes?.trim();
-  if (!notes) return <span className="text-xs text-muted-foreground">—</span>;
-  return (
-    <span className="text-xs text-muted-foreground line-clamp-3 whitespace-normal block">
-      {notes}
-    </span>
-  );
-}
-
-/** Radix Select forbids an empty-string item value, so the "use the first
- * stage" option needs a non-empty sentinel that we map back to undefined. */
-function RemoveTalentPoolConfirmDialog({
-  candidate,
-  open,
-  onClose,
-  onConfirm,
-}: {
-  candidate: Candidate | null;
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  if (!candidate) return null;
-  const name = `${candidate.firstName} ${candidate.lastName}`;
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Remove from Talent Pool</DialogTitle>
-          <DialogDescription className="flex flex-col gap-3 pt-2">
-            <p>
-              You are about to remove{' '}
-              <span className="font-medium text-foreground">{name}</span> from
-              the talent pool.
-            </p>
-            <p className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground">
-              They will no longer appear in saved candidates. Nothing else
-              changes — their profile and history are kept.
-            </p>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-          >
-            Remove from pool
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { TalentPoolNotesCell } from './talent-pool-notes-cell';
 
 export function TalentPoolTable() {
   // ── Store subscriptions ──────────────────────────────────────────

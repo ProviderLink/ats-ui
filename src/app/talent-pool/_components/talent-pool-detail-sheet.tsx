@@ -1,3 +1,7 @@
+import { EducationList } from '@/app/candidates/_components/education-list';
+import { ExperienceTimeline } from '@/app/candidates/_components/experience-timeline';
+import { IntroVideo } from '@/app/candidates/_components/intro-video';
+import { SectionLabel } from '@/app/candidates/_components/section-label';
 import { AssignJobDialog } from '@/components/assign-job-dialog';
 import { ActivityTimeline } from '@/components/activity-timeline';
 import { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
@@ -22,267 +26,28 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Textarea } from '@/components/ui/textarea';
 import { logOptimisticActivity } from '@/lib/activity';
 import { getTagIds } from '@/lib/tags';
-import { cn, safeHttpUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
-import type {
-  Candidate,
-  ParsedEducation,
-  ParsedExperience,
-} from '@/store/types';
+import type { Candidate } from '@/store/types';
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
   BriefcaseIcon,
   CalendarIcon,
-  CheckIcon,
-  ExternalLinkIcon,
-  GraduationCapIcon,
   MailIcon,
-  PencilIcon,
   PhoneIcon,
-  PlayIcon,
   StarIcon,
   VideoIcon,
   XIcon,
 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { avatarBg } from '@/lib/candidate-styles';
-
-/** One `text-sm leading-relaxed` line — the editor's minimum height. */
-const NOTES_EDIT_MIN_HEIGHT = 23;
-/** Past this the editor scrolls instead of growing without limit. */
-const NOTES_EDIT_MAX_HEIGHT = 160;
-
-function TalentPoolNotesEditor({
-  notes,
-  mutating,
-  onSave,
-}: {
-  notes: string;
-  mutating: boolean;
-  onSave: (notes: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(notes);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // The editor is an inline, borderless textarea inside the same card as the
-  // read view, so opening it never changes the card's height for a short note.
-  // It grows with the content up to a cap, then scrolls.
-  useLayoutEffect(() => {
-    if (!editing) return;
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.max(
-      Math.min(el.scrollHeight, NOTES_EDIT_MAX_HEIGHT),
-      NOTES_EDIT_MIN_HEIGHT
-    )}px`;
-  }, [editing, draft]);
-
-  if (editing) {
-    return (
-      <div className="flex items-start gap-3 rounded-lg border bg-muted/30 px-4 py-3">
-        <Textarea
-          ref={textareaRef}
-          rows={1}
-          autoFocus
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          className="min-w-0 flex-1 resize-none border-0 bg-transparent px-0 py-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
-          placeholder="Add a note about this candidate…"
-          disabled={mutating}
-        />
-        {/*
-          The same 68px slot the pencil occupies in read mode, so the text
-          column keeps its exact width and entering edit mode never reflows
-          the note onto an extra line.
-        */}
-        <div className="flex w-17 shrink-0 items-center justify-end gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive"
-            disabled={mutating}
-            title="Cancel"
-            onClick={() => {
-              setEditing(false);
-              setDraft(notes);
-            }}
-          >
-            <XIcon className="size-3.5" />
-            <span className="sr-only">Cancel editing notes</span>
-          </Button>
-          <Button
-            size="icon-sm"
-            disabled={mutating}
-            title="Save"
-            onClick={() => {
-              onSave(draft);
-              setEditing(false);
-            }}
-          >
-            <CheckIcon className="size-3.5" />
-            <span className="sr-only">Save notes</span>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-start gap-3 rounded-lg border bg-muted/30 px-4 py-3">
-      {notes.trim() ? (
-        <p className="min-w-0 flex-1 text-sm leading-relaxed whitespace-pre-wrap">
-          {notes}
-        </p>
-      ) : (
-        <p className="min-w-0 flex-1 text-sm text-muted-foreground italic">
-          No notes yet — add context about this candidate for your team.
-        </p>
-      )}
-      <div className="flex w-17 shrink-0 items-center justify-end gap-1">
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={mutating}
-          title="Edit notes"
-          onClick={() => {
-            setDraft(notes);
-            setEditing(true);
-          }}
-        >
-          <PencilIcon className="size-3.5" />
-          <span className="sr-only">Edit talent pool notes</span>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function IntroVideo({
-  url,
-  source,
-}: {
-  url: string;
-  source?: 'cloudinary' | 'external' | null;
-}) {
-  const isCloudinary = source === 'cloudinary' || url.includes('cloudinary');
-  return (
-    <div className="flex flex-col gap-2 h-96">
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <VideoIcon className="size-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground">Intro Video</span>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1 px-2 text-xs"
-          asChild
-        >
-          <a href={safeHttpUrl(url)} target="_blank" rel="noopener noreferrer">
-            <ExternalLinkIcon className="size-3.5" />
-            Open in new tab
-          </a>
-        </Button>
-      </div>
-      {isCloudinary ? (
-        <div className="flex-1 rounded-lg border bg-black overflow-hidden">
-          <video src={url} controls className="size-full" />
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 rounded-lg border bg-muted/20 p-4 text-center">
-          <PlayIcon className="size-8 text-muted-foreground/60" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            External video link — please open the link below to watch the
-            candidate&apos;s intro video.
-          </p>
-          <Button variant="outline" size="sm" asChild>
-            <a href={safeHttpUrl(url)} target="_blank" rel="noopener noreferrer">
-              <ExternalLinkIcon className="size-3.5" />
-              Open video
-            </a>
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </p>
-  );
-}
-
-function ExperienceTimeline({ items }: { items: ParsedExperience[] }) {
-  if (items.length === 0)
-    return (
-      <p className="text-sm text-muted-foreground">No experience listed.</p>
-    );
-  return (
-    <div className="flex flex-col">
-      {items.map((exp, i) => (
-        <div key={i} className="flex gap-3">
-          <div className="flex flex-col items-center">
-            <div className="mt-1.5 size-2 shrink-0 rounded-full bg-pine-teal-600 dark:bg-pine-teal-400" />
-            {i < items.length - 1 && (
-              <div className="mt-1 w-px flex-1 bg-border" />
-            )}
-          </div>
-          <div
-            className={cn('min-w-0', i < items.length - 1 ? 'pb-5' : 'pb-1')}
-          >
-            <p className="text-sm font-medium leading-tight">{exp.title}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {exp.company} · {exp.duration}
-            </p>
-            {exp.description && (
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                {exp.description}
-              </p>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EducationList({ items }: { items: ParsedEducation[] }) {
-  if (items.length === 0)
-    return (
-      <p className="text-sm text-muted-foreground">No education listed.</p>
-    );
-  return (
-    <div className="flex flex-col gap-3">
-      {items.map((edu, i) => (
-        <div key={i} className="flex items-start gap-3">
-          <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
-            <GraduationCapIcon className="size-3.5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">
-              {edu.degree} in {edu.field}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {edu.institution} · {edu.year}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { TalentPoolNotesEditor } from './talent-pool-notes-editor';
 
 /** Radix Select forbids an empty-string item value, so the "use the first
  * stage" option needs a non-empty sentinel that we map back to undefined. */
