@@ -1,75 +1,46 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
-import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
 import { useApplicationStore } from '@/store/slices/applications.store';
-import { useCandidateStore } from '@/store/slices/candidates.store';
-import { useTagStore } from '@/store/slices/tags.store';
 import type { Candidate } from '@/store/types';
-import { useEffect } from 'react';
 import { useCandidateApplications } from '../_hooks/use-candidate-applications';
 import { useCandidateCompose } from '../_hooks/use-candidate-compose';
 import { useCandidateInterviews } from '../_hooks/use-candidate-interviews';
 import { useCandidateLookups } from '../_hooks/use-candidate-lookups';
 import { useCandidatePipelineActions } from '../_hooks/use-candidate-pipeline-actions';
+import { useCandidateTagEditing } from '../_hooks/use-candidate-tag-editing';
 import { useCandidateReviewActions } from '../_hooks/use-candidate-review-actions';
 import { useIneligibleActions } from '../_hooks/use-ineligible-actions';
 import { useInterviewActions } from '../_hooks/use-interview-actions';
+import { useLatestCandidate } from '../_hooks/use-latest-candidate';
 import { usePipelineNotes } from '../_hooks/use-pipeline-notes';
-import { AdditionalInfoSection } from './additional-info-section';
-import { AiEvaluationSection } from './ai-evaluation-section';
-import { AiValidationSection } from './ai-validation-section';
-import { ApplicationsSection } from './applications-section';
-import { CandidateActivitySection } from './candidate-activity-section';
+import { CandidateDetailBody } from './candidate-detail-body';
 import { CandidatePipelineDialogs } from './candidate-pipeline-dialogs';
-import { CandidateProfileSections } from './candidate-profile-sections';
 import { CandidateReviewDialogs } from './candidate-review-dialogs';
 import { CandidateSheetFooter } from './candidate-sheet-footer';
 import { CandidateSheetHeader } from './candidate-sheet-header';
-import { CrmProfileSection } from './crm-profile-section';
 import { DeleteCandidateDialog } from './delete-candidate-dialog';
-import { HiredApplicationsSection } from './hired-applications-section';
-import { InterviewScorecardsSection } from './interview-scorecards-section';
-import { InterviewsSection } from './interviews-section';
-import { PipelineNotesSection } from './pipeline-notes-section';
 import { RescheduleDialog } from './reschedule-dialog';
-import { ResumeAndPortfolioSection } from './resume-and-portfolio-section';
 
-type Props = {
+interface CandidateDetailSheetProps {
   candidate: Candidate | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   mutating?: boolean;
-};
+}
 
 export function CandidateDetailSheet({
   candidate,
   open,
   onOpenChange,
   mutating = false,
-}: Props) {
-  // Read the latest version from the store so save operations are visible
-  // immediately. The `candidate` prop is a snapshot from when the sheet
-  // opened; `items` and `detail` stay current across mutations.
-  const current = useCandidateStore(s => {
-    if (!candidate) return undefined;
-    return (
-      s.detail[candidate._id] ?? s.items.find(i => i._id === candidate._id)
-    );
-  });
-  const c = current ?? candidate;
+}: CandidateDetailSheetProps) {
+  const c = useLatestCandidate(candidate);
   const fullName = c ? `${c.firstName} ${c.lastName}` : '';
-
-  const allTags = useTagStore(s => s.items);
-  const fetchTags = useTagStore(s => s.fetch);
-  const updateCandidate = useCandidateStore(s => s.update);
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
-
-  useEffect(() => {
-    if (open) void fetchTags();
-  }, [open, fetchTags]);
+  const { allTags, updateTags } = useCandidateTagEditing(c, open);
 
   const { jobs, users, openJobs, getJobTitle, getClientName } =
     useCandidateLookups();
@@ -119,15 +90,6 @@ export function CandidateDetailSheet({
 
   const appliedJobTitle = c.appliedJobId ? getJobTitle(c.appliedJobId) : null;
 
-  async function handleUpdateTags(tagIds: string[]) {
-    if (!c) return;
-    try {
-      await updateCandidate(c._id, { tags: tagIds });
-    } catch {
-      // toast handled by store
-    }
-  }
-
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -139,80 +101,22 @@ export function CandidateDetailSheet({
             candidate={c}
             fullName={fullName}
             allTags={allTags}
-            onUpdateTags={handleUpdateTags}
+            onUpdateTags={updateTags}
           />
 
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="flex flex-col gap-6">
-              <AiValidationSection candidate={c} />
-              <AiEvaluationSection candidate={c} />
-              <CandidateProfileSections candidate={c} />
-              <AdditionalInfoSection candidate={c} />
-
-              <ApplicationsSection
-                applications={candidateApplications}
-                loading={appLoading}
-                jobs={jobs}
-                users={users}
-                getJobTitle={getJobTitle}
-                getClientName={getClientName}
-              />
-
-              {c.status === 'approved' && (
-                <>
-                  <Separator />
-                  <InterviewsSection
-                    interviews={candidateInterviews}
-                    users={users}
-                    onComplete={interviewActions.completeInterview}
-                    onReschedule={interviewActions.startReschedule}
-                    onCancel={interviewActions.cancelScheduledInterview}
-                  />
-                  <Separator />
-                  <InterviewScorecardsSection
-                    candidateId={c._id}
-                    jobOptions={jobs.map(j => ({
-                      _id: j._id,
-                      title: j.title,
-                    }))}
-                    users={users}
-                    defaultJobId={pipelineJob?._id ?? null}
-                    onCreated={() => void fetchScorecardsByCandidate(c._id)}
-                  />
-                  <PipelineNotesSection
-                    activeApp={activePipelineApp}
-                    notesText={notes.notesText}
-                    onNotesTextChange={notes.setNotesText}
-                    onFocus={notes.seedFromSaved}
-                    saving={notes.savingNotes}
-                    onSave={notes.saveNotes}
-                  />
-                </>
-              )}
-
-              {c.status === 'hired' && (
-                <>
-                  <Separator />
-                  <HiredApplicationsSection
-                    applications={candidateApplications}
-                    jobs={jobs}
-                    users={users}
-                    getClientName={getClientName}
-                  />
-                </>
-              )}
-
-              <Separator />
-              <ResumeAndPortfolioSection candidate={c} />
-              <CrmProfileSection candidate={c} />
-
-              <Separator />
-              <CandidateActivitySection
-                candidate={c}
-                emailActivity={emailActivity}
-              />
-            </div>
-          </div>
+          <CandidateDetailBody
+            candidate={c}
+            applications={candidateApplications}
+            applicationsLoading={appLoading}
+            lookups={{ jobs, users, getJobTitle, getClientName }}
+            interviews={candidateInterviews}
+            interviewActions={interviewActions}
+            activePipelineApp={activePipelineApp}
+            pipelineJob={pipelineJob}
+            notes={notes}
+            emailActivity={emailActivity}
+            onScorecardCreated={() => void fetchScorecardsByCandidate(c._id)}
+          />
 
           <div className="shrink-0 border-t px-6 py-4">
             <CandidateSheetFooter
