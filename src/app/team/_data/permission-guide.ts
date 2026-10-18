@@ -1,3 +1,5 @@
+import { RESOURCE_LABELS as SHARED_RESOURCE_LABELS } from '@/lib/role-labels';
+
 export type CellValue = string | string[] | null;
 
 export const PERMISSION_MATRIX: Record<string, Record<string, CellValue>> = {
@@ -199,21 +201,8 @@ export const ROLE_GROUPS: { label: string; roles: string[] }[] = [
   { label: 'CRM', roles: ['account_manager', 'client', 'va'] },
 ];
 
+/** The shared labels, with the longest one shortened to fit the matrix column. */
 export const RESOURCE_LABELS: Record<string, string> = {
-  candidates: 'Candidates',
-  jobs: 'Jobs',
-  interviews: 'Interviews',
-  clients: 'Clients',
-  emails: 'Emails',
-  tags: 'Tags',
-  settings: 'Settings',
-  dashboard: 'Dashboard',
-  team: 'Team',
-  pipelineTemplates: 'Pipeline Templates',
-  emailTemplates: 'Email Templates',
-  activityLogs: 'Activity Logs',
-  assignments: 'Assignments',
-  reports: 'Reports',
-  eod: 'EOD',
+  ...SHARED_RESOURCE_LABELS,
   performanceReview: 'Perf. Review',
 };
