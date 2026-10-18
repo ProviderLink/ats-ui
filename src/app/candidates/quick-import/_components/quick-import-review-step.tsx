@@ -48,7 +48,7 @@ export function QuickImportReviewStep({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <ReviewCard title="Basic Info">
-            <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               {basicInfo.map(([label, value]) => (
                 <div key={label} className="flex flex-col gap-0.5">
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -148,7 +148,7 @@ export function QuickImportReviewStep({
 
               <Separator />
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div className="flex flex-col gap-0.5">
                   <p className="text-xs text-muted-foreground">Source</p>
                   <p className="font-medium">Internal Upload</p>

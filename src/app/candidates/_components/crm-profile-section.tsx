@@ -15,7 +15,7 @@ export function CrmProfileSection({ candidate: c }: { candidate: Candidate }) {
       <Separator />
       <div className="flex flex-col gap-3">
         <SectionLabel>CRM Profile</SectionLabel>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {crm.workloadLevel && (
             <div className="flex flex-col gap-0.5">
               <p className="text-xs text-muted-foreground">

@@ -125,7 +125,7 @@ export function CrmTab({
 
       <div className="flex flex-col gap-4">
         <SectionTitle>Onboarding</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Onboarding</span>
             <BoolIndicator

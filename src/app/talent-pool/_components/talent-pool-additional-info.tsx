@@ -18,7 +18,7 @@ export function TalentPoolAdditionalInfo({
       <Separator />
       <div className="flex flex-col gap-3">
         <SectionLabel>Additional Info</SectionLabel>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <Salary label="Current Salary (PHP)" symbol="₱" value={c.currentSalaryPHP} />
           <Salary label="Current Salary (USD)" symbol="$" value={c.currentSalaryUSD} />
         </div>

@@ -51,7 +51,7 @@ export function HiredApplicationsSection({
                   Hired
                 </Badge>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {app.hiredAt && (
                   <div className="flex flex-col gap-0.5">
                     <span className="text-muted-foreground">

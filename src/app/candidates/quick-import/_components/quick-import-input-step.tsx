@@ -57,7 +57,7 @@ export function QuickImportInputStep({
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="flex flex-col gap-0.5">
                     <p className="text-xs text-muted-foreground">Source</p>
                     <p className="font-medium">Internal Upload</p>

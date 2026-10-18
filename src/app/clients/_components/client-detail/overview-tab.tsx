@@ -87,7 +87,7 @@ export function OverviewTab({ client }: { client: Client }) {
 
       <div className="flex flex-col gap-3">
         <SectionTitle>Record Info</SectionTitle>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-muted-foreground">Created</p>
             <p className="text-sm">{formatDate(client.createdAt)}</p>

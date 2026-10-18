@@ -17,7 +17,7 @@ export function AdditionalInfoSection({ candidate: c }: { candidate: Candidate }
     <>
       <div className="flex flex-col gap-3">
         <SectionLabel>Additional Info</SectionLabel>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           {c.englishProficiency && (
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">
