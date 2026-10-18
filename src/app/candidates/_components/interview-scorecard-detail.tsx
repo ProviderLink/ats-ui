@@ -16,18 +16,17 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { cn, formatDate } from '@/lib/utils';
-import type {
-  ExperienceSelection,
-  InterviewScorecard,
-} from '@/store/types/interview-scorecard.types';
+import type { InterviewScorecard } from '@/store/types/interview-scorecard.types';
 import {
-  EXPERIENCE_SELECTION_LABELS,
   FINAL_RECOMMENDATION_BADGE_CLASS,
   FINAL_RECOMMENDATION_LABELS,
 } from '@/store/types/interview-scorecard.types';
-import { PencilIcon, StarIcon } from 'lucide-react';
+import { PencilIcon } from 'lucide-react';
+import { OverallScore } from './interview-scorecard-detail/overall-score';
+import { ScorecardCategories } from './interview-scorecard-detail/scorecard-categories';
+import { ScorecardNotes } from './interview-scorecard-detail/scorecard-notes';
 
-interface Props {
+interface InterviewScorecardDetailProps {
   scorecard: InterviewScorecard | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,16 +39,14 @@ interface Props {
 }
 
 export function InterviewScorecardDetail({
-  scorecard,
+  scorecard: sc,
   open,
   onOpenChange,
   jobTitle,
   interviewerName,
   onEdit,
-}: Props) {
-  if (!scorecard) return null;
-
-  const sc = scorecard;
+}: InterviewScorecardDetailProps) {
+  if (!sc) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,177 +71,10 @@ export function InterviewScorecardDetail({
         </DialogHeader>
 
         <div className="flex flex-col gap-5">
-          {/* Overall score */}
-          <section className="rounded-lg border p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                Overall Score
-              </p>
-              <p className="text-3xl font-semibold">
-                {sc.overallScore.toFixed(1)}
-                <span className="text-sm font-normal text-muted-foreground">
-                  /100
-                </span>
-              </p>
-            </div>
-            <div className="text-xs text-muted-foreground text-right">
-              <p>Server-computed on save</p>
-              <p>Editable anytime</p>
-            </div>
-          </section>
-
-          {/* Categories */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CategoryDetail
-              title="Communication"
-              rating={sc.communicationRating}
-              weighted={sc.communicationWeighted}
-              weight={30}
-              subRows={[
-                {
-                  label: 'English Diction',
-                  value: `${sc.commEnglishDiction}/5`,
-                },
-                {
-                  label: 'English Comprehension',
-                  value: `${sc.commEnglishComprehension}/5`,
-                },
-              ]}
-              note="Communication rating is auto-computed from the two sub-ratings."
-            />
-
-            <CategoryDetail
-              title="Relevant Experience"
-              rating={sc.experienceRating}
-              weighted={sc.experienceWeighted}
-              weight={25}
-              extra={
-                sc.experienceSelections.length > 0 ? (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-muted-foreground">
-                      Experience areas:
-                    </span>
-                    <ul className="text-xs list-disc list-inside text-muted-foreground">
-                      {sc.experienceSelections.map(s => (
-                        <li key={s}>
-                          {EXPERIENCE_SELECTION_LABELS[
-                            s as ExperienceSelection
-                          ] ?? s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null
-              }
-            />
-
-            <CategoryDetail
-              title="Professionalism"
-              rating={sc.professionalismRating}
-              weighted={sc.professionalismWeighted}
-              weight={15}
-              subRows={[
-                {
-                  label: 'Prepared on time',
-                  value: booleanLabel(sc.profPreparedOnTime),
-                },
-                {
-                  label: 'Appearance & demeanor',
-                  value: booleanLabel(sc.profAppearanceDemeanor),
-                },
-                {
-                  label: 'Attitude & reliability',
-                  value: booleanLabel(sc.profAttitudeReliability),
-                },
-                {
-                  label: 'Interest in position',
-                  value: booleanLabel(sc.profInterestInPosition),
-                },
-              ]}
-            />
-
-            <CategoryDetail
-              title="Office & Technology Setup"
-              rating={sc.technologyRating}
-              weighted={sc.technologyWeighted}
-              weight={20}
-              subRows={[
-                {
-                  label: 'Internet speed adequate',
-                  value: booleanLabel(sc.techInternetSpeed),
-                },
-                {
-                  label: 'Noise-cancelling headset',
-                  value: booleanLabel(sc.techHeadsetNoiseCancelling),
-                },
-                {
-                  label: 'Two screens',
-                  value: booleanLabel(sc.techTwoScreens),
-                },
-                {
-                  label: 'Backup internet',
-                  value: booleanLabel(sc.techBackupInternet),
-                },
-                {
-                  label: 'Backup generator',
-                  value: booleanLabel(sc.techBackupGenerator),
-                },
-              ]}
-            />
-
-            <CategoryDetail
-              title="Availability & Overall Fit"
-              rating={sc.availabilityRating}
-              weighted={sc.availabilityWeighted}
-              weight={10}
-              subRows={[
-                {
-                  label: 'Can work US hours',
-                  value: booleanLabel(sc.availUsHours),
-                },
-                {
-                  label: 'Compensation acceptable',
-                  value: booleanLabel(sc.availCompensationAcceptable),
-                },
-                {
-                  label: 'Start availability acceptable',
-                  value: booleanLabel(sc.availStartAvailability),
-                },
-                {
-                  label: 'Overall fit',
-                  value: booleanLabel(sc.availOverallFit),
-                },
-              ]}
-            />
-          </div>
-
+          <OverallScore score={sc.overallScore} />
+          <ScorecardCategories sc={sc} />
           <Separator />
-
-          {/* Notes */}
-          <section className="flex flex-col gap-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Notes
-            </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <NoteField label="Strengths" value={sc.strengths} />
-              <NoteField label="Concerns" value={sc.concerns} />
-              <NoteField label="General notes" value={sc.generalNotes} />
-              <NoteField
-                label="Recommended position"
-                value={sc.recommendedPosition}
-              />
-              <NoteField
-                label="Earliest start date"
-                value={
-                  sc.earliestStartDate ? formatDate(sc.earliestStartDate) : '—'
-                }
-              />
-              <NoteField
-                label="Compensation expectation"
-                value={sc.compensationExpectation || '—'}
-              />
-            </div>
-          </section>
+          <ScorecardNotes sc={sc} />
 
           <div className="flex justify-end gap-2">
             {onEdit && (
@@ -259,84 +89,5 @@ export function InterviewScorecardDetail({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function booleanLabel(v: boolean): string {
-  return v ? 'Yes' : 'No';
-}
-
-function CategoryDetail({
-  title,
-  rating,
-  weighted,
-  weight,
-  subRows = [],
-  extra,
-  note,
-}: {
-  title: string;
-  rating: number;
-  weighted: number;
-  weight: number;
-  subRows?: { label: string; value: string }[];
-  extra?: React.ReactNode;
-  note?: string;
-}) {
-  return (
-    <section className="rounded-lg border p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-sm font-semibold">
-          {title}
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            weight {weight}
-          </span>
-        </span>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <StarIcon
-                key={i}
-                className={cn(
-                  'size-3.5',
-                  i < rating
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'text-muted-foreground/30'
-                )}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {weighted.toFixed(1)}/{weight}
-          </span>
-        </div>
-      </div>
-
-      {subRows.length > 0 && (
-        <ul className="text-sm text-muted-foreground flex flex-col gap-1.5">
-          {subRows.map((r, i) => (
-            <li key={i} className="flex justify-between gap-3">
-              <span>{r.label}</span>
-              <span className="text-foreground font-medium">{r.value}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {note && <p className="text-xs text-muted-foreground italic">{note}</p>}
-      {extra}
-    </section>
-  );
-}
-
-function NoteField({ label, value }: { label: string; value: string }) {
-  if (!value) return null;
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        {label}
-      </span>
-      <span className="text-sm">{value}</span>
-    </div>
   );
 }
