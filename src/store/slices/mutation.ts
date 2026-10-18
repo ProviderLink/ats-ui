@@ -1,5 +1,4 @@
 import type { Draft } from 'immer';
-import { toast } from 'sonner';
 
 interface MutationState {
   mutating: boolean;
@@ -42,19 +41,4 @@ export function createMutate<State extends MutationState>(
       throw e;
     }
   };
-}
-
-/** Run a mutation, toasting its outcome. Failures are rethrown to the caller. */
-export async function withToast<R>(
-  successMessage: string,
-  run: () => Promise<R>
-): Promise<R> {
-  try {
-    const result = await run();
-    toast.success(successMessage);
-    return result;
-  } catch (e) {
-    toast.error((e as Error).message);
-    throw e;
-  }
 }

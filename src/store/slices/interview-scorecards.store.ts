@@ -1,5 +1,4 @@
 import { getJson, patchJson, postJson } from '@/lib/api-client';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
@@ -104,14 +103,12 @@ export const useInterviewScorecardStore = create<
           );
           s.mutating = false;
         });
-        toast.success('Interview scorecard submitted');
         return scorecard;
       } catch (e) {
         set(s => {
           s.mutating = false;
           s.error = (e as Error).message;
         });
-        toast.error((e as Error).message);
         throw e;
       }
     },
@@ -133,14 +130,12 @@ export const useInterviewScorecardStore = create<
           s.detail[id] = scorecard;
           s.mutating = false;
         });
-        toast.success('Interview scorecard updated');
         return scorecard;
       } catch (e) {
         set(s => {
           s.mutating = false;
           s.error = (e as Error).message;
         });
-        toast.error((e as Error).message);
         throw e;
       }
     },

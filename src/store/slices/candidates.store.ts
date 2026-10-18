@@ -5,7 +5,6 @@ import {
   postForm,
   postJson,
 } from '@/lib/api-client';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -197,16 +196,10 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           ),
 
         update: async (id, data) => {
-          try {
-            await mutate(
-              () => patchJson<Candidate>(`/ats/candidates/${id}`, data),
-              (s, c) => replaceCandidate(s, id, c)
-            );
-            toast.success('Candidate updated');
-          } catch (e) {
-            toast.error((e as Error).message);
-            throw e;
-          }
+          await mutate(
+            () => patchJson<Candidate>(`/ats/candidates/${id}`, data),
+            (s, c) => replaceCandidate(s, id, c)
+          );
         },
 
         remove: async id => {
@@ -222,22 +215,6 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             }
           );
           useApplicationStore.getState()._removeByCandidateId(id);
-        },
-
-        uploadAvatar: async (id, file) => {
-          const fd = new FormData();
-          fd.append('file', file);
-          try {
-            const c = await postForm<Candidate>(
-              `/ats/candidates/${id}/avatar`,
-              fd
-            );
-            set(s => replaceCandidate(s, id, c));
-            toast.success('Photo updated');
-          } catch (e) {
-            toast.error((e as Error).message);
-            throw e;
-          }
         },
 
         updateTalentPool: async (id, action, notes) => {

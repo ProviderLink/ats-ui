@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/store/slices/auth.store';
+import { withToast } from '@/lib/with-toast';
 import { useInterviewScorecardStore } from '@/store/slices/interview-scorecards.store';
 import type {
   CreateInterviewScorecardDto,
@@ -101,7 +102,9 @@ export function useScorecardForm({
           interviewerId: values.interviewerId,
           ...fields,
         };
-        await update(editing._id, payload);
+        await withToast('Interview scorecard updated', () =>
+          update(editing._id, payload)
+        );
       } else {
         const payload: CreateInterviewScorecardDto = {
           candidateId,
@@ -109,13 +112,13 @@ export function useScorecardForm({
           interviewerId: values.interviewerId,
           ...fields,
         };
-        await create(payload);
+        await withToast('Interview scorecard submitted', () => create(payload));
       }
       onClose();
       reset();
       onCreated?.();
     } catch {
-      // The store reports the failure.
+      // withToast already reported the failure.
     }
   };
 

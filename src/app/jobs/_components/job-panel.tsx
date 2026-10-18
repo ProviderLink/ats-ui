@@ -1,3 +1,5 @@
+import { jobStatusChangeMessage } from '@/lib/job-format';
+import { withToast } from '@/lib/with-toast';
 import { ActivityTimeline } from '@/components/activity-timeline';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { logOptimisticActivity } from '@/lib/activity';
@@ -77,7 +79,9 @@ export function JobPanel({ job, clients }: JobPanelProps) {
 
   async function handleStatusChange(status: JobStatus) {
     if (!fullJob) return;
-    await setStatus(fullJob._id, status);
+    await withToast(jobStatusChangeMessage(status), () =>
+      setStatus(fullJob._id, status)
+    );
     logOptimisticActivity(
       'job',
       fullJob._id,
@@ -88,7 +92,7 @@ export function JobPanel({ job, clients }: JobPanelProps) {
 
   async function handleDelete() {
     if (!fullJob) return;
-    await removeJob(fullJob._id);
+    await withToast('Job deleted', () => removeJob(fullJob._id));
     setDeleteOpen(false);
   }
 
@@ -97,7 +101,9 @@ export function JobPanel({ job, clients }: JobPanelProps) {
     stageMapping?: Record<string, string>
   ) {
     if (!fullJob) return;
-    await setPipeline(fullJob._id, templateId, stageMapping);
+    await withToast('Pipeline assigned', () =>
+      setPipeline(fullJob._id, templateId, stageMapping)
+    );
     logOptimisticActivity(
       'job',
       fullJob._id,

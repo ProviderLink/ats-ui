@@ -135,3 +135,10 @@ export function toBullets(items: string[] | string | undefined): string[] {
   if (!items.length) return [];
   return clean(items.flatMap(item => splitBullets(item)));
 }
+
+export function jobStatusChangeMessage(status: JobStatus): string {
+  if (status === 'open') return 'Job opened';
+  if (status === 'closed') return 'Job closed';
+  if (status === 'on_hold') return 'Job put on hold';
+  return 'Job status updated';
+}

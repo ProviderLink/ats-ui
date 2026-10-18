@@ -6,6 +6,7 @@ import type { Interview, Job } from '@/store/types';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { resolveScheduleInput } from '../_utils/resolve-schedule-input';
+import { withToast } from '@/lib/with-toast';
 
 interface EditEventDialogProps {
   event: Interview;
@@ -42,7 +43,8 @@ export function EditEventDialog({
 
     setSaving(true);
     try {
-      await updateInterview(
+      await withToast('Interview updated — notifications sent', () =>
+        updateInterview(
         event._id,
         {
           title: data.title,
@@ -53,10 +55,11 @@ export function EditEventDialog({
           meetingDetails: resolved.meetingDetails,
         },
         event.applicationId
+        )
       );
       onSaved();
     } catch {
-      // The store already toasts the failure.
+      // withToast already reported the failure.
     } finally {
       setSaving(false);
     }

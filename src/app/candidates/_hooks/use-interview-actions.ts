@@ -1,4 +1,5 @@
 import { logOptimisticActivity } from '@/lib/activity';
+import { withToast } from '@/lib/with-toast';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import type { Application, CreateFeedbackDto, Interview } from '@/store/types';
 import { useState } from 'react';
@@ -40,13 +41,17 @@ export function useInterviewActions(
     id: string,
     data: CreateFeedbackDto
   ) {
-    await completeAndFeedback(id, data, activePipelineApp?._id);
+    await withToast('Interview completed & feedback submitted', () =>
+      completeAndFeedback(id, data, activePipelineApp?._id)
+    );
     refreshInterviews();
     logIfPipeline('interview_completed', `Interview completed: ${iv.title}`);
   }
 
   async function cancelScheduledInterview(iv: Interview, id: string) {
-    await cancelInterview(id, activePipelineApp?._id);
+    await withToast('Interview cancelled — notifications sent', () =>
+      cancelInterview(id, activePipelineApp?._id)
+    );
     refreshInterviews();
     logIfPipeline('interview_cancelled', `Interview cancelled: ${iv.title}`);
   }
@@ -69,10 +74,12 @@ export function useInterviewActions(
 
   async function confirmReschedule(data: { scheduledAt: string }) {
     if (!rescheduleInterview) return;
-    await updateInterview(
-      rescheduleInterview._id,
-      { scheduledAt: data.scheduledAt },
-      activePipelineApp?._id
+    await withToast('Interview updated — notifications sent', () =>
+      updateInterview(
+        rescheduleInterview._id,
+        { scheduledAt: data.scheduledAt },
+        activePipelineApp?._id
+      )
     );
     refreshInterviews();
     logIfPipeline(

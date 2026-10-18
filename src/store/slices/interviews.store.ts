@@ -18,7 +18,7 @@ import type {
   InterviewActions,
   InterviewState,
 } from './interviews.store.types';
-import { createMutate, withToast } from './mutation';
+import { createMutate } from './mutation';
 
 const initialState: InterviewState = {
   items: [],
@@ -204,76 +204,64 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
         },
 
         create: data =>
-          withToast('Interview scheduled — invitations sent', () =>
-            mutate(
-              () => postJson<Interview>('/ats/interviews', data),
-              (s, interview) => upsertInterview(s, interview)
-            )
+          mutate(
+            () => postJson<Interview>('/ats/interviews', data),
+            (s, interview) => upsertInterview(s, interview)
           ),
 
         createForApplication: (applicationId, data) =>
-          withToast('Interview scheduled — invitations sent', () =>
-            mutate(
-              () =>
-                postJson<Interview>(
-                  `/ats/applications/${applicationId}/interviews`,
-                  data
-                ),
-              (s, interview) => upsertInterview(s, interview)
-            )
+          mutate(
+            () =>
+              postJson<Interview>(
+                `/ats/applications/${applicationId}/interviews`,
+                data
+              ),
+            (s, interview) => upsertInterview(s, interview)
           ),
 
         update: async (id, data, applicationId) => {
-          await withToast('Interview updated — notifications sent', () =>
-            mutate(
-              () => patchJson<Interview>(interviewPath(id, applicationId), data),
-              (s, interview) => replaceInterview(s, id, interview)
-            )
+          await mutate(
+            () => patchJson<Interview>(interviewPath(id, applicationId), data),
+            (s, interview) => replaceInterview(s, id, interview)
           );
         },
 
         cancel: async (id, applicationId) => {
-          await withToast('Interview cancelled — notifications sent', () =>
-            mutate(
-              () => deleteJson(interviewPath(id, applicationId)),
-              s => {
-                const idx = s.items.findIndex(x => x._id === id);
-                if (idx !== -1) s.items[idx].status = 'cancelled';
-                if (s.detail[id]) s.detail[id].status = 'cancelled';
-              },
-              false
-            )
+          await mutate(
+            () => deleteJson(interviewPath(id, applicationId)),
+            s => {
+              const idx = s.items.findIndex(x => x._id === id);
+              if (idx !== -1) s.items[idx].status = 'cancelled';
+              if (s.detail[id]) s.detail[id].status = 'cancelled';
+            },
+            false
           );
         },
 
         submitFeedback: async (id, data, applicationId) => {
-          await withToast('Feedback submitted', () =>
-            mutate(
-              () =>
-                postJson<Interview>(
-                  interviewPath(id, applicationId, '/feedback'),
-                  data
-                ),
-              (s, interview) => replaceInterview(s, id, interview),
-              false
-            )
+          await mutate(
+            () =>
+              postJson<Interview>(
+                interviewPath(id, applicationId, '/feedback'),
+                data
+              ),
+            (s, interview) => replaceInterview(s, id, interview),
+            false
           );
         },
 
         completeAndFeedback: async (id, data, applicationId) => {
-          await withToast('Interview completed & feedback submitted', () =>
-            mutate(
-              async () => {
-                await patchJson<Interview>(interviewPath(id, applicationId), {
-                  status: 'completed',
-                } as UpdateInterviewDto);
-                return postJson<Interview>(
-                  interviewPath(id, applicationId, '/feedback'),
-                  data
-                );
-              },
-              (s, interview) => replaceInterview(s, id, interview)
-            )
+          await mutate(
+            async () => {
+              await patchJson<Interview>(interviewPath(id, applicationId), {
+                status: 'completed',
+              } as UpdateInterviewDto);
+              return postJson<Interview>(
+                interviewPath(id, applicationId, '/feedback'),
+                data
+              );
+            },
+            (s, interview) => replaceInterview(s, id, interview)
           );
         },
 

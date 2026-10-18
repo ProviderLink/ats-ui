@@ -1,4 +1,5 @@
 import { logOptimisticActivity } from '@/lib/activity';
+import { withToast } from '@/lib/with-toast';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import type { Interview, InterviewRecommendation } from '@/store/types';
 import { useState } from 'react';
@@ -10,6 +11,8 @@ export interface FeedbackInput {
 }
 
 type Action = 'feedback' | 'complete' | 'no_show' | 'cancel';
+
+const UPDATED_MESSAGE = 'Interview updated — notifications sent';
 
 export function useEventActions(event: Interview) {
   const cancelInterview = useInterviewStore(s => s.cancel);
@@ -28,7 +31,7 @@ export function useEventActions(event: Interview) {
       await task();
       return true;
     } catch {
-      // The store already toasts the failure.
+      // withToast already reported the failure.
       return false;
     } finally {
       setBusy(b => ({ ...b, [action]: false }));
@@ -43,7 +46,9 @@ export function useEventActions(event: Interview) {
     busy,
     submitFeedback: (input: FeedbackInput) =>
       run('feedback', async () => {
-        await submitFeedback(event._id, input, event.applicationId);
+        await withToast('Feedback submitted', () =>
+          submitFeedback(event._id, input, event.applicationId)
+        );
         logActivity(
           'interview_feedback_submitted',
           `Feedback submitted for: ${event.title}`
@@ -51,19 +56,23 @@ export function useEventActions(event: Interview) {
       }),
     complete: () =>
       run('complete', async () => {
-        await updateInterview(
-          event._id,
-          { status: 'completed' },
-          event.applicationId
+        await withToast(UPDATED_MESSAGE, () =>
+          updateInterview(
+            event._id,
+            { status: 'completed' },
+            event.applicationId
+          )
         );
         logActivity('interview_completed', `Interview completed: ${event.title}`);
       }),
     markNoShow: () =>
       run('no_show', async () => {
-        await updateInterview(
-          event._id,
-          { status: 'no_show' },
-          event.applicationId
+        await withToast(UPDATED_MESSAGE, () =>
+          updateInterview(
+            event._id,
+            { status: 'no_show' },
+            event.applicationId
+          )
         );
         logActivity(
           'interview_no_show',
@@ -71,6 +80,10 @@ export function useEventActions(event: Interview) {
         );
       }),
     cancel: () =>
-      run('cancel', () => cancelInterview(event._id, event.applicationId)),
+      run('cancel', () =>
+        withToast('Interview cancelled — notifications sent', () =>
+          cancelInterview(event._id, event.applicationId)
+        )
+      ),
   };
 }

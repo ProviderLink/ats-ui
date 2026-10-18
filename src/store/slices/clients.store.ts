@@ -5,7 +5,6 @@ import {
   postForm,
   postJson,
 } from '@/lib/api-client';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -172,19 +171,13 @@ export const useClientStore = create<ClientState & ClientActions>()(
         uploadLogo: async (id, file) => {
           const fd = new FormData();
           fd.append('file', file);
-          try {
-            const client = toClient(
-              await postForm<Client | { data: Client }>(
-                `/ats/clients/${id}/logo`,
-                fd
-              )
-            );
-            set(s => replaceClient(s, id, client));
-            toast.success('Logo updated');
-          } catch (e) {
-            toast.error((e as Error).message);
-            throw e;
-          }
+          const client = toClient(
+            await postForm<Client | { data: Client }>(
+              `/ats/clients/${id}/logo`,
+              fd
+            )
+          );
+          set(s => replaceClient(s, id, client));
         },
 
         addContact: async (id, data) => {

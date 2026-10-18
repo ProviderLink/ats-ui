@@ -3,7 +3,6 @@ import type {
   UpdateUserDto,
   User,
   UserFilters,
-  UserPermissions,
 } from '../types';
 
 export interface UserState {
@@ -25,10 +24,6 @@ export interface UserActions {
   }) => Promise<User>;
   uploadAvatar: (file: File) => Promise<User>;
   remove: (id: string) => Promise<void>;
-  updatePermissions: (
-    id: string,
-    permissions: UserPermissions
-  ) => Promise<void>;
   provisionClient: (clientId: string) => Promise<User>;
   provisionVA: (candidateId: string) => Promise<User>;
   revokeCrmAccess: (userId: string) => Promise<User>;

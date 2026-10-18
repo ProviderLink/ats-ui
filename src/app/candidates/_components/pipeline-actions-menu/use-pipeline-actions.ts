@@ -243,7 +243,7 @@ export function usePipelineActions({
           address: data.address || null,
         },
       });
-      toast.success('Interview scheduled');
+      toast.success('Interview scheduled — invitations sent');
       closeDialog();
     });
   }

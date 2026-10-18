@@ -10,13 +10,9 @@ import type {
 } from '../types';
 import { useApplicationStore } from './applications.store';
 import { useBootStore } from './boot.store';
-import {
-  replaceJob,
-  statusChangeMessage,
-  upsertJob,
-} from './jobs.store.helpers';
+import { replaceJob, upsertJob } from './jobs.store.helpers';
 import type { JobActions, JobState } from './jobs.store.types';
-import { createMutate, withToast } from './mutation';
+import { createMutate } from './mutation';
 
 const initialState: JobState = {
   items: [],
@@ -145,39 +141,33 @@ export const useJobStore = create<JobState & JobActions>()(
         },
 
         remove: async id => {
-          await withToast('Job deleted', async () => {
-            await mutate(
-              () => deleteJson(`/ats/jobs/${id}`),
-              s => {
-                s.items = s.items.filter(x => x._id !== id);
-                delete s.detail[id];
-              }
-            );
-            useApplicationStore.getState()._removeByJobId(id);
-          });
+          await mutate(
+            () => deleteJson(`/ats/jobs/${id}`),
+            s => {
+              s.items = s.items.filter(x => x._id !== id);
+              delete s.detail[id];
+            }
+          );
+          useApplicationStore.getState()._removeByJobId(id);
         },
 
         setStatus: async (id, status) => {
-          await withToast(statusChangeMessage(status), () =>
-            mutate(
-              () => patchJson<Job>(`/ats/jobs/${id}/status`, { status }),
-              (s, job) => replaceJob(s, id, job),
-              false
-            )
+          await mutate(
+            () => patchJson<Job>(`/ats/jobs/${id}/status`, { status }),
+            (s, job) => replaceJob(s, id, job),
+            false
           );
         },
 
         setPipeline: async (id, templateId, stageMapping) => {
-          await withToast('Pipeline assigned', () =>
-            mutate(
-              () => {
-                const body: Record<string, unknown> = { templateId };
-                if (stageMapping) body.stageMapping = stageMapping;
-                return patchJson<Job>(`/ats/jobs/${id}/pipeline`, body);
-              },
-              (s, job) => replaceJob(s, id, job),
-              false
-            )
+          await mutate(
+            () => {
+              const body: Record<string, unknown> = { templateId };
+              if (stageMapping) body.stageMapping = stageMapping;
+              return patchJson<Job>(`/ats/jobs/${id}/pipeline`, body);
+            },
+            (s, job) => replaceJob(s, id, job),
+            false
           );
         },
 

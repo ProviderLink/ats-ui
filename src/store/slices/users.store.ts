@@ -12,7 +12,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { User } from '../types';
 import { useAuthStore } from './auth.store';
 import { useBootStore } from './boot.store';
-import { createMutate, withToast } from './mutation';
+import { createMutate } from './mutation';
 import { replaceUser, upsertUser } from './users.store.helpers';
 import type { UserActions, UserState } from './users.store.types';
 
@@ -135,39 +135,18 @@ export const useUserStore = create<UserState & UserActions>()(
           ),
 
         remove: async id => {
-          await withToast('Team member removed', () =>
-            mutate(
-              async () => {
-                if (!isValidObjectId(id)) {
-                  throw new Error(
-                    'Cannot remove this member — their invitation is still pending.'
-                  );
-                }
-                await deleteJson(`/shared/users/${id}`);
-              },
-              s => {
-                s.items = s.items.filter(x => x._id !== id);
+          await mutate(
+            async () => {
+              if (!isValidObjectId(id)) {
+                throw new Error(
+                  'Cannot remove this member — their invitation is still pending.'
+                );
               }
-            )
-          );
-        },
-
-        updatePermissions: async (id, permissions) => {
-          await withToast('Permissions updated', () =>
-            mutate(
-              async () => {
-                if (!isValidObjectId(id)) {
-                  throw new Error(
-                    "Cannot update permissions — this member's invitation is still pending."
-                  );
-                }
-                return patchJson<User>(`/shared/users/${id}/permissions`, {
-                  permissions,
-                });
-              },
-              (s, user) => replaceUser(s, id, user),
-              false
-            )
+              await deleteJson(`/shared/users/${id}`);
+            },
+            s => {
+              s.items = s.items.filter(x => x._id !== id);
+            }
           );
         },
 

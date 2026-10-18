@@ -1,4 +1,5 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { withToast } from '@/lib/with-toast';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { useUserStore } from '@/store/slices/users.store';
 import type { User } from '@/store/types/user.types';
@@ -64,9 +65,9 @@ export function TeamTable({ members, loading }: TeamTableProps) {
   async function handleDelete() {
     if (!deleteTarget) return;
     try {
-      await remove(deleteTarget._id);
+      await withToast('Team member removed', () => remove(deleteTarget._id));
     } catch {
-      // toast handled by store
+      // withToast already reported the failure.
     } finally {
       setDeleteTarget(null);
     }
@@ -75,9 +76,11 @@ export function TeamTable({ members, loading }: TeamTableProps) {
   async function handleDeleteSelected() {
     const ids = table.getSelectedRowModel().rows.map(r => r.id);
     try {
-      await Promise.all(ids.map(id => remove(id)));
+      await Promise.all(
+        ids.map(id => withToast('Team member removed', () => remove(id)))
+      );
     } catch {
-      // toast handled by store
+      // withToast already reported the failure.
     } finally {
       setRowSelection({});
     }

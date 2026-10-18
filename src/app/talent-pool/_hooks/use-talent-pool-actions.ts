@@ -5,6 +5,7 @@ import { useTagStore } from '@/store/slices/tags.store';
 import type { Candidate } from '@/store/types';
 import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
+import { withToast } from '@/lib/with-toast';
 
 /** Data and mutations for one talent-pool candidate in the detail sheet. */
 export function useTalentPoolActions(
@@ -78,9 +79,11 @@ export function useTalentPoolActions(
   async function updateTags(tagIds: string[]) {
     if (!candidate) return;
     try {
-      await updateCandidate(candidate._id, { tags: tagIds });
+      await withToast('Candidate updated', () =>
+        updateCandidate(candidate._id, { tags: tagIds })
+      );
     } catch {
-      // The store reports the failure.
+      // withToast already reported the failure.
     }
   }
 

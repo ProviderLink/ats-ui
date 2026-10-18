@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/store/slices/settings.store';
 import type { Application, Candidate, Interview, Job } from '@/store/types';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { withToast } from '@/lib/with-toast';
 
 /**
  * Pipeline actions for an approved candidate (move stage, hire, reject,
@@ -255,7 +256,8 @@ export function useCandidatePipelineActions(
         toast.error('Please enter a valid date and time');
         return;
       }
-      await createInterviewForApplication(activePipelineApp._id, {
+      await withToast('Interview scheduled — invitations sent', () =>
+        createInterviewForApplication(activePipelineApp._id, {
         title: data.title,
         type: data.type as Interview['type'],
         jobId: data.jobId || undefined,
@@ -267,7 +269,8 @@ export function useCandidatePipelineActions(
           phoneNumber: data.phoneNumber || null,
           address: data.address || null,
         },
-      });
+        })
+      );
       refreshInterviews();
       const jobTitle =
         jobs.find(j => j._id === data.jobId)?.title ??
@@ -281,7 +284,7 @@ export function useCandidatePipelineActions(
       );
       setScheduleOpen(false);
     } catch {
-      // toast handled by store
+      // withToast already reported the failure.
     } finally {
       setPipelineLoading(false);
     }

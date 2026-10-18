@@ -7,6 +7,7 @@ import { useJobStore } from '@/store/slices/jobs.store';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { resolveScheduleInput } from '../_utils/resolve-schedule-input';
+import { withToast } from '@/lib/with-toast';
 
 interface SchedulableCandidate {
   applicationId: string;
@@ -92,7 +93,8 @@ export function CreateEventDialog({
 
     setSaving(true);
     try {
-      await createInterview({
+      await withToast('Interview scheduled — invitations sent', () =>
+        createInterview({
         applicationId: selectedCandidate.applicationId,
         candidateId: selectedCandidate.candidateId,
         jobId: selectedCandidate.jobId,
@@ -103,10 +105,11 @@ export function CreateEventDialog({
         duration: data.duration,
         interviewerIds: data.interviewerIds,
         meetingDetails: resolved.meetingDetails,
-      });
+        })
+      );
       onCreated();
     } catch {
-      // The store already toasts the failure.
+      // withToast already reported the failure.
     } finally {
       setSaving(false);
     }

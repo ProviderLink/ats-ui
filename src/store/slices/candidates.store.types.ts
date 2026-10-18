@@ -26,7 +26,6 @@ export interface CandidateActions {
   create: (data: CreateCandidateDto) => Promise<Candidate>;
   update: (id: string, data: UpdateCandidateDto) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  uploadAvatar: (id: string, file: File) => Promise<void>;
   updateTalentPool: (
     id: string,
     action: 'add' | 'remove',

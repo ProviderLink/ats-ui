@@ -25,7 +25,10 @@ export function useSaveClient(
           ...buildClientUpdatePayload(values),
           tags: tagIds,
         });
-        if (logoFile) await uploadLogo(client._id, logoFile);
+        if (logoFile) {
+          await uploadLogo(client._id, logoFile);
+          toast.success('Logo updated');
+        }
         logOptimisticActivity(
           'client',
           client._id,
@@ -45,7 +48,10 @@ export function useSaveClient(
           ...clientData,
           tags: tagIds,
         } as CreateClientDto);
-        if (logoFile) await uploadLogo(newClient._id, logoFile);
+        if (logoFile) {
+          await uploadLogo(newClient._id, logoFile);
+          toast.success('Logo updated');
+        }
 
         if (contactName?.trim() && contactEmail?.trim()) {
           await addContact(newClient._id, {
