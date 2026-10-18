@@ -19,21 +19,21 @@ import { Loader2Icon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EMAIL_TEMPLATE_TYPES, EMAIL_VARIABLES } from '@/lib/email-templates';
 
+export type EmailTemplateInput = Omit<
+  EmailTemplate,
+  | '_id'
+  | 'createdBy'
+  | 'updatedBy'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'variables'
+> & { variables: string[] };
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   template?: EmailTemplate;
-  onSave: (
-    data: Omit<
-      EmailTemplate,
-      | '_id'
-      | 'createdBy'
-      | 'updatedBy'
-      | 'createdAt'
-      | 'updatedAt'
-      | 'variables'
-    > & { variables: string[] }
-  ) => Promise<void> | void;
+  onSave: (data: EmailTemplateInput) => Promise<void> | void;
 };
 
 export function EmailTemplateSheet({
