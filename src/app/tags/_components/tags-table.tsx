@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,8 +71,8 @@ export function TagsTable() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | undefined>(undefined);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
+  const [bulkDeleteCount, setBulkDeleteCount] = useState<number | null>(null);
 
   useEffect(() => {
     fetch();
@@ -113,16 +114,8 @@ export function TagsTable() {
 
   const columns = useMemo(
     () =>
-      buildTagColumns(
-        handleEdit,
-        confirmId,
-        setConfirmId,
-        handleDelete,
-        mutating,
-        users
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [confirmId, mutating, users]
+      buildTagColumns(handleEdit, setDeleteTarget, users),
+    [users]
   );
 
   const filtered = useMemo(() => {
@@ -166,7 +159,7 @@ export function TagsTable() {
         `${selectedIds.length} tag${selectedIds.length === 1 ? '' : 's'} deleted`
       );
       setRowSelection({});
-      setConfirmBulkDelete(false);
+      setBulkDeleteCount(null);
     } catch (e) {
       toast.error((e as Error).message || 'Failed to delete tags');
     }
@@ -191,11 +184,7 @@ export function TagsTable() {
           <div className="flex items-center gap-2 ml-auto">
             <TagsBulkActions
               selectedCount={selectedCount}
-              confirming={confirmBulkDelete}
-              mutating={mutating}
-              onAskConfirm={() => setConfirmBulkDelete(true)}
-              onCancel={() => setConfirmBulkDelete(false)}
-              onConfirm={handleDeleteSelected}
+              onDelete={() => setBulkDeleteCount(selectedCount)}
             />
             <Button
               size="sm"
@@ -288,6 +277,39 @@ export function TagsTable() {
         onOpenChange={setSheetOpen}
         tag={editingTag}
         onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Delete tag?"
+        description={
+          deleteTarget && (
+            <>
+              <strong>{deleteTarget.name}</strong> will be permanently deleted.
+              This action cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={mutating}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await handleDelete(deleteTarget._id);
+          setDeleteTarget(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteCount !== null}
+        onOpenChange={open => !open && setBulkDeleteCount(null)}
+        title={`Delete ${bulkDeleteCount ?? 0} tag${bulkDeleteCount === 1 ? '' : 's'}?`}
+        description="The selected tags will be permanently deleted. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={mutating}
+        onConfirm={handleDeleteSelected}
       />
     </>
   );

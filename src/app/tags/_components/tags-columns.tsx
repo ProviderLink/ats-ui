@@ -5,7 +5,6 @@ import type { Tag, User } from '@/store/types';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   CalendarIcon,
-  CheckIcon,
   EllipsisIcon,
   EyeIcon,
   PaletteIcon,
@@ -13,7 +12,6 @@ import {
   TagIcon,
   Trash2Icon,
   UserIcon,
-  XIcon,
 } from 'lucide-react';
 import { TagBadge } from './tag-badge';
 import { ColHeader } from './tag-col-header';
@@ -36,10 +34,7 @@ function avatarColor(name: string) {
 
 export function buildTagColumns(
   onEdit: (tag: Tag) => void,
-  confirmId: string | null,
-  setConfirmId: (id: string | null) => void,
-  onDelete: (id: string) => void,
-  mutating: boolean,
+  onDelete: (tag: Tag) => void,
   users: User[]
 ): ColumnDef<Tag>[] {
   return [
@@ -179,37 +174,6 @@ export function buildTagColumns(
       ),
       cell: ({ row }) => {
         const tag = row.original;
-        if (confirmId === tag._id) {
-          return (
-            <div className="flex items-center gap-1 min-w-[160px]">
-              <span className="text-xs text-muted-foreground mr-1">
-                Delete?
-              </span>
-              <Button
-                variant="destructive"
-                size="xs"
-                className="h-7 gap-1 px-2"
-                disabled={mutating}
-                onClick={() => {
-                  onDelete(tag._id);
-                  setConfirmId(null);
-                }}
-              >
-                <CheckIcon className="size-3" />
-                Yes
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                className="h-7 gap-1 px-2"
-                onClick={() => setConfirmId(null)}
-              >
-                <XIcon className="size-3" />
-                No
-              </Button>
-            </div>
-          );
-        }
         return (
           <div className="flex items-center gap-1 min-w-[160px]">
             <Button
@@ -225,7 +189,7 @@ export function buildTagColumns(
               variant="outline"
               size="sm"
               className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40"
-              onClick={() => setConfirmId(tag._id)}
+              onClick={() => onDelete(tag)}
             >
               <Trash2Icon className="size-3" />
               Delete
