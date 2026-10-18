@@ -1,3 +1,4 @@
+import { Separator } from '@/components/ui/separator';
 import { PortfolioSection } from '@/components/portfolio-section';
 import { ResumeViewer } from '@/components/resume-viewer';
 import type { Candidate } from '@/store/types';
@@ -5,7 +6,16 @@ import { VideoIcon } from 'lucide-react';
 import { IntroVideo } from './intro-video';
 import { SectionLabel } from './section-label';
 
-export function ResumeAndPortfolioSection({ candidate: c }: { candidate: Candidate }) {
+interface ResumeAndPortfolioSectionProps {
+  candidate: Candidate;
+  /** Draw a divider between the resume and the portfolio. */
+  divided?: boolean;
+}
+
+export function ResumeAndPortfolioSection({
+  candidate: c,
+  divided,
+}: ResumeAndPortfolioSectionProps) {
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -30,6 +40,8 @@ export function ResumeAndPortfolioSection({ candidate: c }: { candidate: Candida
           )}
         </div>
       </div>
+
+      {divided && <Separator />}
 
       {/* Portfolio — always shown so an absent portfolio is visible */}
       <div className="flex flex-col gap-3">

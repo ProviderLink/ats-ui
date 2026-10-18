@@ -9,8 +9,6 @@ import {
 } from '@/components/ui/dialog';
 import type { Candidate } from '@/store/types';
 
-/** Radix Select forbids an empty-string item value, so the "use the first
- * stage" option needs a non-empty sentinel that we map back to undefined. */
 export function RemoveTalentPoolConfirmDialog({
   candidate,
   open,
