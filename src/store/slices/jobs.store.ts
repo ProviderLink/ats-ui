@@ -1,65 +1,22 @@
 import { deleteJson, getJson, patchJson, postJson } from '@/lib/api-client';
-import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type {
-  CreateJobDto,
-  GenerateJobDraftDto,
   GeneratedJobDraft,
   Job,
-  JobFilters,
-  JobStatus,
   Pagination,
-  StandardizeJobContentDto,
   StandardizedJobContent,
-  UpdateJobDto,
 } from '../types';
 import { useApplicationStore } from './applications.store';
 import { useBootStore } from './boot.store';
-
-interface JobState {
-  items: Job[];
-  detail: Record<string, Job>;
-  loading: boolean;
-  isRefreshing: boolean;
-  mutating: boolean;
-  error: string | null;
-  pagination: Pagination | null;
-  filters: JobFilters;
-}
-
-interface JobActions {
-  fetch: (params?: JobFilters) => Promise<void>;
-  fetchOne: (id: string) => Promise<void>;
-  create: (data: CreateJobDto) => Promise<Job>;
-  update: (id: string, data: UpdateJobDto) => Promise<void>;
-  /**
-   * Turn a free-form brief into a structured draft. Stateless — nothing is
-   * persisted and no job state is touched, so failed calls can never leave
-   * the store inconsistent.
-   */
-  generateDraft: (data: GenerateJobDraftDto) => Promise<GeneratedJobDraft>;
-  /**
-   * Tidy and standardize the list fields of an existing job. Also stateless —
-   * it returns cleaned copies of what was sent and persists nothing.
-   */
-  standardizeContent: (
-    data: StandardizeJobContentDto
-  ) => Promise<StandardizedJobContent>;
-  remove: (id: string) => Promise<void>;
-  setStatus: (id: string, status: JobStatus) => Promise<void>;
-  setPipeline: (
-    id: string,
-    templateId: string,
-    stageMapping?: Record<string, string>
-  ) => Promise<void>;
-  setFilters: (f: Partial<JobFilters>) => void;
-  reset: () => void;
-  _patch: (job: Job) => void;
-  _remove: (id: string) => void;
-  _removeByClientId: (clientId: string) => void;
-}
+import {
+  replaceJob,
+  statusChangeMessage,
+  upsertJob,
+} from './jobs.store.helpers';
+import type { JobActions, JobState } from './jobs.store.types';
+import { createMutate, withToast } from './mutation';
 
 const initialState: JobState = {
   items: [],
@@ -81,260 +38,185 @@ let itemsAreSubset = false;
 
 export const useJobStore = create<JobState & JobActions>()(
   persist(
-    immer((set, get) => ({
-      ...initialState,
+    immer((set, get) => {
+      const mutate = createMutate<JobState>(set);
 
-      fetch: async params => {
-        // No-op after boot for an UNFILTERED refresh only — all data is already
-        // client-side. An explicit scoping filter (e.g. `{ clientId }`) must
-        // still reach the server; returning early made such a call silently
-        // resolve to the full list. Mirrors `hasExplicitFilter` in
-        // `candidates.store.ts`.
-        const hasExplicitFilter =
-          params &&
-          Object.keys(params).some(k => {
-            if (k === 'page' || k === 'limit') return false;
-            return (params as Record<string, unknown>)[k] !== undefined;
+      return {
+        ...initialState,
+
+        fetch: async params => {
+          // No-op after boot for an UNFILTERED refresh only — all data is already
+          // client-side. An explicit scoping filter (e.g. `{ clientId }`) must
+          // still reach the server; returning early made such a call silently
+          // resolve to the full list. Mirrors `hasExplicitFilter` in
+          // `candidates.store.ts`.
+          const hasExplicitFilter =
+            params &&
+            Object.keys(params).some(k => {
+              if (k === 'page' || k === 'limit') return false;
+              return (params as Record<string, unknown>)[k] !== undefined;
+            });
+          if (
+            useBootStore.getState().isBooted &&
+            get().items.length > 0 &&
+            !hasExplicitFilter &&
+            !itemsAreSubset
+          )
+            return;
+
+          const filters = { ...get().filters, ...params };
+          const hasData = get().items.length > 0;
+          // When the status filter changes, treat it as a fresh load so the
+          // list shows a skeleton instead of stale data from the old filter.
+          const filterChanged =
+            params?.status !== undefined &&
+            params.status !== get().filters.status;
+          set(s => {
+            if (hasData && !filterChanged) {
+              s.isRefreshing = true;
+            } else {
+              s.loading = true;
+            }
+            s.error = null;
+            if (params) s.filters = filters;
           });
-        if (
-          useBootStore.getState().isBooted &&
-          get().items.length > 0 &&
-          !hasExplicitFilter &&
-          !itemsAreSubset
-        )
-          return;
-
-        const filters = { ...get().filters, ...params };
-        const hasData = get().items.length > 0;
-        // When the status filter changes, treat it as a fresh load so the
-        // list shows a skeleton instead of stale data from the old filter.
-        const filterChanged =
-          params?.status !== undefined &&
-          params.status !== get().filters.status;
-        set(s => {
-          if (hasData && !filterChanged) {
-            s.isRefreshing = true;
-          } else {
-            s.loading = true;
+          try {
+            const res = await getJson<Job[] | ({ data: Job[] } & Pagination)>(
+              '/ats/jobs',
+              filters as Record<string, unknown>
+            );
+            const data = Array.isArray(res) ? res : (res.data ?? []);
+            const pag = Array.isArray(res)
+              ? null
+              : {
+                  total: res.total,
+                  page: res.page,
+                  limit: res.limit,
+                  totalPages: res.totalPages,
+                };
+            itemsAreSubset = Object.entries(filters).some(
+              ([k, v]) => k !== 'page' && k !== 'limit' && v !== undefined
+            );
+            set(s => {
+              s.items = data;
+              s.pagination = pag;
+              s.loading = false;
+              s.isRefreshing = false;
+            });
+          } catch (e) {
+            set(s => {
+              s.loading = false;
+              s.isRefreshing = false;
+              s.error = (e as Error).message;
+            });
           }
-          s.error = null;
-          if (params) s.filters = filters;
-        });
-        try {
-          const res = await getJson<Job[] | ({ data: Job[] } & Pagination)>(
-            '/ats/jobs',
-            filters as Record<string, unknown>
+        },
+
+        fetchOne: async id => {
+          set(s => {
+            s.loading = true;
+            s.error = null;
+          });
+          try {
+            const job = await getJson<Job>(`/ats/jobs/${id}`);
+            set(s => {
+              s.detail[id] = job;
+              s.loading = false;
+            });
+          } catch (e) {
+            set(s => {
+              s.loading = false;
+              s.error = (e as Error).message;
+            });
+          }
+        },
+
+        create: data =>
+          mutate(
+            () => postJson<Job>('/ats/jobs', data),
+            (s, job) => upsertJob(s, job)
+          ),
+
+        update: async (id, data) => {
+          await mutate(
+            () => patchJson<Job>(`/ats/jobs/${id}`, data),
+            (s, job) => replaceJob(s, id, job)
           );
-          const data = Array.isArray(res) ? res : (res.data ?? []);
-          const pag = Array.isArray(res)
-            ? null
-            : {
-                total: res.total,
-                page: res.page,
-                limit: res.limit,
-                totalPages: res.totalPages,
-              };
-          itemsAreSubset = Object.entries(filters).some(
-            ([k, v]) => k !== 'page' && k !== 'limit' && v !== undefined
+        },
+
+        remove: async id => {
+          await withToast('Job deleted', async () => {
+            await mutate(
+              () => deleteJson(`/ats/jobs/${id}`),
+              s => {
+                s.items = s.items.filter(x => x._id !== id);
+                delete s.detail[id];
+              }
+            );
+            useApplicationStore.getState()._removeByJobId(id);
+          });
+        },
+
+        setStatus: async (id, status) => {
+          await withToast(statusChangeMessage(status), () =>
+            mutate(
+              () => patchJson<Job>(`/ats/jobs/${id}/status`, { status }),
+              (s, job) => replaceJob(s, id, job),
+              false
+            )
           );
-          set(s => {
-            s.items = data;
-            s.pagination = pag;
-            s.loading = false;
-            s.isRefreshing = false;
-          });
-        } catch (e) {
-          set(s => {
-            s.loading = false;
-            s.isRefreshing = false;
-            s.error = (e as Error).message;
-          });
-        }
-      },
+        },
 
-      fetchOne: async id => {
-        set(s => {
-          s.loading = true;
-          s.error = null;
-        });
-        try {
-          const job = await getJson<Job>(`/ats/jobs/${id}`);
-          set(s => {
-            s.detail[id] = job;
-            s.loading = false;
-          });
-        } catch (e) {
-          set(s => {
-            s.loading = false;
-            s.error = (e as Error).message;
-          });
-        }
-      },
+        setPipeline: async (id, templateId, stageMapping) => {
+          await withToast('Pipeline assigned', () =>
+            mutate(
+              () => {
+                const body: Record<string, unknown> = { templateId };
+                if (stageMapping) body.stageMapping = stageMapping;
+                return patchJson<Job>(`/ats/jobs/${id}/pipeline`, body);
+              },
+              (s, job) => replaceJob(s, id, job),
+              false
+            )
+          );
+        },
 
-      create: async data => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const job = await postJson<Job>('/ats/jobs', data);
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === job._id);
-            if (idx !== -1) s.items[idx] = job;
-            else s.items.unshift(job);
-            s.mutating = false;
-          });
-          return job;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
+        generateDraft: async data => {
+          return postJson<GeneratedJobDraft>('/ats/jobs/generate-draft', data);
+        },
 
-      update: async (id, data) => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          const job = await patchJson<Job>(`/ats/jobs/${id}`, data);
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = job;
-            if (s.detail[id]) s.detail[id] = job;
-            s.mutating = false;
-          });
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      },
+        standardizeContent: async data => {
+          return postJson<StandardizedJobContent>('/ats/jobs/standardize', data);
+        },
 
-      remove: async id => {
-        set(s => {
-          s.mutating = true;
-          s.error = null;
-        });
-        try {
-          await deleteJson(`/ats/jobs/${id}`);
+        setFilters: f =>
+          set(s => {
+            s.filters = { ...s.filters, ...f };
+          }),
+
+        reset: () =>
+          set(s => {
+            Object.assign(s, initialState);
+          }),
+
+        _patch: job =>
+          set(s => {
+            upsertJob(s, job);
+            if (s.detail[job._id]) s.detail[job._id] = job;
+          }),
+
+        _remove: id =>
           set(s => {
             s.items = s.items.filter(x => x._id !== id);
             delete s.detail[id];
-            s.mutating = false;
-          });
-          useApplicationStore.getState()._removeByJobId(id);
-          toast.success('Job deleted');
-        } catch (e) {
+          }),
+
+        _removeByClientId: clientId =>
           set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          toast.error((e as Error).message);
-          throw e;
-        }
-      },
-
-      setStatus: async (id, status) => {
-        set(s => {
-          s.mutating = true;
-        });
-        try {
-          const job = await patchJson<Job>(`/ats/jobs/${id}/status`, {
-            status,
-          });
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = job;
-            if (s.detail[id]) s.detail[id] = job;
-            s.mutating = false;
-          });
-          const label =
-            status === 'open'
-              ? 'Job opened'
-              : status === 'closed'
-                ? 'Job closed'
-                : status === 'on_hold'
-                  ? 'Job put on hold'
-                  : 'Job status updated';
-          toast.success(label);
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          toast.error((e as Error).message);
-          throw e;
-        }
-      },
-
-      setPipeline: async (id, templateId, stageMapping) => {
-        set(s => {
-          s.mutating = true;
-        });
-        try {
-          const body: Record<string, unknown> = { templateId };
-          if (stageMapping) body.stageMapping = stageMapping;
-          const job = await patchJson<Job>(`/ats/jobs/${id}/pipeline`, body);
-          set(s => {
-            const idx = s.items.findIndex(x => x._id === id);
-            if (idx !== -1) s.items[idx] = job;
-            if (s.detail[id]) s.detail[id] = job;
-            s.mutating = false;
-          });
-          toast.success('Pipeline assigned');
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          toast.error((e as Error).message);
-          throw e;
-        }
-      },
-
-      generateDraft: async data => {
-        return postJson<GeneratedJobDraft>('/ats/jobs/generate-draft', data);
-      },
-
-      standardizeContent: async data => {
-        return postJson<StandardizedJobContent>('/ats/jobs/standardize', data);
-      },
-
-      setFilters: f =>
-        set(s => {
-          s.filters = { ...s.filters, ...f };
-        }),
-
-      reset: () =>
-        set(s => {
-          Object.assign(s, initialState);
-        }),
-
-      _patch: job =>
-        set(s => {
-          const idx = s.items.findIndex(x => x._id === job._id);
-          if (idx !== -1) s.items[idx] = job;
-          else s.items.unshift(job);
-          if (s.detail[job._id]) s.detail[job._id] = job;
-        }),
-
-      _remove: id =>
-        set(s => {
-          s.items = s.items.filter(x => x._id !== id);
-          delete s.detail[id];
-        }),
-
-      _removeByClientId: clientId =>
-        set(s => {
-          s.items = s.items.filter(x => x.clientId !== clientId);
-        }),
-    })),
+            s.items = s.items.filter(x => x.clientId !== clientId);
+          }),
+      };
+    }),
     {
       name: 'ats-jobs',
       storage: createJSONStorage(() => localStorage),
