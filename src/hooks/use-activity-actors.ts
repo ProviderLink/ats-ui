@@ -8,6 +8,7 @@
  * client for every role that can read activity logs.
  */
 import type { ActivityActor } from '@/lib/activity-sentence';
+import { isValidObjectId } from '@/lib/utils';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useUserStore } from '@/store/slices/users.store';
 import type { ActivityLog } from '@/store/types';
@@ -15,11 +16,9 @@ import type { User } from '@/store/types/user.types';
 import { useCallback, useMemo } from 'react';
 
 /** Display name for events the AI engine produced. */
-export const AI_ACTOR_NAME = 'AI';
+const AI_ACTOR_NAME = 'AI';
 /** Display name for events produced by schedulers / cron / public traffic. */
-export const SYSTEM_ACTOR_NAME = 'System';
-
-const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
+const SYSTEM_ACTOR_NAME = 'System';
 
 /** Actions written by background AI jobs. */
 const AI_ACTIONS = new Set([
@@ -32,7 +31,7 @@ const AI_ACTIONS = new Set([
   'candidacy_validation_completed',
 ]);
 
-export function initialsOf(name: string): string {
+function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
   const first = parts[0]?.charAt(0) ?? '';
@@ -41,7 +40,7 @@ export function initialsOf(name: string): string {
   return (first + last).toUpperCase() || '?';
 }
 
-export function displayNameOf(user: User | null | undefined): string {
+function displayNameOf(user: User | null | undefined): string {
   if (!user) return '';
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
 }
@@ -89,7 +88,6 @@ export function useActivityActors(): ActivityActors {
       const performerId = str(log.performedBy);
       const explicitName = str(log.performerName);
 
-      // ── A real user performed the action ──────────────────────────
       const matchedById = performerId ? maps.byId.get(performerId) : undefined;
       if (matchedById) {
         const name = displayNameOf(matchedById);
@@ -102,7 +100,6 @@ export function useActivityActors(): ActivityActors {
         });
       }
 
-      // ── The current user, not yet present in the team list ────────
       if (performerId && viewerId && performerId === viewerId && authUser) {
         const name = displayNameOf(authUser as User);
         return makeActor({
@@ -114,8 +111,7 @@ export function useActivityActors(): ActivityActors {
         });
       }
 
-      // ── Fall back to a populated name from a future API ───────────
-      if (explicitName && !OBJECT_ID_RE.test(explicitName)) {
+      if (explicitName && !isValidObjectId(explicitName)) {
         return makeActor({
           kind: 'user',
           id: performerId,
@@ -125,7 +121,6 @@ export function useActivityActors(): ActivityActors {
         });
       }
 
-      // ── No user: attribute to the engine that actually ran it ─────
       const key = String(log.action ?? '').toLowerCase();
       const isAi = AI_ACTIONS.has(key);
       return makeActor({
