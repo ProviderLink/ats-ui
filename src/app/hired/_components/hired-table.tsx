@@ -3,28 +3,18 @@ import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet'
 import { useCandidateEmailComposer } from '@/app/emails/_hooks/use-candidate-email-composer';
 import { AssignJobDialog } from '@/components/assign-job-dialog';
 import { CandidateBulkEmailBar } from '@/components/candidate-bulk-email-bar';
-import { TableSkeleton } from '@/components/candidate-table/table-skeleton';
+import { CandidateCountLine } from '@/components/candidate-table/candidate-count-line';
+import { CandidateListTable } from '@/components/candidate-table/candidate-list-table';
 import { ClearableSearchInput } from '@/components/clearable-search-input';
-import { TablePagination } from '@/components/table-pagination';
 import { TagFilter } from '@/components/tag-filter';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useIdSelection } from '@/hooks/use-id-selection';
+import { useAssignCandidateToJob } from '@/hooks/use-assign-candidate-to-job';
+import { useCandidateListControls } from '@/hooks/use-candidate-list-controls';
+import { useDetailSheet } from '@/hooks/use-detail-sheet';
 import { useSocketRoom } from '@/hooks/use-socket-room';
-import { useDebouncedSearch } from '@/hooks/use-debounced-search';
-import { useTablePagination } from '@/hooks/use-table-pagination';
-import { cn } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import type { Candidate } from '@/store/types';
 import {
-  flexRender,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -49,7 +39,6 @@ export function HiredTable() {
   const loading = useCandidateStore(s => s.loading);
   const mutating = useCandidateStore(s => s.mutating);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
-  const assignJob = useCandidateStore(s => s.assignJob);
 
   const {
     candidates,
@@ -63,51 +52,26 @@ export function HiredTable() {
   useSocketRoom('candidates');
   useSocketRoom('applications');
 
-  const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'hiredDate', desc: true },
   ]);
-  const { selectedIds, toggle, toggleAll, clear } = useIdSelection();
-  const [selected, setSelected] = useState<Candidate | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [assignTarget, setAssignTarget] = useState<Candidate | null>(null);
+  const controls = useCandidateListControls('hired');
+  const { search, tagFilter, pagination } = controls;
+  const { selectedIds, toggle, toggleAll, clear } = controls.selection;
+  const detail = useDetailSheet<Candidate>();
+  const assign = useAssignCandidateToJob(refreshApps);
   const { composeOpen, setComposeOpen, composeMode, openComposeFor } =
     useCandidateEmailComposer();
-
-  const { pageIndex, pageSize, handlePaginationChange, resetPage } =
-    useTablePagination({ storageKey: 'hired', defaultSize: 20 });
-  const search = useDebouncedSearch(() => {
-    resetPage();
-    // Selections belong to the previous filter; dropping them stops a bulk
-    // action from reaching a candidate the user can no longer see.
-    clear();
-  });
 
   const data = useMemo(
     () => filterHired(candidates, hireInfoByCandidateId, search.query, tagFilter),
     [candidates, hireInfoByCandidateId, search.query, tagFilter]
   );
-  const totalRows = data.length;
-  const hasFilters = !!search.query || tagFilter.length > 0;
 
   const selectedRows = useMemo(
     () => data.filter(c => selectedIds.has(c._id)),
     [data, selectedIds]
   );
-
-  async function handleAssignToJob(jobId: string, startStageId?: string) {
-    if (!assignTarget) return;
-    try {
-      await assignJob(assignTarget._id, jobId, startStageId);
-      await refreshApps();
-      toast.success(
-        `${assignTarget.firstName} ${assignTarget.lastName} assigned to job`
-      );
-      setAssignTarget(null);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  }
 
   async function handleTalentPool(candidate: Candidate) {
     const name = `${candidate.firstName} ${candidate.lastName}`;
@@ -136,7 +100,7 @@ export function HiredTable() {
         hireInfo: hireInfoByCandidateId,
         otherActivity: otherActivityByCandidateId,
         mutating,
-        onAssign: setAssignTarget,
+        onAssign: assign.setAssignTarget,
         onEmail: c => openComposeFor([c]),
         onToggleTalentPool: handleTalentPool,
       }),
@@ -157,10 +121,13 @@ export function HiredTable() {
     columns,
     state: {
       sorting,
-      pagination: { pageIndex, pageSize },
+      pagination: {
+        pageIndex: pagination.pageIndex,
+        pageSize: pagination.pageSize,
+      },
     },
     onSortingChange: setSorting,
-    onPaginationChange: handlePaginationChange,
+    onPaginationChange: pagination.handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -180,19 +147,16 @@ export function HiredTable() {
           <TagFilter
             allTags={allTags}
             selected={tagFilter}
-            onChange={ids => {
-              setTagFilter(ids);
-              resetPage();
-              clear();
-            }}
+            onChange={controls.changeTagFilter}
           />
         </div>
 
-        <p className="text-xs text-muted-foreground -mt-1 shrink-0">
-          {loading && data.length === 0
-            ? 'Loading…'
-            : `${totalRows} ${totalRows === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' hired'}`}
-        </p>
+        <CandidateCountLine
+          loading={loading}
+          count={data.length}
+          hasFilters={controls.hasFilters}
+          unfilteredSuffix="hired"
+        />
 
         {selectedRows.length > 0 && (
           <CandidateBulkEmailBar
@@ -202,96 +166,27 @@ export function HiredTable() {
           />
         )}
 
-        <div className="rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="overflow-auto flex-1">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-foreground/5 dark:bg-muted">
-                {table.getHeaderGroups().map(hg => (
-                  <TableRow
-                    key={hg.id}
-                    className="border-b hover:bg-transparent"
-                  >
-                    {hg.headers.map(h => (
-                      <TableHead key={h.id} className="h-10 px-4">
-                        {h.isPlaceholder
-                          ? null
-                          : flexRender(
-                              h.column.columnDef.header,
-                              h.getContext()
-                            )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {loading && data.length === 0 ? (
-                  <TableSkeleton cols={columns.length} />
-                ) : table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map(row => (
-                    <TableRow
-                      key={row.id}
-                      className="border-b last:border-0 hover:bg-foreground/4 dark:hover:bg-white/3 cursor-pointer"
-                      onClick={() => {
-                        setSelected(row.original);
-                        setDetailOpen(true);
-                      }}
-                    >
-                      {row.getVisibleCells().map(cell => (
-                        <TableCell
-                          key={cell.id}
-                          className={cn(
-                            'px-4 py-3',
-                            cell.column.id === 'hiredFor' && 'whitespace-normal'
-                          )}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-32 text-center text-sm text-muted-foreground"
-                    >
-                      No hired candidates yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="border-t px-2 py-2 shrink-0 bg-background">
-            <TablePagination
-              table={table}
-              pageIndex={pageIndex}
-              pageSize={pageSize}
-              totalRows={totalRows}
-              label="candidates"
-            />
-          </div>
-        </div>
+        <CandidateListTable
+          table={table}
+          showSkeleton={loading && data.length === 0}
+          totalRows={data.length}
+          emptyMessage="No hired candidates yet."
+          onRowClick={detail.show}
+          wrapColumnIds={['hiredFor']}
+        />
       </div>
 
       <CandidateDetailSheet
-        candidate={selected}
-        open={detailOpen}
-        onOpenChange={open => {
-          setDetailOpen(open);
-          if (!open) setSelected(null);
-        }}
+        candidate={detail.selected}
+        open={detail.open}
+        onOpenChange={detail.onOpenChange}
         mutating={mutating}
       />
 
       <AssignJobDialog
-        open={!!assignTarget}
-        onClose={() => setAssignTarget(null)}
-        onConfirm={handleAssignToJob}
+        open={!!assign.assignTarget}
+        onClose={() => assign.setAssignTarget(null)}
+        onConfirm={assign.assign}
         jobs={openJobs}
         description="This adds a pipeline entry for the new job. The candidate stays in the Hired list."
       />
