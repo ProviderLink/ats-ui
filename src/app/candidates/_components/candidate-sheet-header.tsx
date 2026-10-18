@@ -23,6 +23,7 @@ export function CandidateSheetHeader({
   const { aiScore, aiValidation, parsedData } = c;
   const bg = avatarBg(c.firstName);
   const hasValidation = !!aiValidation && aiValidation.score != null;
+  const firstRole = parsedData?.experience?.[0];
   const hasScoring =
     !!aiScore && aiScore.score != null && aiScore.recommendation != null;
   const fitCfg = getFitConfig(aiScore?.recommendation);
@@ -65,9 +66,9 @@ export function CandidateSheetHeader({
           <p className="text-base font-semibold leading-tight">
             {fullName}
           </p>
-          {(parsedData?.experience ?? [])[0] && (
+          {firstRole && (
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {parsedData!.experience![0].title}
+              {firstRole.title}
             </p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5">
@@ -94,17 +95,17 @@ export function CandidateSheetHeader({
                 {fitLabel}
               </Badge>
             )}
-            {!fitLabel && hasValidation && (
+            {!fitLabel && aiValidation && hasValidation && (
               <Badge
                 className={cn(
                   'bg-transparent font-medium',
-                  aiValidation!.isValid
+                  aiValidation.isValid
                     ? 'text-green-700 dark:text-green-300'
                     : 'text-destructive'
                 )}
               >
                 <SparklesIcon className="size-3" />
-                {aiValidation!.isValid ? 'Valid' : 'Invalid'}
+                {aiValidation.isValid ? 'Valid' : 'Invalid'}
               </Badge>
             )}
             {c.inTalentPool && (

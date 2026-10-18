@@ -58,6 +58,8 @@ export function JobsTab({ clientId }: { clientId: string }) {
           {open.map(j => {
             const cfg = jobStatusConfig[j.status] ?? jobStatusConfig.draft;
             const counts = appCountsByJob.get(j._id);
+            const totalCount = counts?.total ?? 0;
+            const approvedCount = counts?.approved ?? 0;
             return (
               <div
                 key={j._id}
@@ -94,13 +96,13 @@ export function JobsTab({ clientId }: { clientId: string }) {
                   </span>
                   <span className="flex items-center gap-1">
                     <UserIcon className="size-3.5" />
-                    {counts?.total ?? 0} candidate
-                    {counts?.total !== 1 ? 's' : ''}
+                    {totalCount} candidate
+                    {totalCount !== 1 ? 's' : ''}
                   </span>
-                  {(counts?.approved ?? 0) > 0 && (
+                  {approvedCount > 0 && (
                     <span className="flex items-center gap-1 text-pine-teal-700 dark:text-pine-teal-400">
                       <CheckCircleIcon className="size-3.5" />
-                      {counts!.approved} approved
+                      {approvedCount} approved
                     </span>
                   )}
                 </div>
@@ -116,6 +118,7 @@ export function JobsTab({ clientId }: { clientId: string }) {
           {other.map(j => {
             const cfg = jobStatusConfig[j.status] ?? jobStatusConfig.draft;
             const counts = appCountsByJob.get(j._id);
+            const totalCount = counts?.total ?? 0;
             return (
               <div
                 key={j._id}
@@ -134,11 +137,11 @@ export function JobsTab({ clientId }: { clientId: string }) {
                     {j.startDate
                       ? formatDate(j.startDate)
                       : formatDate(j.createdAt)}
-                    {(counts?.total ?? 0) > 0 && (
+                    {totalCount > 0 && (
                       <>
                         {' '}
-                        · {counts!.total} candidate
-                        {counts!.total !== 1 ? 's' : ''}
+                        · {totalCount} candidate
+                        {totalCount !== 1 ? 's' : ''}
                       </>
                     )}
                   </p>

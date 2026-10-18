@@ -60,7 +60,7 @@ export function AiEvaluationSection({ candidate }: { candidate: Candidate } ) {
                 Strengths
               </p>
               <ul className="flex flex-col gap-1">
-                {aiScore.strengths!.map((s, i) => (
+                {(aiScore.strengths ?? []).map((s, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-1.5 text-xs text-muted-foreground"
@@ -78,7 +78,7 @@ export function AiEvaluationSection({ candidate }: { candidate: Candidate } ) {
                 Concerns
               </p>
               <ul className="flex flex-col gap-1">
-                {aiScore.concerns!.map((c, i) => (
+                {(aiScore.concerns ?? []).map((c, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-1.5 text-xs text-muted-foreground"

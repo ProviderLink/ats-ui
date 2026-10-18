@@ -50,8 +50,8 @@ export function AiScoreCell({ candidate }: { candidate: Candidate }) {
     );
   }
 
-  if (hasValidation) {
-    const { score, isValid, reason } = validation!;
+  if (validation && hasValidation) {
+    const { score, isValid, reason } = validation;
     return (
       <div className="flex items-center gap-3 min-w-0">
         <span

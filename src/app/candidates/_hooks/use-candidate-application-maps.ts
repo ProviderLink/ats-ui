@@ -50,17 +50,18 @@ export function useCandidateApplicationMaps(
       }
     >();
     for (const a of allApps) {
-      if (a.phase !== 'approved' || !a.currentStage || map.has(a.candidateId))
+      const currentStage = a.currentStage;
+      if (a.phase !== 'approved' || !currentStage || map.has(a.candidateId))
         continue;
       const job = jobById.get(a.jobId);
       const stage = job?.pipeline?.stages?.find(
-        s => s._id === a.currentStage!.stageId
+        s => s._id === currentStage.stageId
       );
       map.set(a.candidateId, {
-        stageName: a.currentStage.stageName,
+        stageName: currentStage.stageName,
         stageColor: stage?.color ?? '#3b82f6',
-        stageId: a.currentStage.stageId,
-        assignedAt: a.currentStage.assignedAt,
+        stageId: currentStage.stageId,
+        assignedAt: currentStage.assignedAt,
         applicationId: a._id,
         stages: job?.pipeline?.stages ?? [],
       });

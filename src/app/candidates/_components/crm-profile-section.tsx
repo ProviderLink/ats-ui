@@ -6,7 +6,9 @@ import { AlertCircleIcon, AlertTriangleIcon, StarIcon } from 'lucide-react';
 import { SectionLabel } from './section-label';
 
 export function CrmProfileSection({ candidate: c }: { candidate: Candidate }) {
-  if (!c.crmProfile) return null;
+  const crm = c.crmProfile;
+  if (!crm) return null;
+  const { satisfactionScore } = crm;
 
   return (
     <>
@@ -14,17 +16,17 @@ export function CrmProfileSection({ candidate: c }: { candidate: Candidate }) {
       <div className="flex flex-col gap-3">
         <SectionLabel>CRM Profile</SectionLabel>
         <div className="grid grid-cols-2 gap-3">
-          {c.crmProfile.workloadLevel && (
+          {crm.workloadLevel && (
             <div className="flex flex-col gap-0.5">
               <p className="text-xs text-muted-foreground">
                 Workload
               </p>
               <Badge variant="outline" className="w-fit capitalize">
-                {c.crmProfile.workloadLevel}
+                {crm.workloadLevel}
               </Badge>
             </div>
           )}
-          {c.crmProfile.satisfactionScore != null && (
+          {satisfactionScore != null && (
             <div className="flex flex-col gap-0.5">
               <p className="text-xs text-muted-foreground">
                 Satisfaction
@@ -35,7 +37,7 @@ export function CrmProfileSection({ candidate: c }: { candidate: Candidate }) {
                     key={i}
                     className={cn(
                       'size-3.5',
-                      i < c.crmProfile!.satisfactionScore!
+                      i < satisfactionScore
                         ? 'fill-amber-400 text-amber-400'
                         : 'text-muted-foreground'
                     )}
@@ -44,34 +46,34 @@ export function CrmProfileSection({ candidate: c }: { candidate: Candidate }) {
               </div>
             </div>
           )}
-          {c.crmProfile.lastVaCheckin && (
+          {crm.lastVaCheckin && (
             <div className="flex flex-col gap-0.5">
               <p className="text-xs text-muted-foreground">
                 Last VA Check-in
               </p>
               <p className="text-xs font-medium">
-                {c.crmProfile.lastVaCheckin}
+                {crm.lastVaCheckin}
               </p>
             </div>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          {c.crmProfile.burnoutRiskFlag && (
+          {crm.burnoutRiskFlag && (
             <div className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 dark:border-orange-700/50 dark:bg-orange-900/20 dark:text-orange-300">
               <AlertTriangleIcon className="size-3.5" />
               Burnout Risk
             </div>
           )}
-          {c.crmProfile.replacementRiskFlag && (
+          {crm.replacementRiskFlag && (
             <div className="flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/5 px-3 py-1 text-xs font-medium text-destructive">
               <AlertCircleIcon className="size-3.5" />
               Replacement Risk
             </div>
           )}
         </div>
-        {c.crmProfile.notes && (
+        {crm.notes && (
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {c.crmProfile.notes}
+            {crm.notes}
           </p>
         )}
       </div>
