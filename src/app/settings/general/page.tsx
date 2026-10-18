@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { AiSettingsCard } from '../_components/ai-settings-card';
 import { ApplicationConfirmationCard } from '../_components/application-confirmation-card';
-import { DispositionReasonsCard } from '../disposition-reasons/page';
+import { DispositionReasonsCard } from '../disposition-reasons/_components/disposition-reasons-card';
 import { EmailSettingsCard } from '../_components/email-settings-card';
 import { EmailTemplatesCard } from '../_components/email-templates-card';
 import { PipelineTemplatesCard } from '../_components/pipeline-templates-card';
