@@ -1,4 +1,5 @@
 import { SkillsCell } from '@/app/candidates/_components/skills-cell';
+import { ClearableSearchInput } from '@/components/clearable-search-input';
 import { AssignJobDialog } from '@/components/assign-job-dialog';
 import { TagFilter } from '@/components/tag-filter';
 import { CandidateCell } from '@/components/candidate-table/candidate-cell';
@@ -15,7 +16,6 @@ import { TagList } from '@/components/tag-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -53,7 +53,6 @@ import {
   BriefcaseIcon,
   EllipsisIcon,
   MailIcon,
-  SearchIcon,
   XIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -489,26 +488,12 @@ export function TalentPoolTable() {
       <div className="flex flex-col gap-4 flex-1 min-h-0">
         {/* Toolbar */}
         <div className="flex items-center gap-3 flex-wrap shrink-0">
-          <div className="relative min-w-48 max-w-sm flex-1">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search by name, email, skills, role, or tags…"
-              value={inputValue}
-              onChange={e => handleSearchChange(e.target.value)}
-              className="pl-8 pr-8 h-9"
-            />
-            {inputValue && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-0.5 top-1/2 -translate-y-1/2 size-7"
-                onClick={handleClearSearch}
-                aria-label="Clear search"
-              >
-                <XIcon className="size-3.5" />
-              </Button>
-            )}
-          </div>
+          <ClearableSearchInput
+            value={inputValue}
+            onChange={handleSearchChange}
+            onClear={handleClearSearch}
+            placeholder="Search by name, email, skills, role, or tags…"
+          />
 
           <TagFilter
             allTags={allTags}

@@ -1,4 +1,5 @@
 import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
+import { ClearableSearchInput } from '@/components/clearable-search-input';
 import { CandidateCell } from '@/components/candidate-table/candidate-cell';
 import { ColHeader } from '@/components/candidate-table/col-header';
 import { SortHeader } from '@/components/candidate-table/sort-header';
@@ -6,8 +7,6 @@ import { TableSkeleton } from '@/components/candidate-table/table-skeleton';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -40,9 +39,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import {
-  SearchIcon,
   ShieldAlertIcon,
-  XIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IneligibleRowActions } from './ineligible-row-actions';
@@ -279,26 +276,12 @@ export function PermanentlyIneligibleTable() {
     <TooltipProvider>
       <div className="flex flex-col gap-4 flex-1 min-h-0">
         <div className="flex items-center gap-3 flex-wrap shrink-0">
-          <div className="relative min-w-48 max-w-sm flex-1">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search by name, email, or phone…"
-              value={inputValue}
-              onChange={e => handleSearchChange(e.target.value)}
-              className="pl-8 pr-8 h-9"
-            />
-            {inputValue && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-0.5 top-1/2 -translate-y-1/2 size-7"
-                onClick={handleClearSearch}
-                aria-label="Clear search"
-              >
-                <XIcon className="size-3.5" />
-              </Button>
-            )}
-          </div>
+          <ClearableSearchInput
+            value={inputValue}
+            onChange={handleSearchChange}
+            onClear={handleClearSearch}
+            placeholder="Search by name, email, or phone…"
+          />
         </div>
 
         <p className="text-xs text-muted-foreground -mt-1 shrink-0">
