@@ -3,6 +3,7 @@ export * from './application.types';
 export * from './candidate.types';
 export * from './client.types';
 export * from './common';
+export * from './dashboard.types';
 export * from './email-template.types';
 export * from './email.types';
 export * from './enums';
