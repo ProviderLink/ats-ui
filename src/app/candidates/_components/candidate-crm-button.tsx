@@ -14,7 +14,7 @@ export function CandidateCrmButton({
   candidateId: string;
   candidateStatus: string;
 }) {
-  const { provisionVA } = useUserStore();
+  const provisionVA = useUserStore(s => s.provisionVA);
   const allUsers = useUserStore(s => s.items);
   const [busy, setBusy] = useState(false);
 

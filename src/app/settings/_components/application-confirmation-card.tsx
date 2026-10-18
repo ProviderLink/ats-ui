@@ -23,7 +23,10 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export function ApplicationConfirmationCard() {
-  const { settings, loading, mutating, update } = useSettingsStore();
+  const settings = useSettingsStore(s => s.settings);
+  const loading = useSettingsStore(s => s.loading);
+  const mutating = useSettingsStore(s => s.mutating);
+  const update = useSettingsStore(s => s.update);
 
   const [confirmationTemplates, setConfirmationTemplates] = useState<
     EmailTemplate[]

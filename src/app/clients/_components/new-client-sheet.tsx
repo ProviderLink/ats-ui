@@ -118,7 +118,8 @@ export function NewClientSheet({ open, onOpenChange, client }: Props) {
   const uploadLogo = useClientStore(s => s.uploadLogo);
   const addContact = useClientStore(s => s.addContact);
   const mutating = useClientStore(s => s.mutating);
-  const { items: allTags, fetch: fetchTags } = useTagStore();
+  const allTags = useTagStore(s => s.items);
+  const fetchTags = useTagStore(s => s.fetch);
 
   const [tagIds, setTagIds] = useState<string[]>(getTagIds(client?.tags));
 

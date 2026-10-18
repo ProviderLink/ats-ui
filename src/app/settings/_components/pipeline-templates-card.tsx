@@ -37,14 +37,12 @@ import {
 import { StageChips } from './stage-chips';
 
 export function PipelineTemplatesCard() {
-  const {
-    items: templates,
-    loading,
-    fetch,
-    create,
-    update,
-    remove,
-  } = usePipelineTemplateStore();
+  const templates = usePipelineTemplateStore(s => s.items);
+  const loading = usePipelineTemplateStore(s => s.loading);
+  const fetch = usePipelineTemplateStore(s => s.fetch);
+  const create = usePipelineTemplateStore(s => s.create);
+  const update = usePipelineTemplateStore(s => s.update);
+  const remove = usePipelineTemplateStore(s => s.remove);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<PipelineTemplate | undefined>(
     undefined

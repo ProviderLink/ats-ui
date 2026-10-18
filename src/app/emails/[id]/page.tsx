@@ -224,7 +224,10 @@ function ThreadSkeleton() {
 
 export default function EmailDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { detail, fetchOne, fetchThread, resend } = useEmailStore();
+  const detail = useEmailStore(s => s.detail);
+  const fetchOne = useEmailStore(s => s.fetchOne);
+  const fetchThread = useEmailStore(s => s.fetchThread);
+  const resend = useEmailStore(s => s.resend);
   const [thread, setThread] = useState<Email[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

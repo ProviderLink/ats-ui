@@ -85,7 +85,8 @@ function ClientDetailSheetContent({
   onEdit,
   onDelete,
 }: ContentProps) {
-  const { provisionClient, revokeCrmAccess } = useUserStore();
+  const provisionClient = useUserStore(s => s.provisionClient);
+  const revokeCrmAccess = useUserStore(s => s.revokeCrmAccess);
   const allUsers = useUserStore(s => s.items);
   const apps = useApplicationStore(s => s.items);
   const fetchAppsMerge = useApplicationStore(s => s.fetchScopedMerge);

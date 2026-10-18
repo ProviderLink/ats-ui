@@ -68,7 +68,8 @@ const ROLE_RANK: Record<string, number> = {
 type Props = { members: User[]; loading?: boolean; isRefreshing?: boolean };
 
 export function TeamTable({ members, loading }: Props) {
-  const { mutating, remove } = useUserStore();
+  const mutating = useUserStore(s => s.mutating);
+  const remove = useUserStore(s => s.remove);
 
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [appFilter, setAppFilter] = useState<AppFilter>('all');

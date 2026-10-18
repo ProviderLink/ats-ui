@@ -161,7 +161,8 @@ export function EmailDetailSheet({
   onForward,
   onResend,
 }: Props) {
-  const { remove, mutating } = useEmailStore();
+  const remove = useEmailStore(s => s.remove);
+  const mutating = useEmailStore(s => s.mutating);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (!email) return null;

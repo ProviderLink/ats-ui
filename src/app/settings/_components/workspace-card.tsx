@@ -16,7 +16,11 @@ import { toast } from 'sonner';
 import { workspaceSettings as initialWorkspace } from '../_data/settings';
 
 export function WorkspaceCard() {
-  const { settings, loading, mutating, fetch, update } = useSettingsStore();
+  const settings = useSettingsStore(s => s.settings);
+  const loading = useSettingsStore(s => s.loading);
+  const mutating = useSettingsStore(s => s.mutating);
+  const fetch = useSettingsStore(s => s.fetch);
+  const update = useSettingsStore(s => s.update);
 
   const [timezone, setTimezone] = useState(
     settings?.companyTimezone ?? initialWorkspace.timezone

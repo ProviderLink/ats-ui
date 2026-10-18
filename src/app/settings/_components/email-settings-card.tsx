@@ -15,7 +15,10 @@ import { toast } from 'sonner';
 import { workspaceSettings as initialWorkspace } from '../_data/settings';
 
 export function EmailSettingsCard() {
-  const { settings, loading, mutating, update } = useSettingsStore();
+  const settings = useSettingsStore(s => s.settings);
+  const loading = useSettingsStore(s => s.loading);
+  const mutating = useSettingsStore(s => s.mutating);
+  const update = useSettingsStore(s => s.update);
   const [fromName, setFromName] = useState(
     settings?.email.fromName ?? initialWorkspace.emailSettings.fromName
   );

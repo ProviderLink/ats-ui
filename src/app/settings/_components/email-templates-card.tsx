@@ -35,15 +35,13 @@ import {
 } from './email-template-view-dialog';
 
 export function EmailTemplatesCard() {
-  const {
-    items: templates,
-    loading,
-    fetch,
-    create,
-    update,
-    setDefault,
-    remove,
-  } = useEmailTemplateStore();
+  const templates = useEmailTemplateStore(s => s.items);
+  const loading = useEmailTemplateStore(s => s.loading);
+  const fetch = useEmailTemplateStore(s => s.fetch);
+  const create = useEmailTemplateStore(s => s.create);
+  const update = useEmailTemplateStore(s => s.update);
+  const setDefault = useEmailTemplateStore(s => s.setDefault);
+  const remove = useEmailTemplateStore(s => s.remove);
   const users = useUserStore(s => s.items);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<EmailTemplate | undefined>(undefined);

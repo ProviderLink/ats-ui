@@ -42,7 +42,9 @@ function buildMonthlyData(applications: Application[], months: number) {
 }
 
 export function DashHiringTrend() {
-  const { applications, loading, kpi } = useDashboardStore();
+  const applications = useDashboardStore(s => s.applications);
+  const loading = useDashboardStore(s => s.loading);
+  const kpi = useDashboardStore(s => s.kpi);
 
   const data = React.useMemo(
     () => buildMonthlyData(applications, 6),

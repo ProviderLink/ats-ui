@@ -18,14 +18,14 @@ export function PipelineStageSelectCell({
   stages: NonNullable<Job['pipeline']>['stages'];
   onOpenChange?: (open: boolean) => void;
 }) {
-  const appStore = useApplicationStore();
+  const appMoveStage = useApplicationStore(s => s.moveStage);
   const [changing, setChanging] = useState(false);
 
   async function handleChange(newStageId: string) {
     if (newStageId === stageId) return;
     setChanging(true);
     try {
-      await appStore.moveStage(applicationId, newStageId);
+      await appMoveStage(applicationId, newStageId);
       toast.success('Pipeline stage updated');
     } catch (e) {
       toast.error((e as Error).message);

@@ -4,7 +4,11 @@ import { toast } from 'sonner';
 import { TeamTable } from './_components/team-table';
 
 export default function TeamPage() {
-  const { items, loading, isRefreshing, error, fetch } = useUserStore();
+  const items = useUserStore(s => s.items);
+  const loading = useUserStore(s => s.loading);
+  const isRefreshing = useUserStore(s => s.isRefreshing);
+  const error = useUserStore(s => s.error);
+  const fetch = useUserStore(s => s.fetch);
 
   useEffect(() => {
     fetch();

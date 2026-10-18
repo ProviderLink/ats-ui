@@ -81,7 +81,9 @@ function Field({
 function ProfileSection() {
   const user = useAuthStore(s => s.user);
   const setUser = useAuthStore(s => s.setUser);
-  const { updateMe, uploadAvatar, mutating } = useUserStore();
+  const updateMe = useUserStore(s => s.updateMe);
+  const uploadAvatar = useUserStore(s => s.uploadAvatar);
+  const mutating = useUserStore(s => s.mutating);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const firstName = user?.firstName ?? '';

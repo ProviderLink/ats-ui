@@ -38,7 +38,8 @@ const EMPTY = {
 };
 
 export function InviteTeamSheet({ open, onOpenChange }: Props) {
-  const { create, mutating } = useUserStore();
+  const create = useUserStore(s => s.create);
+  const mutating = useUserStore(s => s.mutating);
   const [form, setForm] = useState(EMPTY);
 
   function set<K extends keyof typeof EMPTY>(k: K, v: (typeof EMPTY)[K]) {

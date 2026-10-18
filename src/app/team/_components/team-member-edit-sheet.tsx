@@ -27,7 +27,8 @@ type Props = {
 };
 
 export function TeamMemberEditSheet({ member, open, onOpenChange }: Props) {
-  const { update, mutating } = useUserStore();
+  const update = useUserStore(s => s.update);
+  const mutating = useUserStore(s => s.mutating);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');

@@ -171,7 +171,11 @@ function MetricCardSkeleton() {
 }
 
 export function DashMetricCards() {
-  const { kpi, candidates, clients, jobs, loading } = useDashboardStore();
+  const kpi = useDashboardStore(s => s.kpi);
+  const candidates = useDashboardStore(s => s.candidates);
+  const clients = useDashboardStore(s => s.clients);
+  const jobs = useDashboardStore(s => s.jobs);
+  const loading = useDashboardStore(s => s.loading);
 
   // `kpi` is null until the first fetch resolves, so the skeleton covers the
   // whole wait instead of flashing a previous session's numbers.

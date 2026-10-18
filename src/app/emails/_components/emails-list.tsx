@@ -239,16 +239,14 @@ function EmailSkeleton() {
 }
 
 export function EmailsList() {
-  const {
-    items,
-    loading,
-    isRefreshing,
-    pagination: storePagination,
-    mutating,
-    remove,
-    resend,
-    markAsRead,
-  } = useEmailStore();
+  const items = useEmailStore(s => s.items);
+  const loading = useEmailStore(s => s.loading);
+  const isRefreshing = useEmailStore(s => s.isRefreshing);
+  const storePagination = useEmailStore(s => s.pagination);
+  const mutating = useEmailStore(s => s.mutating);
+  const remove = useEmailStore(s => s.remove);
+  const resend = useEmailStore(s => s.resend);
+  const markAsRead = useEmailStore(s => s.markAsRead);
   const fetchEmails = useEmailStore(s => s.fetch);
 
   const [tab, setTab] = useState<TabValue>('all');

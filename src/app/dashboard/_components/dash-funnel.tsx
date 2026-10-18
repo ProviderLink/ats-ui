@@ -37,7 +37,10 @@ const STAGES = [
 ] as const;
 
 export function DashFunnel() {
-  const { loading, kpi, candidates, applications } = useDashboardStore();
+  const loading = useDashboardStore(s => s.loading);
+  const kpi = useDashboardStore(s => s.kpi);
+  const candidates = useDashboardStore(s => s.candidates);
+  const applications = useDashboardStore(s => s.applications);
 
   // "In Review" must match the Candidates page exactly: pending AND not parked
   // elsewhere. Counting the raw status would include candidates already in the

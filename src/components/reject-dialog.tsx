@@ -96,7 +96,9 @@ function RejectForm({
   onCancel: () => void;
   onConfirm: (payload: RejectPayload) => void;
 }) {
-  const { activeReasons, loading, fetchActive } = useDispositionReasonsStore();
+  const activeReasons = useDispositionReasonsStore(s => s.activeReasons);
+  const loading = useDispositionReasonsStore(s => s.loading);
+  const fetchActive = useDispositionReasonsStore(s => s.fetchActive);
 
   const [selectedReasonId, setSelectedReasonId] = useState('');
   const [destination, setDestination] = useState<RejectDestination>('candidate_pool');

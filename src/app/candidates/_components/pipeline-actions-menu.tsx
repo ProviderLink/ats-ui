@@ -30,8 +30,14 @@ export function PipelineActionsMenu({
   allApps: Application[];
   allJobs: Job[];
 }) {
-  const appStore = useApplicationStore();
-  const candStore = useCandidateStore();
+  const appFetchScopedMerge = useApplicationStore(s => s.fetchScopedMerge);
+  const appHire = useApplicationStore(s => s.hire);
+  const appMoveStage = useApplicationStore(s => s.moveStage);
+  const appReject = useApplicationStore(s => s.reject);
+  const candAssignJob = useCandidateStore(s => s.assignJob);
+  const candChangeJob = useCandidateStore(s => s.changeJob);
+  const candFetch = useCandidateStore(s => s.fetch);
+  const candUpdateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const createInterviewForApplication = useInterviewStore(
     s => s.createForApplication
   );
@@ -174,7 +180,7 @@ export function PipelineActionsMenu({
     }
     setActing(true);
     try {
-      await appStore.moveStage(application._id, selectedStageId);
+      await appMoveStage(application._id, selectedStageId);
       toast.success(`${name} moved to stage`);
       setStageOpen(false);
     } catch (e) {
@@ -188,10 +194,10 @@ export function PipelineActionsMenu({
     if (!application) return;
     setActing(true);
     try {
-      await appStore.hire(application._id);
+      await appHire(application._id);
       toast.success(`${name} hired`);
       setHireOpen(false);
-      await candStore.fetch();
+      await candFetch();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -202,7 +208,7 @@ export function PipelineActionsMenu({
   async function handleTalentPool() {
     setActing(true);
     try {
-      await candStore.updateTalentPool(
+      await candUpdateTalentPool(
         candidate._id,
         candidate.inTalentPool ? 'remove' : 'add'
       );
@@ -222,7 +228,7 @@ export function PipelineActionsMenu({
     if (!application) return;
     setActing(true);
     try {
-      await appStore.reject(application._id, payload);
+      await appReject(application._id, payload);
       toast.success(
         `${name} rejected` +
           (payload.destination === 'permanently_ineligible'
@@ -243,10 +249,10 @@ export function PipelineActionsMenu({
   async function handleAddAnotherJob(jobId: string, startStageId?: string) {
     setActing(true);
     try {
-      await candStore.assignJob(candidate._id, jobId, startStageId);
+      await candAssignJob(candidate._id, jobId, startStageId);
       toast.success(`${name} added to another job`);
       setReassignOpen(false);
-      await appStore.fetchScopedMerge({ limit: 9999 });
+      await appFetchScopedMerge({ limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -265,7 +271,7 @@ export function PipelineActionsMenu({
     setActing(true);
     try {
       const target = allJobs.find(j => j._id === jobId);
-      await candStore.changeJob(candidate._id, {
+      await candChangeJob(candidate._id, {
         applicationId: application._id,
         targetJobId: jobId,
         startStageId,
@@ -277,7 +283,7 @@ export function PipelineActionsMenu({
       // (the store skips it after boot when items are loaded and no explicit
       // filter is passed), and `fetchScoped` only returns rows without merging
       // them — so `fetchScopedMerge` is the one that actually updates the store.
-      await appStore.fetchScopedMerge({ limit: 9999 });
+      await appFetchScopedMerge({ limit: 9999 });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {

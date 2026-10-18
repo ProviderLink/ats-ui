@@ -88,14 +88,12 @@ const priorityCls: Record<JobPriority, string> = {
 type Props = { job: Job | null; clients: Client[] };
 
 export function JobPanel({ job, clients }: Props) {
-  const {
-    setStatus,
-    setPipeline,
-    remove: removeJob,
-    mutating,
-    fetchOne,
-    detail,
-  } = useJobStore();
+  const setStatus = useJobStore(s => s.setStatus);
+  const setPipeline = useJobStore(s => s.setPipeline);
+  const removeJob = useJobStore(s => s.remove);
+  const mutating = useJobStore(s => s.mutating);
+  const fetchOne = useJobStore(s => s.fetchOne);
+  const detail = useJobStore(s => s.detail);
   const { items: pipelineTemplates, fetch: fetchPipelines } =
     usePipelineTemplateStore();
   const jobAppCount = useApplicationStore(

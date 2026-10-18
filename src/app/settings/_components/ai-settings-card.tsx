@@ -22,7 +22,10 @@ import { toast } from 'sonner';
 import { workspaceSettings as initialWorkspace } from '../_data/settings';
 
 export function AiSettingsCard() {
-  const { settings, loading, mutating, update } = useSettingsStore();
+  const settings = useSettingsStore(s => s.settings);
+  const loading = useSettingsStore(s => s.loading);
+  const mutating = useSettingsStore(s => s.mutating);
+  const update = useSettingsStore(s => s.update);
   const [provider, setProvider] = useState(
     settings?.ai.provider ?? initialWorkspace.aiSettings.provider
   );

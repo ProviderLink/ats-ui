@@ -50,7 +50,7 @@ export function PipelineChangeDialog({
   loading,
   onConfirm,
 }: Props) {
-  const { fetchScoped: fetchApps } = useApplicationStore();
+  const fetchApps = useApplicationStore(s => s.fetchScoped);
   const [scopedApps, setScopedApps] = useState<Application[]>([]);
   const [appLoading, setAppLoading] = useState(false);
   const [showRemapper, setShowRemapper] = useState(false);

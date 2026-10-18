@@ -24,8 +24,9 @@ export function ReviewActionsDropdown({
   allApps: Application[];
   onMutated?: () => void;
 }) {
-  const candStore = useCandidateStore();
-  const appStore = useApplicationStore();
+  const candApprove = useCandidateStore(s => s.approve);
+  const candUpdateTalentPool = useCandidateStore(s => s.updateTalentPool);
+  const appFetchScopedMerge = useApplicationStore(s => s.fetchScopedMerge);
   const rejectCandidateStore = useCandidateStore(s => s.rejectCandidate);
   const rejectApp = useApplicationStore(s => s.reject);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -89,7 +90,7 @@ export function ReviewActionsDropdown({
     }
     setActing(true);
     try {
-      await candStore.approve(candidate._id, jobId);
+      await candApprove(candidate._id, jobId);
       toast.success(`${name} approved`);
       setApproveOpen(false);
       setSelectedJobId('');
@@ -98,7 +99,7 @@ export function ReviewActionsDropdown({
       // `application:created` socket event. `fetchScopedMerge` is the one that
       // writes: `appStore.fetch({limit: 9999})` carries no explicit filter and
       // the post-boot guard makes it a no-op.
-      await appStore.fetchScopedMerge({ limit: 9999 });
+      await appFetchScopedMerge({ limit: 9999 });
       onMutated?.();
     } catch (e) {
       toast.error((e as Error).message);
@@ -153,7 +154,7 @@ export function ReviewActionsDropdown({
   async function handleTalentPool() {
     setActing(true);
     try {
-      await candStore.updateTalentPool(
+      await candUpdateTalentPool(
         candidate._id,
         candidate.inTalentPool ? 'remove' : 'add'
       );

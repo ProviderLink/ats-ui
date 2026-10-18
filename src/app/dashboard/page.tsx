@@ -13,7 +13,9 @@ import { DashHiringTrend } from './_components/dash-hiring-trend';
 import { DashMetricCards } from './_components/dash-metric-cards';
 
 export default function Dashboard() {
-  const { fetch, error, setActive } = useDashboardStore();
+  const fetch = useDashboardStore(s => s.fetch);
+  const error = useDashboardStore(s => s.error);
+  const setActive = useDashboardStore(s => s.setActive);
   const navigate = useNavigate();
 
   useEffect(() => {

@@ -35,7 +35,8 @@ export function TagsTable() {
   useSocketRoom('tags');
   const { items, loading, mutating, error, fetch, create, update, remove } =
     useTagStore();
-  const { items: users, fetch: fetchUsers } = useUserStore();
+  const users = useUserStore(s => s.items);
+  const fetchUsers = useUserStore(s => s.fetch);
 
   // `positive` validation accepts 50 even though it is not in `validSizes`,
   // because the page-size dropdown offers it.

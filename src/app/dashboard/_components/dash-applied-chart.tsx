@@ -67,7 +67,8 @@ function buildMonthlyData(applications: Application[], months: number) {
 }
 
 export function DashAppliedChart() {
-  const { applications, loading } = useDashboardStore();
+  const applications = useDashboardStore(s => s.applications);
+  const loading = useDashboardStore(s => s.loading);
   const [activeRange, setActiveRange] = React.useState<Range>('6m');
 
   const dataByRange = React.useMemo(() => {

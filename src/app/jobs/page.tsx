@@ -50,14 +50,12 @@ function JobsPageContent() {
 
   useSocketRoom('jobs');
 
-  const {
-    items: jobItems,
-    loading,
-    isRefreshing,
-    filters,
-    fetch,
-    setFilters,
-  } = useJobStore();
+  const jobItems = useJobStore(s => s.items);
+  const loading = useJobStore(s => s.loading);
+  const isRefreshing = useJobStore(s => s.isRefreshing);
+  const filters = useJobStore(s => s.filters);
+  const fetch = useJobStore(s => s.fetch);
+  const setFilters = useJobStore(s => s.setFilters);
   const [clientItems, setClientItems] = useState<Client[]>(EMPTY_CLIENTS);
   const rawJobs = jobItems ?? EMPTY_JOBS;
   const clients = clientItems ?? EMPTY_CLIENTS;

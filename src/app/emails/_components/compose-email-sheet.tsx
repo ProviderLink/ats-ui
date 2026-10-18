@@ -176,7 +176,10 @@ export function ComposeEmailSheet({
     }
   }
 
-  const { send, mutating, uploading, uploadAttachment } = useEmailStore();
+  const send = useEmailStore(s => s.send);
+  const mutating = useEmailStore(s => s.mutating);
+  const uploading = useEmailStore(s => s.uploading);
+  const uploadAttachment = useEmailStore(s => s.uploadAttachment);
 
   const title =
     mode.type === 'reply'

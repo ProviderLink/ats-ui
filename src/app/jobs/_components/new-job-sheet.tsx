@@ -79,8 +79,10 @@ export function NewJobSheet({
 
   const { create, update, mutating, generateDraft, standardizeContent } =
     useJobStore();
-  const { items: storeClients, fetch: fetchClients } = useClientStore();
-  const { items: tags, fetch: fetchTags } = useTagStore();
+  const storeClients = useClientStore(s => s.items);
+  const fetchClients = useClientStore(s => s.fetch);
+  const tags = useTagStore(s => s.items);
+  const fetchTags = useTagStore(s => s.fetch);
   const { items: pipelineTemplates, fetch: fetchPipelines } =
     usePipelineTemplateStore();
 
