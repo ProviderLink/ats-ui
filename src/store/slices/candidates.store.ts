@@ -5,7 +5,6 @@ import {
   postForm,
   postJson,
 } from '@/lib/api-client';
-import type { Draft } from 'immer';
 import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -22,6 +21,7 @@ import type {
   CandidateActions,
   CandidateState,
 } from './candidates.store.types';
+import { createMutate } from './mutation';
 
 const initialState: CandidateState = {
   items: [],
@@ -43,36 +43,7 @@ const initialState: CandidateState = {
 export const useCandidateStore = create<CandidateState & CandidateActions>()(
   persist(
     immer((set, get) => {
-      /**
-       * Run one server mutation with the shared `mutating` / `error` bookkeeping.
-       * `apply` updates the store in the same render that clears `mutating`.
-       * `clearError: false` keeps an earlier error visible (assign / approve /
-       * talent-pool never reset it).
-       */
-      async function mutate<R>(
-        request: () => Promise<R>,
-        apply?: (s: Draft<CandidateState>, result: R) => void,
-        clearError = true
-      ): Promise<R> {
-        set(s => {
-          s.mutating = true;
-          if (clearError) s.error = null;
-        });
-        try {
-          const result = await request();
-          set(s => {
-            apply?.(s, result);
-            s.mutating = false;
-          });
-          return result;
-        } catch (e) {
-          set(s => {
-            s.mutating = false;
-            s.error = (e as Error).message;
-          });
-          throw e;
-        }
-      }
+      const mutate = createMutate<CandidateState>(set);
 
       return {
         ...initialState,
