@@ -18,6 +18,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAssignableJobs } from '@/hooks/use-assignable-jobs';
 import { useIdSelection } from '@/hooks/use-id-selection';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useDebouncedSearch } from '@/hooks/use-debounced-search';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
@@ -32,7 +33,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { filterTalentPool } from '../_utils/talent-pool-filter';
 import { RemoveTalentPoolConfirmDialog } from './remove-talent-pool-dialog';
@@ -53,8 +54,6 @@ export function TalentPoolTable() {
   useSocketRoom('candidates');
   useSocketRoom('applications');
 
-  const [query, setQuery] = useState('');
-  const [inputValue, setInputValue] = useState('');
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selected, setSelected] = useState<Candidate | null>(null);
@@ -66,10 +65,15 @@ export function TalentPoolTable() {
   const { selectedIds, toggle, toggleAll, clear } = useIdSelection();
   const { composeOpen, setComposeOpen, composeMode, openComposeFor } =
     useCandidateEmailComposer();
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
     useTablePagination({ storageKey: 'talent-pool', defaultSize: 20 });
+  const search = useDebouncedSearch(() => {
+    resetPage();
+    // Selections belong to the previous filter; dropping them stops a bulk
+    // action from reaching a candidate the user can no longer see.
+    clear();
+  });
 
   useEffect(() => {
     if (allTags.length === 0) fetchTags();
@@ -77,11 +81,11 @@ export function TalentPoolTable() {
 
   // After boot ALL candidates are in the store, so filtering is local.
   const data = useMemo(
-    () => filterTalentPool(items, query, tagFilter),
-    [items, query, tagFilter]
+    () => filterTalentPool(items, search.query, tagFilter),
+    [items, search.query, tagFilter]
   );
   const totalRows = data.length;
-  const hasFilters = !!query || tagFilter.length > 0;
+  const hasFilters = !!search.query || tagFilter.length > 0;
 
   // Derived from the FILTERED list, so a selection made before a search
   // cannot smuggle in a hidden candidate.
@@ -89,22 +93,6 @@ export function TalentPoolTable() {
     () => data.filter(c => selectedIds.has(c._id)),
     [data, selectedIds]
   );
-
-  function handleSearchChange(q: string) {
-    setInputValue(q);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    resetPage();
-    // Selections belong to the previous filter; dropping them stops a bulk
-    // action from reaching a candidate the user can no longer see.
-    clear();
-    searchTimer.current = setTimeout(() => setQuery(q), 300);
-  }
-
-  function handleClearSearch() {
-    setInputValue('');
-    setQuery('');
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-  }
 
   function handleTagsChange(tags: string[]) {
     setTagFilter(tags);
@@ -179,9 +167,9 @@ export function TalentPoolTable() {
       <div className="flex flex-col gap-4 flex-1 min-h-0">
         <div className="flex items-center gap-3 flex-wrap shrink-0">
           <ClearableSearchInput
-            value={inputValue}
-            onChange={handleSearchChange}
-            onClear={handleClearSearch}
+            value={search.inputValue}
+            onChange={search.change}
+            onClear={search.clear}
             placeholder="Search by name, email, skills, role, or tags…"
           />
           <TagFilter

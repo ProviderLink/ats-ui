@@ -1,4 +1,5 @@
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useDebouncedSearch } from '@/hooks/use-debounced-search';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -6,7 +7,7 @@ import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import type { Candidate } from '@/store/types';
 import { getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, type SortingState } from '@tanstack/react-table';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCandidateApplicationMaps } from '../_hooks/use-candidate-application-maps';
 import { useCandidateBulkActions } from '../_hooks/use-candidate-bulk-actions';
@@ -32,8 +33,6 @@ export function CandidatesTable() {
   const allClients = useClientStore(s => s.items);
 
   const [activeTab, setActiveTab] = useState<CandidateTabValue>('pending');
-  const [inputValue, setInputValue] = useState('');
-  const [query, setQuery] = useState('');
   const [openStageRowId, setOpenStageRowId] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'createdAt', desc: true },
@@ -58,9 +57,8 @@ export function CandidatesTable() {
   // `sessionStorage` index and `localStorage` size.
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
     useTablePagination({ storageKey: 'candidates', defaultSize: 20 });
+  const search = useDebouncedSearch(resetPage);
 
-  // Debounced search ref
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const maps = useCandidateApplicationMaps(allApps, allJobs, allClients);
 
@@ -81,23 +79,6 @@ export function CandidatesTable() {
     resetPage();
   }
 
-  function handleSearchChange(q: string) {
-    // Update input immediately for responsive typing
-    setInputValue(q);
-    // Debounce the actual search query to avoid hammering the server
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    resetPage();
-    searchTimer.current = setTimeout(() => {
-      setQuery(q);
-    }, 300);
-  }
-
-  function handleClearSearch() {
-    setInputValue('');
-    setQuery('');
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-  }
-
   function openDetail(candidate: Candidate) {
     setSelected(candidate);
     setDetailOpen(true);
@@ -112,7 +93,7 @@ export function CandidatesTable() {
     allClients,
     activeTab,
     jobIdFilter,
-    query,
+    query: search.query,
   });
 
   const sortedData = useMemo(
@@ -135,7 +116,7 @@ export function CandidatesTable() {
     allApps,
     activeTab,
     jobIdFilter,
-    query,
+    query: search.query,
     maps,
   });
 
@@ -168,7 +149,7 @@ export function CandidatesTable() {
     autoResetPageIndex: false,
   });
 
-  const hasFilters = inputValue.length > 0;
+  const hasFilters = search.inputValue.length > 0;
 
   return (
     <>
@@ -177,9 +158,9 @@ export function CandidatesTable() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           counts={counts}
-          inputValue={inputValue}
-          onSearchChange={handleSearchChange}
-          onClearSearch={handleClearSearch}
+          inputValue={search.inputValue}
+          onSearchChange={search.change}
+          onClearSearch={search.clear}
           sortBy={sortBy}
           onSortChange={handleSortChange}
         />

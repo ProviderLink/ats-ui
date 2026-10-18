@@ -18,6 +18,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useIdSelection } from '@/hooks/use-id-selection';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useDebouncedSearch } from '@/hooks/use-debounced-search';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn } from '@/lib/utils';
 import { useCandidateStore } from '@/store/slices/candidates.store';
@@ -30,7 +31,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useHiredData } from '../_hooks/use-hired-data';
 import { filterHired } from '../_utils/hired-data';
@@ -62,8 +63,6 @@ export function HiredTable() {
   useSocketRoom('candidates');
   useSocketRoom('applications');
 
-  const [query, setQuery] = useState('');
-  const [inputValue, setInputValue] = useState('');
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'hiredDate', desc: true },
@@ -74,38 +73,27 @@ export function HiredTable() {
   const [assignTarget, setAssignTarget] = useState<Candidate | null>(null);
   const { composeOpen, setComposeOpen, composeMode, openComposeFor } =
     useCandidateEmailComposer();
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
     useTablePagination({ storageKey: 'hired', defaultSize: 20 });
+  const search = useDebouncedSearch(() => {
+    resetPage();
+    // Selections belong to the previous filter; dropping them stops a bulk
+    // action from reaching a candidate the user can no longer see.
+    clear();
+  });
 
   const data = useMemo(
-    () => filterHired(candidates, hireInfoByCandidateId, query, tagFilter),
-    [candidates, hireInfoByCandidateId, query, tagFilter]
+    () => filterHired(candidates, hireInfoByCandidateId, search.query, tagFilter),
+    [candidates, hireInfoByCandidateId, search.query, tagFilter]
   );
   const totalRows = data.length;
-  const hasFilters = !!query || tagFilter.length > 0;
+  const hasFilters = !!search.query || tagFilter.length > 0;
 
   const selectedRows = useMemo(
     () => data.filter(c => selectedIds.has(c._id)),
     [data, selectedIds]
   );
-
-  function handleSearchChange(q: string) {
-    setInputValue(q);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    resetPage();
-    // Selections belong to the previous filter; dropping them stops a bulk
-    // action from reaching a candidate the user can no longer see.
-    clear();
-    searchTimer.current = setTimeout(() => setQuery(q), 300);
-  }
-
-  function handleClearSearch() {
-    setInputValue('');
-    setQuery('');
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-  }
 
   async function handleAssignToJob(jobId: string, startStageId?: string) {
     if (!assignTarget) return;
@@ -184,9 +172,9 @@ export function HiredTable() {
       <div className="flex flex-col gap-4 flex-1 min-h-0">
         <div className="flex items-center gap-3 flex-wrap shrink-0">
           <ClearableSearchInput
-            value={inputValue}
-            onChange={handleSearchChange}
-            onClear={handleClearSearch}
+            value={search.inputValue}
+            onChange={search.change}
+            onClear={search.clear}
             placeholder="Search by name, email, phone, or skills…"
           />
           <TagFilter
