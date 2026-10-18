@@ -1,23 +1,22 @@
+import { applicantFormData } from '@/components/candidate-form/applicant-form-data';
+import {
+  IMAGE_PDF_MESSAGE,
+  isImageOnlyPdfError,
+  waitForMinParseDuration,
+} from '@/components/candidate-form/resume-parse';
+import {
+  EMPTY_REVIEW,
+  reviewFromParsed,
+  type ReviewData,
+} from '@/components/candidate-form/review-data';
 import { publicApi } from '@/lib/public-api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import {
-  applicantFormData,
-  applySchema,
-  EMPTY_REVIEW,
-  reviewFromParsed,
-  type ApplyFormValues,
-  type ResumeUploadResult,
-  type ReviewData,
-} from './apply-form';
+import { applySchema, type ApplyFormValues, type ResumeUploadResult } from './apply-form';
 
 export type ApplyStep = 'input' | 'parsing' | 'review' | 'submitting' | 'success';
-
-// Keeps the parsing spinner on screen long enough that a rejection reads as
-// a processing result instead of an instant snap back to the form.
-const MIN_PARSE_DURATION_MS = 1200;
 
 export function useApplyFlow(jobId: string | undefined) {
   const [step, setStep] = useState<ApplyStep>('input');
@@ -79,17 +78,10 @@ export function useApplyFlow(jobId: string | undefined) {
       setStep('review');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
-      if (/image-based|scanned|text-based PDF/i.test(message)) {
-        const elapsed = Date.now() - startedAt;
-        if (elapsed < MIN_PARSE_DURATION_MS) {
-          await new Promise(resolve =>
-            setTimeout(resolve, MIN_PARSE_DURATION_MS - elapsed)
-          );
-        }
+      if (isImageOnlyPdfError(message)) {
+        await waitForMinParseDuration(startedAt);
         setResumeFileState(null);
-        setResumeError(
-          'This PDF appears to be image-based or scanned and cannot be parsed. Please upload a text-based PDF.'
-        );
+        setResumeError(IMAGE_PDF_MESSAGE);
         setStep('input');
         return;
       }

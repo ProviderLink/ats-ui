@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import type { Job } from '@/store';
 import { UploadIcon } from 'lucide-react';
-import type { UseFormReturn } from 'react-hook-form';
+import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import type { ApplyFormValues } from '../_utils/apply-form';
 import { ApplyDetailsCard } from './apply-details-card';
@@ -32,10 +32,11 @@ export function ApplyInputStep({
   const canSubmit = form.formState.isValid && !!resumeFile;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+    <FormProvider {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
         <div className="flex flex-col gap-8 lg:col-span-2">
-          <ApplyDetailsCard form={form} />
+          <ApplyDetailsCard />
           <ApplyResumeCard
             form={form}
             resumeFile={resumeFile}
@@ -72,6 +73,7 @@ export function ApplyInputStep({
           </div>
         </div>
       </div>
-    </form>
+      </form>
+    </FormProvider>
   );
 }

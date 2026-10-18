@@ -1,3 +1,4 @@
+import type { ReviewData } from '@/components/candidate-form/review-data';
 import { EducationEditor } from '@/components/candidate-form/education-editor';
 import { ExperienceEditor } from '@/components/candidate-form/experience-editor';
 import { TagsInput } from '@/components/candidate-form/tags-input';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { Job } from '@/store';
 import { Loader2Icon, PencilIcon } from 'lucide-react';
-import type { ApplyFormValues, ReviewData } from '../_utils/apply-form';
+import type { ApplyFormValues } from '../_utils/apply-form';
 import { JobSummaryCard } from './job-summary-card';
 import { ReviewSection } from './review-section';
 
