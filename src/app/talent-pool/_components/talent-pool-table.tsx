@@ -1,3 +1,5 @@
+import { AssignJobDialog } from '@/components/assign-job-dialog';
+import { TagFilter } from '@/components/tag-filter';
 import { CandidateCell } from '@/components/candidate-table/candidate-cell';
 import { ColHeader } from '@/components/candidate-table/col-header';
 import { SortHeader } from '@/components/candidate-table/sort-header';
@@ -21,19 +23,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -57,7 +46,7 @@ import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
-import type { Candidate, Tag } from '@/store/types';
+import type { Candidate } from '@/store/types';
 import {
   flexRender,
   getCoreRowModel,
@@ -69,9 +58,7 @@ import {
 } from '@tanstack/react-table';
 import {
   BriefcaseIcon,
-  CheckIcon,
   EllipsisIcon,
-  FilterIcon,
   MailIcon,
   MousePointerClickIcon,
   SearchIcon,
@@ -80,124 +67,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { TalentPoolDetailSheet } from './talent-pool-detail-sheet';
-
-function TagFilter({
-  allTags,
-  selected,
-  onChange,
-}: {
-  allTags: Tag[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  const [search, setSearch] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return allTags;
-    const q = search.toLowerCase();
-    return allTags.filter(t => t.name.toLowerCase().includes(q));
-  }, [allTags, search]);
-
-  const toggle = (id: string) =>
-    onChange(
-      selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]
-    );
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-1.5">
-          <FilterIcon className="size-3.5" />
-          Tags
-          {selected.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="h-4 px-1.5 text-[10px] rounded-full"
-            >
-              {selected.length}
-            </Badge>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 p-0">
-        <div className="flex flex-col">
-          {/* Search */}
-          <div className="flex items-center gap-2 border-b px-3 py-2">
-            <SearchIcon className="size-3.5 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              placeholder="Filter tags…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
-            />
-            {search && (
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setSearch('')}
-              >
-                <XIcon className="size-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* List */}
-          <div className="max-h-52 overflow-y-auto p-2">
-            {filtered.length === 0 ? (
-              <p className="text-xs text-muted-foreground px-2 py-3 text-center">
-                {allTags.length === 0
-                  ? 'No tags available'
-                  : 'No matching tags'}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-0.5">
-                {filtered.map(tag => (
-                  <button
-                    key={tag._id}
-                    type="button"
-                    className={cn(
-                      'flex items-center gap-2 rounded px-2 py-1.5 text-xs text-left hover:bg-muted transition-colors',
-                      selected.includes(tag._id) && 'bg-muted'
-                    )}
-                    onClick={() => toggle(tag._id)}
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: tag.color }}
-                    />
-                    <span className="flex-1 truncate">{tag.name}</span>
-                    {selected.includes(tag._id) && (
-                      <XIcon className="size-3 text-muted-foreground" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          {selected.length > 0 && (
-            <div className="border-t px-3 py-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">
-                  {selected.length} selected
-                </span>
-                <button
-                  type="button"
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => onChange([])}
-                >
-                  Clear all
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 function CurrentRoleCell({ candidate }: { candidate: Candidate }) {
   const exp = candidate.parsedData?.experience?.[0];
@@ -281,168 +150,6 @@ function TalentPoolNotesCell({ candidate }: { candidate: Candidate }) {
 
 /** Radix Select forbids an empty-string item value, so the "use the first
  * stage" option needs a non-empty sentinel that we map back to undefined. */
-const FIRST_STAGE_VALUE = '__first__';
-
-function AssignJobDialog({
-  open,
-  onClose,
-  onConfirm,
-  jobs,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (jobId: string, startStageId?: string) => void;
-  jobs: {
-    _id: string;
-    title: string;
-    clientName?: string;
-    stages?: { _id: string; name: string }[];
-  }[];
-}) {
-  const [selected, setSelected] = useState('');
-  const [search, setSearch] = useState('');
-  const [selectedStageId, setSelectedStageId] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return jobs;
-    const q = search.toLowerCase();
-    return jobs.filter(
-      j =>
-        j.title.toLowerCase().includes(q) ||
-        (j.clientName ?? '').toLowerCase().includes(q)
-    );
-  }, [jobs, search]);
-
-  const selectedJob = useMemo(
-    () => jobs.find(j => j._id === selected),
-    [jobs, selected]
-  );
-  const stages = selectedJob?.stages ?? [];
-
-  // Reset stage when job changes
-  const handleSelectJob = (jobId: string) => {
-    setSelected(jobId);
-    setSelectedStageId('');
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Assign to a new job</DialogTitle>
-          <DialogDescription className="sr-only">
-            Search for a job and assign this candidate to it.
-          </DialogDescription>
-        </DialogHeader>
-        {/*
-          `min-w-0` is required. `DialogContent` is a grid, and a grid item's
-          automatic minimum size is its content, so a long job title made this
-          column wider than the dialog — the list then overflowed past the
-          padding and the dialog's right gutter looked like zero.
-        */}
-        <div className="flex min-w-0 flex-col gap-3">
-          <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search jobs…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
-          </div>
-          <div className="max-h-56 overflow-y-auto rounded-md border">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-                No jobs found
-              </p>
-            ) : (
-              <div className="flex flex-col">
-                {filtered.map(j => (
-                  <button
-                    key={j._id}
-                    type="button"
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
-                      selected === j._id && 'bg-muted font-medium'
-                    )}
-                    onClick={() => handleSelectJob(j._id)}
-                  >
-                    <span
-                      className={cn(
-                        'size-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5',
-                        selected === j._id
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted-foreground/30'
-                      )}
-                    >
-                      {selected === j._id && <CheckIcon className="size-3" />}
-                    </span>
-                    <span className="flex flex-col min-w-0">
-                      <span className="truncate">{j.title}</span>
-                      {j.clientName && (
-                        <span className="text-[11px] text-muted-foreground truncate">
-                          {j.clientName}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Stage picker */}
-          {stages.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Starting pipeline stage (optional)
-              </Label>
-              <Select
-                value={selectedStageId}
-                onValueChange={setSelectedStageId}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="First stage (default)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={FIRST_STAGE_VALUE}>
-                    First stage (default)
-                  </SelectItem>
-                  {stages.map(s => (
-                    <SelectItem key={s._id} value={s._id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!selected}
-            onClick={() => {
-              onConfirm(
-                selected,
-                selectedStageId === FIRST_STAGE_VALUE
-                  ? undefined
-                  : selectedStageId || undefined
-              );
-              setSelected('');
-              setSelectedStageId('');
-              setSearch('');
-            }}
-          >
-            Assign
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function RemoveTalentPoolConfirmDialog({
   candidate,
   open,

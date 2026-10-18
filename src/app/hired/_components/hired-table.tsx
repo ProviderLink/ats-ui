@@ -1,3 +1,5 @@
+import { AssignJobDialog } from '@/components/assign-job-dialog';
+import { TagFilter } from '@/components/tag-filter';
 import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
 import { CandidateCell } from '@/components/candidate-table/candidate-cell';
 import { ColHeader } from '@/components/candidate-table/col-header';
@@ -14,25 +16,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   Table,
   TableBody,
@@ -55,7 +44,7 @@ import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
-import type { Application, Candidate, Tag } from '@/store/types';
+import type { Application, Candidate } from '@/store/types';
 import {
   flexRender,
   getCoreRowModel,
@@ -67,9 +56,7 @@ import {
 } from '@tanstack/react-table';
 import {
   BriefcaseIcon,
-  CheckIcon,
   EllipsisIcon,
-  FilterIcon,
   MailIcon,
   SearchIcon,
   StarIcon,
@@ -775,6 +762,7 @@ export function HiredTable() {
         }}
         onConfirm={handleAssignToJob}
         jobs={openJobs}
+        description="This adds a pipeline entry for the new job. The candidate stays in the Hired list."
       />
 
       <ComposeEmailSheet
@@ -786,262 +774,3 @@ export function HiredTable() {
   );
 }
 
-// ── Tag filter (mirrors the talent-pool toolbar control) ──────────────────
-function TagFilter({
-  allTags,
-  selected,
-  onChange,
-}: {
-  allTags: Tag[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  const [search, setSearch] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return allTags;
-    const q = search.toLowerCase();
-    return allTags.filter(t => t.name.toLowerCase().includes(q));
-  }, [allTags, search]);
-
-  const toggle = (id: string) =>
-    onChange(
-      selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]
-    );
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-1.5">
-          <FilterIcon className="size-3.5" />
-          Tags
-          {selected.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="h-4 px-1.5 text-[10px] rounded-full"
-            >
-              {selected.length}
-            </Badge>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 p-0">
-        <div className="flex flex-col">
-          <div className="p-2 border-b">
-            <Input
-              placeholder="Search tags…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-8 text-xs"
-            />
-          </div>
-          <div className="max-h-56 overflow-y-auto p-1">
-            {filtered.length === 0 ? (
-              <p className="px-2 py-3 text-xs text-muted-foreground text-center">
-                No tags found
-              </p>
-            ) : (
-              <div className="flex flex-col gap-0.5">
-                {filtered.map(tag => (
-                  <button
-                    key={tag._id}
-                    type="button"
-                    className={cn(
-                      'flex items-center gap-2 rounded px-2 py-1.5 text-xs text-left hover:bg-muted transition-colors',
-                      selected.includes(tag._id) && 'bg-muted'
-                    )}
-                    onClick={() => toggle(tag._id)}
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: tag.color }}
-                    />
-                    <span className="flex-1 truncate">{tag.name}</span>
-                    {selected.includes(tag._id) && (
-                      <XIcon className="size-3 text-muted-foreground" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {selected.length > 0 && (
-            <div className="border-t px-3 py-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">
-                  {selected.length} selected
-                </span>
-                <button
-                  type="button"
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => onChange([])}
-                >
-                  Clear all
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// ── Assign to job (job + optional starting stage) ─────────────────────────
-function AssignJobDialog({
-  open,
-  onClose,
-  onConfirm,
-  jobs,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (jobId: string, startStageId?: string) => void;
-  jobs: {
-    _id: string;
-    title: string;
-    clientName?: string;
-    stages?: { _id: string; name: string }[];
-  }[];
-}) {
-  const [selected, setSelected] = useState('');
-  const [search, setSearch] = useState('');
-  const [selectedStageId, setSelectedStageId] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return jobs;
-    const q = search.toLowerCase();
-    return jobs.filter(
-      j =>
-        j.title.toLowerCase().includes(q) ||
-        (j.clientName ?? '').toLowerCase().includes(q)
-    );
-  }, [jobs, search]);
-
-  const selectedJob = useMemo(
-    () => jobs.find(j => j._id === selected),
-    [jobs, selected]
-  );
-  const stages = selectedJob?.stages ?? [];
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={v => {
-        if (!v) {
-          setSelected('');
-          setSearch('');
-          setSelectedStageId('');
-          onClose();
-        }
-      }}
-    >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Assign to a new job</DialogTitle>
-          <DialogDescription>
-            This adds a pipeline entry for the new job. The candidate stays in
-            the Hired list.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search jobs…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
-            />
-          </div>
-          <div className="max-h-64 overflow-y-auto rounded-md border">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-                No jobs found
-              </p>
-            ) : (
-              <div className="flex flex-col">
-                {filtered.map(j => (
-                  <button
-                    key={j._id}
-                    type="button"
-                    className={cn(
-                      'flex items-start gap-2 px-3 py-2 text-sm text-left hover:bg-muted transition-colors',
-                      selected === j._id && 'bg-muted font-medium'
-                    )}
-                    onClick={() => {
-                      setSelected(j._id);
-                      setSelectedStageId('');
-                    }}
-                  >
-                    <span
-                      className={cn(
-                        'mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0',
-                        selected === j._id
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted-foreground/30'
-                      )}
-                    >
-                      {selected === j._id && <CheckIcon className="size-3" />}
-                    </span>
-                    <span className="min-w-0 flex flex-col">
-                      <span className="truncate">{j.title}</span>
-                      {j.clientName && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          {j.clientName}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {selected && stages.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">
-                Starting pipeline stage (optional)
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {stages.map(s => (
-                  <button
-                    key={s._id}
-                    type="button"
-                    className={cn(
-                      'rounded-md border px-2 py-1 text-xs transition-colors',
-                      selectedStageId === s._id
-                        ? 'border-primary bg-primary/10 font-medium'
-                        : 'hover:bg-muted'
-                    )}
-                    onClick={() =>
-                      setSelectedStageId(prev => (prev === s._id ? '' : s._id))
-                    }
-                  >
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!selected}
-            onClick={() => {
-              onConfirm(selected, selectedStageId || undefined);
-              setSelected('');
-              setSearch('');
-              setSelectedStageId('');
-            }}
-          >
-            Assign
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
