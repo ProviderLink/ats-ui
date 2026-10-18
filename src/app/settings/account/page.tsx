@@ -33,7 +33,7 @@ import {
   PERMISSION_RESOURCES,
   RESOURCE_LABELS,
   ROLE_LABELS,
-} from '../_data/settings';
+} from '@/lib/role-labels';
 
 function getAvatarAccent(name: string) {
   const palette = [

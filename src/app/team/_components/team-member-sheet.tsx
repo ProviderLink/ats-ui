@@ -22,7 +22,7 @@ import {
 import { cn, formatDate } from '@/lib/utils';
 import type { User, UserPermissionResource } from '@/store/types/user.types';
 import { BadgeCheckIcon, PencilIcon } from 'lucide-react';
-import { ROLE_LABELS } from '../_data/team';
+import { ROLE_LABELS } from '@/lib/role-labels';
 
 const PERMISSION_LABELS: Record<string, string> = {
   candidates: 'Candidates',

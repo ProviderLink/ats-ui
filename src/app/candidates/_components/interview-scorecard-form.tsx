@@ -9,7 +9,7 @@
  * recomputes on save. The computed `*Weighted` / `overallScore` /
  * `communicationRating` fields are NEVER sent to the backend.
  */
-import { ROLE_LABELS } from '@/app/settings/_data/settings';
+import { ROLE_LABELS } from '@/lib/role-labels';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

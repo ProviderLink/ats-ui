@@ -52,7 +52,8 @@ import {
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import type { UserRole } from '../_data/team';
-import { ALL_ROLES, AVATAR_BG, ROLE_LABELS } from '../_data/team';
+import { ROLE_LABELS } from '@/lib/role-labels';
+import { ALL_ROLES, AVATAR_BG } from '../_data/team';
 import { InviteTeamSheet } from './invite-team-sheet';
 import { PermissionGuideDialog } from './permission-guide-dialog';
 import { TeamMemberEditSheet } from './team-member-edit-sheet';

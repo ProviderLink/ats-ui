@@ -24,7 +24,8 @@ import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { UserRole } from '../_data/team';
-import { ALL_ROLES, ROLE_LABELS } from '../_data/team';
+import { ROLE_LABELS } from '@/lib/role-labels';
+import { ALL_ROLES } from '../_data/team';
 
 type Props = {
   open: boolean;

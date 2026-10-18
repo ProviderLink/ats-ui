@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import type { EmailTemplate, EmailTemplateType } from '@/store/types';
 import { Loader2Icon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { EMAIL_TEMPLATE_TYPES, EMAIL_VARIABLES } from '../_data/settings';
+import { EMAIL_TEMPLATE_TYPES, EMAIL_VARIABLES } from '@/lib/email-templates';
 
 type Props = {
   open: boolean;

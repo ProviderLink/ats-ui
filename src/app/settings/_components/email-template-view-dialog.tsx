@@ -12,7 +12,7 @@ import { formatDate } from '@/lib/utils';
 import { useUserStore } from '@/store';
 import type { EmailTemplate } from '@/store/types';
 import { StarIcon } from 'lucide-react';
-import { EMAIL_TEMPLATE_TYPES } from '../_data/settings';
+import { EMAIL_TEMPLATE_TYPES } from '@/lib/email-templates';
 
 type Props = {
   open: boolean;

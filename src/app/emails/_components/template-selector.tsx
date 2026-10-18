@@ -1,5 +1,5 @@
 
-import { EMAIL_TEMPLATE_TYPES } from '@/app/settings/_data/settings';
+import { EMAIL_TEMPLATE_TYPES } from '@/lib/email-templates';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

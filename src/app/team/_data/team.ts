@@ -1,8 +1,6 @@
 export type { UserRole } from '@/store/types/enums';
 export type { User as TeamMember } from '@/store/types/user.types';
 
-// canonical source: @/app/settings/_data/settings
-export { ROLE_LABELS } from '@/app/settings/_data/settings';
 
 export const ALL_ROLES = [
   'admin',
