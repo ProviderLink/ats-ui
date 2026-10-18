@@ -1,27 +1,21 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckIcon, Trash2Icon, XIcon } from 'lucide-react';
+import { Trash2Icon, XIcon } from 'lucide-react';
 
 interface EmailBulkBarProps {
   selectedCount: number;
   allSelected: boolean;
-  confirming: boolean;
   onToggleAll: () => void;
-  onAskDelete: () => void;
-  onCancelDelete: () => void;
-  onConfirmDelete: () => void;
+  onDelete: () => void;
   onClear: () => void;
 }
 
 export function EmailBulkBar({
   selectedCount,
   allSelected,
-  confirming,
   onToggleAll,
-  onAskDelete,
-  onCancelDelete,
-  onConfirmDelete,
+  onDelete,
   onClear,
 }: EmailBulkBarProps) {
   return (
@@ -38,29 +32,15 @@ export function EmailBulkBar({
         </Badge>
       </div>
 
-      {confirming ? (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">
-            Delete {selectedCount} email{selectedCount > 1 ? 's' : ''}?
-          </span>
-          <Button size="sm" variant="destructive" onClick={onConfirmDelete}>
-            <CheckIcon className="size-4" /> Yes
-          </Button>
-          <Button size="sm" variant="outline" onClick={onCancelDelete}>
-            <XIcon className="size-4" /> No
-          </Button>
-        </div>
-      ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={onAskDelete}
-        >
-          <Trash2Icon className="size-4" />
-          Delete selected
-        </Button>
-      )}
+      <Button
+        size="sm"
+        variant="outline"
+        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        onClick={onDelete}
+      >
+        <Trash2Icon className="size-4" />
+        Delete selected
+      </Button>
 
       <Button
         size="sm"

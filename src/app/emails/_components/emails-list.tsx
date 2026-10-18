@@ -138,11 +138,8 @@ export function EmailsList() {
           <EmailBulkBar
             selectedCount={selection.selectedCount}
             allSelected={selection.allSelected}
-            confirming={selection.confirmingBulkDelete}
             onToggleAll={selection.toggleAll}
-            onAskDelete={() => selection.setConfirmingBulkDelete(true)}
-            onCancelDelete={() => selection.setConfirmingBulkDelete(false)}
-            onConfirmDelete={handleDeleteSelected}
+            onDelete={() => selection.setConfirmingBulkDelete(true)}
             onClear={selection.clear}
           />
         )}
@@ -190,6 +187,17 @@ export function EmailsList() {
         onReply={email => openCompose({ type: 'reply', email })}
         onForward={email => openCompose({ type: 'forward', email })}
         onResend={handleResend}
+      />
+
+      <ConfirmDialog
+        open={selection.confirmingBulkDelete}
+        onOpenChange={selection.setConfirmingBulkDelete}
+        title={`Delete ${selection.selectedCount} email${selection.selectedCount > 1 ? 's' : ''}?`}
+        description="The selected emails will be permanently deleted. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={mutating}
+        onConfirm={handleDeleteSelected}
       />
 
       <ComposeEmailSheet

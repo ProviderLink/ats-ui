@@ -16,7 +16,7 @@ export function useClientContacts(
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ClientContact | null>(null);
   const [composeFor, setComposeFor] = useState<ClientContact | null>(null);
 
   // Primary contact first.
@@ -63,14 +63,14 @@ export function useClientContacts(
       toast.error(
         'Cannot delete the only contact. A client must have at least one contact.'
       );
-      setDeleteConfirmId(null);
+      setDeleteTarget(null);
       return;
     }
     if (isPrimary) {
       toast.error(
         'Cannot delete the primary contact. Set another contact as primary first.'
       );
-      setDeleteConfirmId(null);
+      setDeleteTarget(null);
       return;
     }
     try {
@@ -82,7 +82,7 @@ export function useClientContacts(
         'Removed a contact'
       );
       toast.success('Contact removed');
-      setDeleteConfirmId(null);
+      setDeleteTarget(null);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -109,7 +109,7 @@ export function useClientContacts(
     mutating,
     editingId,
     showAdd,
-    deleteConfirmId,
+    deleteTarget,
     composeFor,
     startAdd: () => {
       setEditingId(null);
@@ -121,8 +121,8 @@ export function useClientContacts(
       setEditingId(id);
     },
     cancelEdit: () => setEditingId(null),
-    askDelete: setDeleteConfirmId,
-    cancelDelete: () => setDeleteConfirmId(null),
+    askDelete: setDeleteTarget,
+    cancelDelete: () => setDeleteTarget(null),
     openCompose: setComposeFor,
     closeCompose: () => setComposeFor(null),
     saveEdit,

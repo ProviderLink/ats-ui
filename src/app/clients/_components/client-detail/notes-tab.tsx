@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { logOptimisticActivity } from '@/lib/activity';
@@ -68,6 +69,7 @@ export function NotesTab({ clientId }: { clientId: string }) {
   }
 
   async function handleDelete(noteId: string) {
+    setSaving(true);
     try {
       await deleteNote(clientId, noteId);
       logOptimisticActivity(
@@ -80,6 +82,8 @@ export function NotesTab({ clientId }: { clientId: string }) {
       setDeleteConfirmId(null);
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -135,46 +139,31 @@ export function NotesTab({ clientId }: { clientId: string }) {
                   onCancel={() => setEditingId(null)}
                 />
               ) : (
-                <>
-                  <NoteCard
-                    note={n}
-                    mutating={saving}
-                    onEdit={() => {
-                      setShowAdd(false);
-                      setEditingId(n._id);
-                    }}
-                    onDelete={() => setDeleteConfirmId(n._id)}
-                  />
-                  {deleteConfirmId === n._id && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-muted-foreground">
-                        Delete this note?
-                      </span>
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        className="h-6 gap-1 px-2 text-xs"
-                        disabled={saving}
-                        onClick={() => handleDelete(n._id)}
-                      >
-                        Yes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="h-6 gap-1 px-2 text-xs"
-                        onClick={() => setDeleteConfirmId(null)}
-                      >
-                        No
-                      </Button>
-                    </div>
-                  )}
-                </>
+                <NoteCard
+                  note={n}
+                  mutating={saving}
+                  onEdit={() => {
+                    setShowAdd(false);
+                    setEditingId(n._id);
+                  }}
+                  onDelete={() => setDeleteConfirmId(n._id)}
+                />
               )}
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onOpenChange={open => !open && setDeleteConfirmId(null)}
+        title="Delete note?"
+        description="This note will be permanently deleted. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={saving}
+        onConfirm={() => deleteConfirmId ? handleDelete(deleteConfirmId) : undefined}
+      />
     </div>
   );
 }

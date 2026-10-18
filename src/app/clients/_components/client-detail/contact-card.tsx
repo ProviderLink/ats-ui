@@ -1,6 +1,5 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import type { ClientContact } from '@/store/types';
 import { MailIcon, PencilIcon, PhoneIcon, Trash2Icon } from 'lucide-react';
 import { nameInitials } from './config';
@@ -8,23 +7,17 @@ import { nameInitials } from './config';
 interface ContactCardProps {
   contact: ClientContact;
   mutating: boolean;
-  confirmingDelete: boolean;
   onEmail: () => void;
   onEdit: () => void;
-  onAskDelete: () => void;
-  onConfirmDelete: () => void;
-  onCancelDelete: () => void;
+  onDelete: () => void;
 }
 
 export function ContactCard({
   contact: c,
   mutating,
-  confirmingDelete,
   onEmail,
   onEdit,
-  onAskDelete,
-  onConfirmDelete,
-  onCancelDelete,
+  onDelete,
 }: ContactCardProps) {
   return (
     <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
@@ -76,7 +69,7 @@ export function ContactCard({
             size="icon-sm"
             className="text-muted-foreground hover:text-destructive"
             disabled={mutating}
-            onClick={onAskDelete}
+            onClick={onDelete}
             aria-label={`Delete contact ${c.name}`}
           >
             <Trash2Icon className="size-4" />
@@ -98,33 +91,6 @@ export function ContactCard({
           </span>
         )}
       </div>
-      {confirmingDelete && (
-        <>
-          <Separator />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              Delete this contact?
-            </span>
-            <Button
-              variant="destructive"
-              size="xs"
-              className="h-7 gap-1 px-2 text-xs"
-              disabled={mutating}
-              onClick={onConfirmDelete}
-            >
-              Yes
-            </Button>
-            <Button
-              variant="outline"
-              size="xs"
-              className="h-7 gap-1 px-2 text-xs"
-              onClick={onCancelDelete}
-            >
-              No
-            </Button>
-          </div>
-        </>
-      )}
     </div>
   );
 }

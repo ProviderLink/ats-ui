@@ -1,4 +1,5 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import type { ClientContact } from '@/store/types';
 import { PlusIcon } from 'lucide-react';
@@ -60,12 +61,9 @@ export function ContactsTab({ clientId, contacts }: ContactsTabProps) {
             key={c._id}
             contact={c}
             mutating={state.mutating}
-            confirmingDelete={state.deleteConfirmId === c._id}
             onEmail={() => state.openCompose(c)}
             onEdit={() => state.startEdit(c._id)}
-            onAskDelete={() => state.askDelete(c._id)}
-            onConfirmDelete={() => state.remove(c._id, c.isPrimary)}
-            onCancelDelete={state.cancelDelete}
+            onDelete={() => state.askDelete(c)}
           />
         )
       )}
@@ -77,6 +75,28 @@ export function ContactsTab({ clientId, contacts }: ContactsTabProps) {
           onCancel={state.cancelAdd}
         />
       )}
+
+      <ConfirmDialog
+        open={!!state.deleteTarget}
+        onOpenChange={open => !open && state.cancelDelete()}
+        title="Delete contact?"
+        description={
+          state.deleteTarget && (
+            <>
+              <strong>{state.deleteTarget.name}</strong> will be removed from
+              this client. This action cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={state.mutating}
+        onConfirm={() =>
+          state.deleteTarget
+            ? state.remove(state.deleteTarget._id, state.deleteTarget.isPrimary)
+            : undefined
+        }
+      />
 
       <ComposeEmailSheet
         open={!!state.composeFor}
