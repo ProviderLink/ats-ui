@@ -1,4 +1,4 @@
-import type { ScheduleInterviewInput } from '@/components/schedule-interview-dialog';
+import type { ScheduleInterviewInput } from '@/components/schedule-interview/schedule-interview-types';
 import { zonedWallClockToUtc } from '@/lib/timezones';
 import type { Interview, MeetingDetails } from '@/store/types';
 

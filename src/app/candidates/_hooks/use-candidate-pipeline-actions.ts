@@ -1,5 +1,5 @@
 import type { RejectPayload } from '@/components/reject-dialog';
-import type { ScheduleInterviewInput } from '@/components/schedule-interview-dialog';
+import type { ScheduleInterviewInput } from '@/components/schedule-interview/schedule-interview-types';
 import { logOptimisticActivity } from '@/lib/activity';
 import { DEFAULT_TIMEZONE, zonedWallClockToUtc } from '@/lib/timezones';
 import { useApplicationStore } from '@/store/slices/applications.store';

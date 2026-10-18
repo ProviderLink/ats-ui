@@ -1,7 +1,5 @@
-import {
-  ScheduleInterviewDialog,
-  type ScheduleInterviewInput,
-} from '@/components/schedule-interview-dialog';
+import { ScheduleInterviewDialog } from '@/components/schedule-interview-dialog';
+import type { ScheduleInterviewInput } from '@/components/schedule-interview/schedule-interview-types';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';

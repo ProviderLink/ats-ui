@@ -23,81 +23,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DEFAULT_TIMEZONE, getZonedDate, getZonedTime } from '@/lib/timezones';
+import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/slices/auth.store';
 import { useSettingsStore } from '@/store/slices/settings.store';
 import type { Job } from '@/store/types';
-import {
-  AlertTriangleIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  SlidersHorizontalIcon,
-} from 'lucide-react';
+import { ChevronDownIcon, SlidersHorizontalIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-
-export interface ScheduleInterviewInput {
-  title: string;
-  type: string;
-  jobId: string;
-  scheduledAt: string;
-  /** Minutes. */
-  duration: number;
-  interviewerIds: string[];
-  meetingLink: string;
-  phoneNumber: string;
-  address: string;
-}
-
-export interface ScheduleCandidateOption {
-  _id: string;
-  firstName: string;
-  lastName: string;
-}
-
-/** Pre-filled values for the edit flow. Dates are wall clocks in company TZ. */
-export interface ScheduleInterviewInitial {
-  title: string;
-  type: string;
-  jobId?: string;
-  date: string;
-  time: string;
-  /** Not editable in edit mode; shown read-only. */
-  duration?: number;
-  meetingLink: string;
-  phoneNumber: string;
-  address: string;
-  interviewerIds: string[];
-}
-
-export const DURATION_OPTIONS = [10, 15, 30, 60] as const;
-const DEFAULT_DURATION = 60;
-
-export type ScheduleInterviewMode = 'create' | 'edit';
-
-/**
- * Default start: the next whole hour **on the wall clock of `timezone`**.
- *
- * Two traps this avoids:
- * 1. Deriving the date from `toISOString()` mixed a UTC day with a local clock,
- *    so west of UTC the form pre-filled TOMORROW (e.g. Chicago 19:30 → 01:00Z
- *    the next day).
- * 2. The defaults are submitted through `zonedWallClockToUtc(..., timezone)`,
- *    which reads them as a wall clock in the SELECTED zone — not in the
- *    browser's. Building them from browser-local getters therefore shifted the
- *    time by the difference between the two zones.
- */
-function nextHourDefaults(timezone: string) {
-  const nextHour = new Date(Date.now() + 60 * 60 * 1000);
-  const date = getZonedDate(nextHour.toISOString(), timezone);
-  const time = getZonedTime(nextHour.toISOString(), timezone);
-  return {
-    date,
-    // Round down to the hour, keeping the zone's own date (so 23:xx local in a
-    // zone that has already rolled over still gets that zone's next day).
-    time: time ? `${time.slice(0, 2)}:00` : '',
-  };
-}
+import { DurationSelect } from './schedule-interview/duration-select';
+import { InterviewLocationFields } from './schedule-interview/interview-location-fields';
+import { InterviewerPicker } from './schedule-interview/interviewer-picker';
+import { JobCandidatePicker } from './schedule-interview/job-candidate-picker';
+import { nextHourDefaults } from './schedule-interview/next-hour-defaults';
+import {
+  DEFAULT_DURATION,
+  type ScheduleCandidateOption,
+  type ScheduleInterviewInitial,
+  type ScheduleInterviewInput,
+  type ScheduleInterviewMode,
+} from './schedule-interview/schedule-interview-types';
 
 /**
  * The one and only interview scheduling form.
@@ -251,54 +195,17 @@ export function ScheduleInterviewDialog({
 
         <div className="flex flex-col gap-3">
           {showCandidatePicker && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>Job *</Label>
-                <Select
-                  value={jobId}
-                  onValueChange={v => {
-                    setJobId(v);
-                    onJobChange?.(v);
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select job…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {jobOptions.map(j => (
-                      <SelectItem key={j._id} value={j._id}>
-                        {j.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="si-candidate">Candidate *</Label>
-                {candidates.length === 0 ? (
-                  <p className="flex h-9 items-center text-xs text-muted-foreground">
-                    {jobId ? 'No candidates on this job' : 'Select a job first'}
-                  </p>
-                ) : (
-                  <Select
-                    value={candidateId ?? ''}
-                    onValueChange={v => onCandidateChange?.(v)}
-                  >
-                    <SelectTrigger id="si-candidate" className="w-full">
-                      <SelectValue placeholder="Select candidate…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {candidates.map(c => (
-                        <SelectItem key={c._id} value={c._id}>
-                          {c.firstName} {c.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
+            <JobCandidatePicker
+              jobId={jobId}
+              jobOptions={jobOptions}
+              onJobChange={v => {
+                setJobId(v);
+                onJobChange?.(v);
+              }}
+              candidates={candidates}
+              candidateId={candidateId}
+              onCandidateChange={onCandidateChange}
+            />
           )}
 
           <div className="grid grid-cols-3 gap-3">
@@ -320,28 +227,7 @@ export function ScheduleInterviewDialog({
                 onChange={e => setTime(e.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="si-duration">Duration</Label>
-              <Select
-                value={String(duration)}
-                onValueChange={v => setDuration(Number(v))}
-              >
-                <SelectTrigger id="si-duration" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Legacy records may hold a length outside the new list. */}
-                  {(DURATION_OPTIONS.some(d => d === duration)
-                    ? [...DURATION_OPTIONS]
-                    : [...DURATION_OPTIONS, duration].sort((a, b) => a - b)
-                  ).map(d => (
-                    <SelectItem key={d} value={String(d)}>
-                      {d} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <DurationSelect duration={duration} onChange={setDuration} />
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -359,84 +245,15 @@ export function ScheduleInterviewDialog({
             </Select>
           </div>
 
-          {type === 'zoom' && (
-            <div className="flex items-start gap-2.5 rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5">
-              <CheckIcon className="size-4 text-primary shrink-0 mt-0.5" />
-              <p className="text-xs text-foreground/80">
-                A Zoom meeting is created automatically and the link is sent to
-                the candidate and interviewers.
-              </p>
-            </div>
-          )}
-
-          {(type === 'zoom' || type === 'google_meet') && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="si-link">
-                Meeting Link
-                {type === 'google_meet' && (
-                  <span className="text-destructive ml-0.5">*</span>
-                )}
-              </Label>
-              <Input
-                id="si-link"
-                placeholder={
-                  type === 'google_meet'
-                    ? 'https://meet.google.com/...'
-                    : 'Leave blank to use the auto-created Zoom link'
-                }
-                value={meetingLink}
-                onChange={e => setMeetingLink(e.target.value)}
-                required={type === 'google_meet'}
-              />
-            </div>
-          )}
-
-          {type === 'google_meet' && (
-            <div className="flex items-start gap-2.5 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5">
-              <AlertTriangleIcon className="size-4 text-warning shrink-0 mt-0.5" />
-              <div className="flex flex-col gap-1 text-xs">
-                <p className="font-medium text-warning">
-                  Google Meet requires a manual link
-                </p>
-                <p className="text-muted-foreground">
-                  <strong>Zoom</strong> interviews are auto-created via API — no
-                  manual link needed. For <strong>Google Meet</strong>, create a
-                  meeting at{' '}
-                  <a
-                    href="https://meet.google.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 hover:text-foreground"
-                  >
-                    meet.google.com
-                  </a>{' '}
-                  and paste the link above.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {type === 'phone_call' && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Phone Number</Label>
-              <Input
-                placeholder="+1 555-123-4567"
-                value={phoneNumber}
-                onChange={e => setPhoneNumber(e.target.value)}
-              />
-            </div>
-          )}
-
-          {type === 'in_person' && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Address</Label>
-              <Input
-                placeholder="123 Main St, New York, NY"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-              />
-            </div>
-          )}
+          <InterviewLocationFields
+            type={type}
+            meetingLink={meetingLink}
+            onMeetingLinkChange={setMeetingLink}
+            phoneNumber={phoneNumber}
+            onPhoneNumberChange={setPhoneNumber}
+            address={address}
+            onAddressChange={setAddress}
+          />
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Times are in</span>
@@ -475,51 +292,12 @@ export function ScheduleInterviewDialog({
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>
-                Interviewers
-                <span className="text-muted-foreground font-normal">
-                  {' '}
-                  (optional — you are included by default)
-                </span>
-              </Label>
-              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                {users.length === 0 ? (
-                  <p className="px-3 py-4 text-xs text-muted-foreground text-center w-full">
-                    No interviewers available
-                  </p>
-                ) : (
-                  users.map(u => (
-                    <button
-                      key={u._id}
-                      type="button"
-                      aria-pressed={interviewerIds.includes(u._id)}
-                      className={cn(
-                        'inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors cursor-pointer',
-                        interviewerIds.includes(u._id)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted/30 border-muted text-muted-foreground hover:border-foreground/20'
-                      )}
-                      onClick={() =>
-                        setInterviewerIds(prev =>
-                          prev.includes(u._id)
-                            ? prev.filter(id => id !== u._id)
-                            : [...prev, u._id]
-                        )
-                      }
-                    >
-                      {interviewerIds.includes(u._id) && (
-                        <CheckIcon className="size-3 shrink-0" />
-                      )}
-                      {u.firstName} {u.lastName}
-                      {u._id === currentUser?._id && (
-                        <span className="opacity-70">(you)</span>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
+            <InterviewerPicker
+              users={users}
+              selectedIds={interviewerIds}
+              currentUserId={currentUser?._id}
+              onChange={setInterviewerIds}
+            />
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="si-tz">Timezone</Label>

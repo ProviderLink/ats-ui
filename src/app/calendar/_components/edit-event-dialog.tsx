@@ -1,7 +1,5 @@
-import {
-  ScheduleInterviewDialog,
-  type ScheduleInterviewInput,
-} from '@/components/schedule-interview-dialog';
+import { ScheduleInterviewDialog } from '@/components/schedule-interview-dialog';
+import type { ScheduleInterviewInput } from '@/components/schedule-interview/schedule-interview-types';
 import { getZonedDate, getZonedTime } from '@/lib/timezones';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import type { Interview, Job } from '@/store/types';

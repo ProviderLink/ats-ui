@@ -9,24 +9,8 @@ import {
 } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
-import {
-  BoldIcon,
-  CodeIcon,
-  Heading1Icon,
-  Heading2Icon,
-  Heading3Icon,
-  ItalicIcon,
-  ListIcon,
-  ListOrderedIcon,
-  MinusIcon,
-  QuoteIcon,
-  Redo2Icon,
-  StrikethroughIcon,
-  UnderlineIcon,
-  Undo2Icon,
-} from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { ToolbarButton } from './rich-text-toolbar-button';
+import { RichTextToolbar } from './rich-text-toolbar';
 
 function handleMarkdownPaste(
   editor: Editor | null,
@@ -40,7 +24,6 @@ function handleMarkdownPaste(
   editor.commands.insertContent(descriptionToHtml(text));
   return true;
 }
-
 
 const EDITOR_CLASS = cn(
   'min-h-[140px] rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs',
@@ -112,206 +95,14 @@ export function RichTextEditor({
   return (
     <div className={cn('flex flex-col gap-1', className)}>
       <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-input bg-muted/40 px-1 py-0.5">
-        <ToolbarButton
-          label="Bold"
-          active={editorState?.isBold}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-        >
-          <BoldIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Italic"
-          active={editorState?.isItalic}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-        >
-          <ItalicIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Underline"
-          active={editorState?.isUnderline}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-        >
-          <UnderlineIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Strikethrough"
-          active={editorState?.isStrike}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-        >
-          <StrikethroughIcon className="size-4" />
-        </ToolbarButton>
-
-        <span className="mx-1 h-4 w-px bg-border" />
-
-        <ToolbarButton
-          label="Heading 1"
-          active={editorState?.isH1}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 1 }).run()
-          }
-        >
-          <Heading1Icon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Heading 2"
-          active={editorState?.isH2}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 2 }).run()
-          }
-        >
-          <Heading2Icon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Heading 3"
-          active={editorState?.isH3}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 3 }).run()
-          }
-        >
-          <Heading3Icon className="size-4" />
-        </ToolbarButton>
-
-        <span className="mx-1 h-4 w-px bg-border" />
-
-        <ToolbarButton
-          label="Bullet list"
-          active={editorState?.isBulletList}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-        >
-          <ListIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Ordered list"
-          active={editorState?.isOrderedList}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        >
-          <ListOrderedIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Blockquote"
-          active={editorState?.isBlockquote}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        >
-          <QuoteIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Code block"
-          active={editorState?.isCodeBlock}
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        >
-          <CodeIcon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Horizontal rule"
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        >
-          <MinusIcon className="size-4" />
-        </ToolbarButton>
-
-        <span className="mx-1 h-4 w-px bg-border" />
-
-        <ToolbarButton
-          label="Undo"
-          disabled={!editorState?.canUndo}
-          onClick={() => editor.chain().focus().undo().run()}
-        >
-          <Undo2Icon className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Redo"
-          disabled={!editorState?.canRedo}
-          onClick={() => editor.chain().focus().redo().run()}
-        >
-          <Redo2Icon className="size-4" />
-        </ToolbarButton>
+        <RichTextToolbar editor={editor} state={editorState} variant="full" />
       </div>
 
       <EditorContent editor={editor} className={EDITOR_CLASS} />
 
       <BubbleMenu editor={editor}>
         <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md">
-          <ToolbarButton
-            label="Bold"
-            active={editorState?.isBold}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          >
-            <BoldIcon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Italic"
-            active={editorState?.isItalic}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <ItalicIcon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Underline"
-            active={editorState?.isUnderline}
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-          >
-            <UnderlineIcon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Strikethrough"
-            active={editorState?.isStrike}
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-          >
-            <StrikethroughIcon className="size-4" />
-          </ToolbarButton>
-
-          <span className="mx-1 h-4 w-px bg-border" />
-
-          <ToolbarButton
-            label="Heading 1"
-            active={editorState?.isH1}
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-          >
-            <Heading1Icon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Heading 2"
-            active={editorState?.isH2}
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-          >
-            <Heading2Icon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Heading 3"
-            active={editorState?.isH3}
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 3 }).run()
-            }
-          >
-            <Heading3Icon className="size-4" />
-          </ToolbarButton>
-
-          <span className="mx-1 h-4 w-px bg-border" />
-
-          <ToolbarButton
-            label="Bullet list"
-            active={editorState?.isBulletList}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          >
-            <ListIcon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Ordered list"
-            active={editorState?.isOrderedList}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          >
-            <ListOrderedIcon className="size-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            label="Blockquote"
-            active={editorState?.isBlockquote}
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          >
-            <QuoteIcon className="size-4" />
-          </ToolbarButton>
+          <RichTextToolbar editor={editor} state={editorState} variant="bubble" />
         </div>
       </BubbleMenu>
     </div>
