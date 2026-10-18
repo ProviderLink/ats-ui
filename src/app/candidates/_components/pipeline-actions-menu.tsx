@@ -27,7 +27,7 @@ import { useState } from 'react';
 import {
   ActionMenuItem,
   ActionMenuSection,
-} from './pipeline-actions-menu/action-menu-item';
+} from './action-menu-item';
 import { usePipelineActions } from './pipeline-actions-menu/use-pipeline-actions';
 
 type ActiveDialog =

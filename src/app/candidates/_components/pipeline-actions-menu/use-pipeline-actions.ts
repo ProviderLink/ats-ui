@@ -10,7 +10,7 @@ import { useSettingsStore } from '@/store/slices/settings.store';
 import type { Application, Candidate, Interview, Job } from '@/store/types';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { buildPipelineMenuComposeMode } from '../../_utils/build-pipeline-menu-compose';
+import { buildCandidateMenuComposeMode } from '../../_utils/build-candidate-menu-compose';
 
 interface UsePipelineActionsArgs {
   candidate: Candidate;
@@ -114,7 +114,7 @@ export function usePipelineActions({
   }
 
   function buildComposeMode() {
-    return buildPipelineMenuComposeMode({
+    return buildCandidateMenuComposeMode({
       candidate,
       candidateName: name,
       application,

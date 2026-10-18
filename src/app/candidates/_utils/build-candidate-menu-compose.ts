@@ -10,7 +10,7 @@ interface Args {
   clientName: string;
 }
 
-export function buildPipelineMenuComposeMode({
+export function buildCandidateMenuComposeMode({
   candidate,
   candidateName,
   application,
