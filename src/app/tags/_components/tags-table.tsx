@@ -33,8 +33,14 @@ import { buildTagColumns } from './tags-columns';
 
 export function TagsTable() {
   useSocketRoom('tags');
-  const { items, loading, mutating, error, fetch, create, update, remove } =
-    useTagStore();
+  const items = useTagStore(s => s.items);
+  const loading = useTagStore(s => s.loading);
+  const mutating = useTagStore(s => s.mutating);
+  const error = useTagStore(s => s.error);
+  const fetch = useTagStore(s => s.fetch);
+  const create = useTagStore(s => s.create);
+  const update = useTagStore(s => s.update);
+  const remove = useTagStore(s => s.remove);
   const users = useUserStore(s => s.items);
   const fetchUsers = useUserStore(s => s.fetch);
 
