@@ -8,7 +8,7 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
-// Survives unmounts (same pattern as job-candidates.tsx).
+// Survives unmounts (same pattern as use-job-candidates-data.ts).
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 30_000;
 
