@@ -55,9 +55,10 @@ export function useReviewActions({
     };
   }, [allApps, candidate._id]);
 
-  const rejectJobTitle = allJobs.find(
-    j => j._id === (liveApplication?.jobId ?? appliedJobId)
-  )?.title;
+  const jobTitleFor = (id: string | null | undefined) =>
+    id ? allJobs.find(j => j._id === id)?.title : undefined;
+  const rejectJobTitle = jobTitleFor(liveApplication?.jobId ?? appliedJobId);
+  const appliedJobTitle = jobTitleFor(appliedJobId) ?? null;
 
   async function run(action: () => Promise<void>) {
     setActing(true);
@@ -148,6 +149,7 @@ export function useReviewActions({
     liveApplication,
     otherLiveApplicationCount,
     rejectJobTitle,
+    appliedJobTitle,
     startApprove,
     approve,
     reject,

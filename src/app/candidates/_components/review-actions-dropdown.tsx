@@ -15,9 +15,9 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ApproveCandidateDialog } from './approve-candidate-dialog';
 import { buildCandidateMenuComposeMode } from '../_utils/build-candidate-menu-compose';
 import { ActionMenuItem, ActionMenuSection } from './action-menu-item';
-import { ApproveJobDialog } from './review-actions-dropdown/approve-job-dialog';
 import { useReviewActions } from './review-actions-dropdown/use-review-actions';
 
 type ActiveDialog = 'approve' | 'reject' | 'compose';
@@ -137,14 +137,17 @@ export function ReviewActionsDropdown({
         })}
       />
 
-      <ApproveJobDialog
+      <ApproveCandidateDialog
         {...dialogProps('approve')}
+        variant="approve"
+        isPending
         candidateName={name}
-        hasJobApplied={hasJobApplied}
+        appliedJobId={candidate.appliedJobId}
+        appliedJobTitle={actions.appliedJobTitle}
         openJobs={openJobs}
         selectedJobId={actions.selectedJobId}
         onSelectedJobIdChange={actions.setSelectedJobId}
-        acting={acting}
+        loading={acting}
         onConfirm={actions.approve}
       />
 
