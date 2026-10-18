@@ -1,8 +1,10 @@
 import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
+import { CandidateCountLine } from '@/components/candidate-table/candidate-count-line';
 import { ClearableSearchInput } from '@/components/clearable-search-input';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useDebouncedSearch } from '@/hooks/use-debounced-search';
+import { useDetailSheet } from '@/hooks/use-detail-sheet';
 import { useIneligibleActions } from '@/hooks/use-ineligible-actions';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { useTablePagination } from '@/hooks/use-table-pagination';
@@ -41,8 +43,7 @@ export function PermanentlyIneligibleTable() {
   } = useIneligibleActions();
   const [restoreTarget, setRestoreTarget] = useState<Candidate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
-  const [selected, setSelected] = useState<Candidate | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const detail = useDetailSheet<Candidate>();
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'ineligibleAt', desc: true },
   ]);
@@ -64,18 +65,13 @@ export function PermanentlyIneligibleTable() {
   );
   const hasFilters = !!search.query;
 
-  function openDetail(candidate: Candidate) {
-    setSelected(candidate);
-    setDetailOpen(true);
-  }
-
   const columns = useMemo(
     () =>
       buildIneligibleColumns({
         restoringId,
         holdTogglingId,
         deletingId,
-        onView: openDetail,
+        onView: detail.show,
         onRestore: setRestoreTarget,
         onToggleLegalHold: toggleLegalHold,
         onDelete: setDeleteTarget,
@@ -107,18 +103,19 @@ export function PermanentlyIneligibleTable() {
           />
         </div>
 
-        <p className="text-xs text-muted-foreground -mt-1 shrink-0">
-          {loading && data.length === 0
-            ? 'Loading…'
-            : `${data.length} ${data.length === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' ineligible'}`}
-        </p>
+        <CandidateCountLine
+          loading={loading}
+          count={data.length}
+          hasFilters={hasFilters}
+          unfilteredSuffix="ineligible"
+        />
 
         <IneligibleDataTable
           table={table}
           showSkeleton={loading && data.length === 0}
           hasFilters={hasFilters}
           totalRows={data.length}
-          onRowClick={openDetail}
+          onRowClick={detail.show}
         />
 
         <RestoreCandidateDialog
@@ -142,12 +139,9 @@ export function PermanentlyIneligibleTable() {
         />
 
         <CandidateDetailSheet
-          candidate={selected}
-          open={detailOpen}
-          onOpenChange={open => {
-            setDetailOpen(open);
-            if (!open) setSelected(null);
-          }}
+          candidate={detail.selected}
+          open={detail.open}
+          onOpenChange={detail.onOpenChange}
           mutating={!!holdTogglingId || !!deletingId || !!restoringId}
         />
       </div>
