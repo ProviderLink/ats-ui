@@ -27,10 +27,20 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { logOptimisticActivity } from '@/lib/activity';
-import { splitBullets } from '@/lib/job-format';
+import {
+  experienceLevelLabel,
+  formatDeadline,
+  formatSalary,
+  jobPriorityLabel,
+  jobStatusLabel,
+  jobTypeLabel,
+  locationTypeLabel,
+  splitBullets,
+} from '@/lib/job-format';
+import { JOB_STATUS_VARIANT } from '@/lib/status-styles';
 import { useResolvedTags } from '@/lib/tags';
 import { cn } from '@/lib/utils';
-import type { Client, Job, JobPriority, JobStatus, SalaryRange } from '@/store';
+import type { Client, Job, JobPriority, JobStatus } from '@/store';
 import {
   useApplicationStore,
   useJobStore,
@@ -55,23 +65,6 @@ import { JobPipelineBoard } from './job-pipeline-board';
 import { NewJobSheet } from './new-job-sheet';
 import { PipelineChangeDialog } from './pipeline-change-dialog';
 
-const statusVariant: Record<
-  JobStatus,
-  'default' | 'secondary' | 'outline' | 'destructive'
-> = {
-  open: 'default',
-  draft: 'secondary',
-  on_hold: 'outline',
-  closed: 'destructive',
-};
-
-const statusLabel: Record<JobStatus, string> = {
-  open: 'Open',
-  draft: 'Draft',
-  on_hold: 'On Hold',
-  closed: 'Closed',
-};
-
 const priorityVariant: Record<
   JobPriority,
   'secondary' | 'outline' | 'default' | 'destructive'
@@ -80,13 +73,6 @@ const priorityVariant: Record<
   medium: 'outline',
   high: 'default',
   urgent: 'destructive',
-};
-
-const priorityLabel: Record<JobPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
 };
 
 // Colours per priority so the chip itself communicates severity without
@@ -98,55 +84,6 @@ const priorityCls: Record<JobPriority, string> = {
   high: 'bg-pine-teal-100 text-pine-teal-800 border-pine-teal-200 dark:bg-pine-teal-900/30 dark:text-pine-teal-300 dark:border-pine-teal-800/40',
   urgent: 'bg-destructive/10 text-destructive border-destructive/30',
 };
-
-const jobTypeLabel: Record<string, string> = {
-  full_time: 'Full Time',
-  part_time: 'Part Time',
-  contract: 'Contract',
-  temporary: 'Temporary',
-};
-
-const locationTypeLabel: Record<string, string> = {
-  remote: 'Remote',
-  hybrid: 'Hybrid',
-  onsite: 'On-site',
-};
-
-const experienceLevelLabel: Record<string, string> = {
-  entry: 'Entry Level',
-  mid: 'Mid Level',
-  senior: 'Senior',
-  lead: 'Lead',
-};
-
-const salaryPeriodLabel: Record<string, string> = {
-  hourly: 'hour',
-  daily: 'day',
-  weekly: 'week',
-  bi_weekly: 'bi-week',
-  monthly: 'month',
-  yearly: 'year',
-};
-
-function formatSalary(sr: SalaryRange): string {
-  const symbol = sr.currency === 'USD' ? '$' : sr.currency;
-  const fmt = (n: number) => `${symbol}${n.toLocaleString()}`;
-  return `${fmt(sr.min)} – ${fmt(sr.max)} / ${salaryPeriodLabel[sr.period]}`;
-}
-
-function formatDeadline(deadline: string): {
-  text: string;
-  destructive: boolean;
-} {
-  const now = new Date();
-  const d = new Date(deadline);
-  const diffMs = d.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return { text: 'Expired', destructive: true };
-  if (diffDays === 0) return { text: 'Due today', destructive: false };
-  if (diffDays === 1) return { text: '1 day left', destructive: false };
-  return { text: `${diffDays} days left`, destructive: false };
-}
 
 type Props = { job: Job | null; clients: Client[] };
 
@@ -284,16 +221,16 @@ export function JobPanel({ job, clients }: Props) {
                 <button
                   className="group inline-flex items-center gap-1.5 h-7 rounded-full border border-border/70 bg-muted/40 pl-2 pr-1.5 text-sm shadow-xs transition-all duration-200 hover:bg-muted/70 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={mutating}
-                  aria-label={`Change status (current: ${statusLabel[fullJob.status]})`}
+                  aria-label={`Change status (current: ${jobStatusLabel[fullJob.status]})`}
                 >
                   <span className="text-[11px] text-muted-foreground hidden sm:inline">
                     Status
                   </span>
                   <Badge
-                    variant={statusVariant[fullJob.status]}
+                    variant={JOB_STATUS_VARIANT[fullJob.status]}
                     className="text-[11px] h-5 px-2 cursor-pointer select-none"
                   >
-                    {statusLabel[fullJob.status]}
+                    {jobStatusLabel[fullJob.status]}
                   </Badge>
                   <ChevronDownIcon className="size-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </button>
@@ -303,7 +240,7 @@ export function JobPanel({ job, clients }: Props) {
                   Change Status
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {(Object.keys(statusLabel) as JobStatus[]).map(s => (
+                {(Object.keys(jobStatusLabel) as JobStatus[]).map(s => (
                   <DropdownMenuItem
                     key={s}
                     disabled={s === fullJob.status}
@@ -311,10 +248,10 @@ export function JobPanel({ job, clients }: Props) {
                     className="text-sm"
                   >
                     <Badge
-                      variant={statusVariant[s]}
+                      variant={JOB_STATUS_VARIANT[s]}
                       className="text-[10px] h-4 px-1.5 mr-2"
                     >
-                      {statusLabel[s]}
+                      {jobStatusLabel[s]}
                     </Badge>
                     {s === fullJob.status && (
                       <span className="ml-auto text-xs text-muted-foreground">
@@ -332,11 +269,11 @@ export function JobPanel({ job, clients }: Props) {
                 'text-[11px] h-6 px-2 gap-1.5 rounded-full border shadow-xs',
                 priorityCls[fullJob.priority]
               )}
-              title={`Priority: ${priorityLabel[fullJob.priority]}`}
+              title={`Priority: ${jobPriorityLabel[fullJob.priority]}`}
             >
               <FlagIcon className="size-2.5" />
               <span className="hidden sm:inline">Priority:</span>
-              {priorityLabel[fullJob.priority]}
+              {jobPriorityLabel[fullJob.priority]}
             </Badge>
 
             {/* Pipeline — clickable dropdown */}

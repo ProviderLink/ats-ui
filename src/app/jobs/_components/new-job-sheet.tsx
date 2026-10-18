@@ -1,6 +1,5 @@
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { TagsSelector } from '@/components/tags-selector';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,154 +37,19 @@ import {
   useTagStore,
 } from '@/store';
 import {
-  CheckIcon,
   ChevronDownIcon,
   Loader2Icon,
-  PlusIcon,
   RotateCcwIcon,
-  SearchIcon,
   SparklesIcon,
   TriangleAlertIcon,
-  XIcon,
 } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-
-function ClientCombobox({
-  clients,
-  value,
-  onChange,
-}: {
-  clients: Client[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const selected = clients.find(c => c._id === value);
-  const filtered = search.trim()
-    ? clients.filter(c =>
-        c.companyName.toLowerCase().includes(search.toLowerCase())
-      )
-    : clients;
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-        setSearch('');
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
-
-  function handleSelect(id: string) {
-    onChange(id);
-    setOpen(false);
-    setSearch('');
-  }
-
-  function handleToggle() {
-    setOpen(o => {
-      if (!o) setTimeout(() => inputRef.current?.focus(), 30);
-      else setSearch('');
-      return !o;
-    });
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={cn(
-          'w-full flex items-center justify-between h-9 px-3 rounded-md border bg-background text-sm ring-offset-background',
-          'hover:bg-accent/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-          !selected && 'text-muted-foreground'
-        )}
-      >
-        <span className="truncate">
-          {selected?.companyName ?? 'Select client'}
-        </span>
-        <ChevronDownIcon
-          className={cn(
-            'size-3.5 shrink-0 text-muted-foreground ml-2 transition-transform',
-            open && 'rotate-180'
-          )}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-md">
-          <div className="flex items-center gap-2 px-3 py-2 border-b">
-            <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search clients..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-ring rounded"
-            />
-            {search && (
-              <button
-                type="button"
-                onMouseDown={e => {
-                  e.preventDefault();
-                  setSearch('');
-                }}
-                className="text-muted-foreground/50 hover:text-foreground"
-              >
-                <XIcon className="size-3" />
-              </button>
-            )}
-          </div>
-          <div
-            style={{ maxHeight: '200px', overflowY: 'scroll' }}
-            className="py-1"
-          >
-            {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No clients found
-              </p>
-            ) : (
-              filtered.map(c => (
-                <button
-                  key={c._id}
-                  type="button"
-                  onMouseDown={e => {
-                    e.preventDefault();
-                    handleSelect(c._id);
-                  }}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent text-left',
-                    value === c._id && 'bg-accent/50'
-                  )}
-                >
-                  <CheckIcon
-                    className={cn(
-                      'size-3.5 shrink-0',
-                      value === c._id ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <span className="truncate">{c.companyName}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import { AiBadge } from './new-job/ai-badge';
+import { ClientCombobox } from './new-job/client-combobox';
+import { DynamicList } from './new-job/dynamic-list';
+import { FormField } from './new-job/form-field';
+import { SkillsInput } from './new-job/skills-input';
 
 /**
  * The unsubmitted AI brief is kept outside React state so it survives the
@@ -194,159 +58,9 @@ function ClientCombobox({
  */
 let aiNotesCache = '';
 
-/** Subtle marker showing a field was populated by AI and is still untouched. */
-function AiBadge() {
-  return (
-    <Badge
-      variant="secondary"
-      className="gap-0.5 bg-primary/10 px-1.5 py-0 text-[10px] font-medium text-primary"
-    >
-      <SparklesIcon className="size-2.5" />
-      AI
-    </Badge>
-  );
-}
 
-function FormField({
-  label,
-  required,
-  badge,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  badge?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label className="flex items-center gap-1">
-        {label}
-        {required && (
-          <span className="text-destructive text-xs leading-none">*</span>
-        )}
-        {badge}
-      </Label>
-      {children}
-    </div>
-  );
-}
 
-function DynamicList({
-  items,
-  onChange,
-  placeholder,
-}: {
-  items: string[];
-  onChange: (items: string[]) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground/50 w-4 text-right shrink-0 tabular-nums select-none">
-            {i + 1}.
-          </span>
-          <Input
-            value={item}
-            onChange={e => {
-              const next = [...items];
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-            placeholder={placeholder}
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-            className="shrink-0 text-muted-foreground/40 hover:text-destructive"
-            aria-label={`Remove item ${i + 1}`}
-          >
-            <XIcon className="size-3.5" />
-          </Button>
-        </div>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full gap-1.5 border-dashed text-muted-foreground hover:text-foreground mt-0.5"
-        onClick={() => onChange([...items, ''])}
-      >
-        <PlusIcon className="size-3.5" />
-        Add item
-      </Button>
-    </div>
-  );
-}
 
-function SkillsInput({
-  skills,
-  onChange,
-}: {
-  skills: string[];
-  onChange: (skills: string[]) => void;
-}) {
-  const [input, setInput] = useState('');
-
-  function addSkill(raw: string) {
-    const trimmed = raw.trim();
-    if (trimmed && !skills.includes(trimmed)) {
-      onChange([...skills, trimmed]);
-    }
-    setInput('');
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addSkill(input);
-    } else if (e.key === 'Backspace' && !input && skills.length > 0) {
-      onChange(skills.slice(0, -1));
-    }
-  }
-
-  return (
-    <div
-      className="flex flex-wrap gap-1.5 p-2 rounded-md border bg-background min-h-9 cursor-text"
-      onClick={() => document.getElementById('skills-input')?.focus()}
-    >
-      {skills.map(s => (
-        <span
-          key={s}
-          className="flex items-center gap-1 text-xs bg-muted px-2 py-0.5 rounded border border-border/60"
-        >
-          {s}
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              onChange(skills.filter(x => x !== s));
-            }}
-            className="text-muted-foreground/50 hover:text-destructive"
-          >
-            <XIcon className="size-3" />
-          </button>
-        </span>
-      ))}
-      <input
-        id="skills-input"
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={() => {
-          if (input.trim()) addSkill(input);
-        }}
-        placeholder={skills.length === 0 ? 'Type skill + Enter or comma' : ''}
-        className="flex-1 min-w-24 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-ring rounded"
-      />
-    </div>
-  );
-}
 
 type Props = {
   open: boolean;

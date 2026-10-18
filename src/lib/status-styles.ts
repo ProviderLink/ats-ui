@@ -1,4 +1,4 @@
-import type { EmailStatus } from '@/store/types';
+import type { EmailStatus, JobStatus } from '@/store/types';
 
 export const EMAIL_STATUS_STYLES: Record<
   EmailStatus,
@@ -44,4 +44,14 @@ export const EMAIL_STATUS_STYLES: Record<
     dot: 'bg-red-600',
     cls: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-950/60 dark:text-red-400',
   },
+};
+
+export const JOB_STATUS_VARIANT: Record<
+  JobStatus,
+  'default' | 'secondary' | 'outline' | 'destructive'
+> = {
+  open: 'default',
+  draft: 'secondary',
+  on_hold: 'outline',
+  closed: 'destructive',
 };

@@ -15,6 +15,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { jobStatusLabel, locationTypeLabel } from '@/lib/job-format';
+import { JOB_STATUS_VARIANT } from '@/lib/status-styles';
 import { getJson } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import type { Application, Client, Job, JobFilters, JobStatus } from '@/store';
@@ -37,29 +39,6 @@ import { NewJobSheet } from './new-job-sheet';
 
 const DEFAULT_PAGE_SIZE = 10;
 const VALID_PAGE_SIZES = [10, 15, 20, 30, 50];
-
-const statusVariant: Record<
-  JobStatus,
-  'default' | 'secondary' | 'outline' | 'destructive'
-> = {
-  open: 'default',
-  draft: 'secondary',
-  on_hold: 'outline',
-  closed: 'destructive',
-};
-
-const statusLabel: Record<JobStatus, string> = {
-  open: 'Open',
-  draft: 'Draft',
-  on_hold: 'On Hold',
-  closed: 'Closed',
-};
-
-const locationTypeLabel: Record<string, string> = {
-  remote: 'Remote',
-  hybrid: 'Hybrid',
-  onsite: 'On-site',
-};
 
 type Props = {
   jobs: Job[];
@@ -304,7 +283,7 @@ export function JobList({
               >
                 <CircleDotIcon className="size-3" />
                 {filters.status
-                  ? `Status: ${statusLabel[filters.status]}`
+                  ? `Status: ${jobStatusLabel[filters.status]}`
                   : 'Status'}
                 <ChevronDownIcon className="size-3" />
               </Button>
@@ -326,7 +305,7 @@ export function JobList({
                         'font-medium text-primary'
                     )}
                   >
-                    {s === 'all' ? 'All Status' : statusLabel[s]}
+                    {s === 'all' ? 'All Status' : jobStatusLabel[s]}
                   </DropdownMenuItem>
                 )
               )}
@@ -392,8 +371,8 @@ export function JobList({
                     <span className="font-medium text-sm leading-snug">
                       {job.title}
                     </span>
-                    <Badge variant={statusVariant[job.status]}>
-                      {statusLabel[job.status]}
+                    <Badge variant={JOB_STATUS_VARIANT[job.status]}>
+                      {jobStatusLabel[job.status]}
                     </Badge>
                   </div>
                   <p

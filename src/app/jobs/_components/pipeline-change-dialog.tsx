@@ -9,6 +9,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { Application, Job, PipelineTemplate, StageShape } from '@/store';
 import { useApplicationStore } from '@/store';
 import {
@@ -206,30 +213,31 @@ export function PipelineChangeDialog({
                     >
                       {row.candidateCount}
                     </Badge>
-                    <select
+                    <Select
                       value={row.selectedNewStageName}
-                      onChange={e => {
+                      onValueChange={value =>
                         setRemapState(prev =>
                           prev
                             ? prev.map(r =>
                                 r.oldStageName === row.oldStageName
-                                  ? {
-                                      ...r,
-                                      selectedNewStageName: e.target.value,
-                                    }
+                                  ? { ...r, selectedNewStageName: value }
                                   : r
                               )
                             : null
-                        );
-                      }}
-                      className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                        )
+                      }
                     >
-                      {newStages.map(ns => (
-                        <option key={ns._id} value={ns.name}>
-                          {ns.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-8 w-full text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {newStages.map(ns => (
+                          <SelectItem key={ns._id} value={ns.name}>
+                            {ns.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ))}
               </div>
