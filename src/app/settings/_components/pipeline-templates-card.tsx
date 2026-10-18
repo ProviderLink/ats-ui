@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -26,7 +27,10 @@ export function PipelineTemplatesCard() {
     undefined
   );
   const [viewing, setViewing] = useState<PipelineTemplate | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PipelineTemplate | null>(
+    null
+  );
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetch();
@@ -76,18 +80,13 @@ export function PipelineTemplatesCard() {
                 {i > 0 && <Separator />}
                 <TemplateRow
                   template={tpl}
-                  confirmingDelete={confirmId === tpl._id}
                   onToggleActive={() =>
                     actions.toggleActive(tpl._id, tpl.isActive)
                   }
                   onSetDefault={() => actions.makeDefault(tpl._id)}
                   onView={() => setViewing(tpl)}
                   onEdit={() => openSheet(tpl)}
-                  onAskDelete={() => setConfirmId(tpl._id)}
-                  onConfirmDelete={async () => {
-                    if (await actions.deleteTemplate(tpl._id)) setConfirmId(null);
-                  }}
-                  onCancelDelete={() => setConfirmId(null)}
+                  onDelete={() => setDeleteTarget(tpl)}
                 />
               </Fragment>
             ))}
@@ -115,6 +114,30 @@ export function PipelineTemplatesCard() {
         onOpenChange={setSheetOpen}
         template={editing}
         onSave={data => actions.save(data, editing)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Delete pipeline template?"
+        description={
+          deleteTarget && (
+            <>
+              <strong>{deleteTarget.name}</strong> will be permanently deleted.
+              This action cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setDeleting(true);
+          const deleted = await actions.deleteTemplate(deleteTarget._id);
+          setDeleting(false);
+          if (deleted) setDeleteTarget(null);
+        }}
       />
 
       <PipelineTemplateViewDialog

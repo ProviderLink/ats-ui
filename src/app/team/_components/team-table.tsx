@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { useUserStore } from '@/store/slices/users.store';
 import type { User } from '@/store/types/user.types';
@@ -46,7 +47,7 @@ export function TeamTable({ members, loading }: TeamTableProps) {
   const [memberSheetOpen, setMemberSheetOpen] = useState(false);
   const [editMember, setEditMember] = useState<User | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   // `positive` reproduces this table's existing `> 0` rule on change, which
   // accepts 50 from the dropdown even though it is not in `validSizes`.
   const { pageIndex, pageSize, handlePaginationChange } = useTablePagination({
@@ -60,13 +61,14 @@ export function TeamTable({ members, loading }: TeamTableProps) {
     setEditSheetOpen(true);
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete() {
+    if (!deleteTarget) return;
     try {
-      await remove(id);
+      await remove(deleteTarget._id);
     } catch {
       // toast handled by store
     } finally {
-      setConfirmId(null);
+      setDeleteTarget(null);
     }
   }
 
@@ -105,12 +107,8 @@ export function TeamTable({ members, loading }: TeamTableProps) {
               const member = row.original;
               return (
                 <MemberRowActions
-                  confirming={confirmId === member._id}
-                  mutating={mutating}
                   onEdit={() => openEdit(member)}
-                  onAskDelete={() => setConfirmId(member._id)}
-                  onConfirmDelete={() => handleDelete(member._id)}
-                  onCancelDelete={() => setConfirmId(null)}
+                  onDelete={() => setDeleteTarget(member)}
                 />
               );
             },
@@ -119,7 +117,7 @@ export function TeamTable({ members, loading }: TeamTableProps) {
         return col;
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [confirmId, mutating]
+    []
   );
 
   const filtered = useMemo(
@@ -178,6 +176,25 @@ export function TeamTable({ members, loading }: TeamTableProps) {
         member={editMember}
         open={editSheetOpen}
         onOpenChange={setEditSheetOpen}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Delete team member?"
+        description={
+          deleteTarget && (
+            <>
+              <strong>
+                {deleteTarget.firstName} {deleteTarget.lastName}
+              </strong>{' '}
+              will be removed from the team. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={mutating}
+        onConfirm={handleDelete}
       />
     </>
   );

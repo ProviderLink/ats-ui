@@ -7,37 +7,29 @@ import {
 import { cn } from '@/lib/utils';
 import type { PipelineTemplate } from '@/store/types';
 import {
-  CheckIcon,
   EyeIcon,
   PencilIcon,
   PowerIcon,
   StarIcon,
   Trash2Icon,
-  XIcon,
 } from 'lucide-react';
 
 export interface TemplateRowActionsProps {
   template: PipelineTemplate;
-  confirmingDelete: boolean;
   onToggleActive: () => void;
   onSetDefault: () => void;
   onView: () => void;
   onEdit: () => void;
-  onAskDelete: () => void;
-  onConfirmDelete: () => void;
-  onCancelDelete: () => void;
+  onDelete: () => void;
 }
 
 export function TemplateRowActions({
   template: tpl,
-  confirmingDelete,
   onToggleActive,
   onSetDefault,
   onView,
   onEdit,
-  onAskDelete,
-  onConfirmDelete,
-  onCancelDelete,
+  onDelete,
 }: TemplateRowActionsProps) {
   return (
     <div className="flex items-center gap-2 shrink-0">
@@ -104,38 +96,16 @@ export function TemplateRowActions({
         <PencilIcon className="size-3" />
         Edit
       </Button>
-      {confirmingDelete ? (
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">Delete?</span>
-          <Button
-            variant="destructive"
-            size="xs"
-            className="h-7 gap-1 px-2"
-            onClick={onConfirmDelete}
-          >
-            <CheckIcon className="size-3" /> Yes
-          </Button>
-          <Button
-            variant="outline"
-            size="xs"
-            className="h-7 gap-1 px-2"
-            onClick={onCancelDelete}
-          >
-            <XIcon className="size-3" /> No
-          </Button>
-        </div>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40"
-          onClick={onAskDelete}
-          disabled={tpl.isDefault}
-        >
-          <Trash2Icon className="size-3" />
-          Delete
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40"
+        onClick={onDelete}
+        disabled={tpl.isDefault}
+      >
+        <Trash2Icon className="size-3" />
+        Delete
+      </Button>
     </div>
   );
 }
