@@ -2,17 +2,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MailIcon, XIcon } from 'lucide-react';
 
-interface HiredBulkBarProps {
+interface CandidateBulkEmailBarProps {
   selectedCount: number;
   onEmail: () => void;
   onClear: () => void;
 }
 
-export function HiredBulkBar({
+export function CandidateBulkEmailBar({
   selectedCount,
   onEmail,
   onClear,
-}: HiredBulkBarProps) {
+}: CandidateBulkEmailBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs shrink-0">
       <Badge variant="secondary" className="text-xs">

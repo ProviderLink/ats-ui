@@ -1,21 +1,11 @@
-import { SkillsCell } from '@/app/candidates/_components/skills-cell';
-import { ClearableSearchInput } from '@/components/clearable-search-input';
+import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import { useCandidateEmailComposer } from '@/app/emails/_hooks/use-candidate-email-composer';
 import { AssignJobDialog } from '@/components/assign-job-dialog';
-import { TagFilter } from '@/components/tag-filter';
-import { CandidateCell } from '@/components/candidate-table/candidate-cell';
-import { ColHeader } from '@/components/candidate-table/col-header';
-import { SortHeader } from '@/components/candidate-table/sort-header';
+import { CandidateBulkEmailBar } from '@/components/candidate-bulk-email-bar';
 import { TableSkeleton } from '@/components/candidate-table/table-skeleton';
-import {
-  ComposeEmailSheet,
-  type ComposeMode,
-} from '@/app/emails/_components/compose-email-sheet';
-import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
+import { ClearableSearchInput } from '@/components/clearable-search-input';
 import { TablePagination } from '@/components/table-pagination';
-import { TagList } from '@/components/tag-list';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { TagFilter } from '@/components/tag-filter';
 import {
   Table,
   TableBody,
@@ -24,20 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { useAssignableJobs } from '@/hooks/use-assignable-jobs';
+import { useIdSelection } from '@/hooks/use-id-selection';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { useTablePagination } from '@/hooks/use-table-pagination';
-import { getTagId } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
-import { useClientStore } from '@/store/slices/clients.store';
-import { useJobStore } from '@/store/slices/jobs.store';
 import { useTagStore } from '@/store/slices/tags.store';
 import type { Candidate } from '@/store/types';
 import {
@@ -46,42 +30,26 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import {
-  BriefcaseIcon,
-  EllipsisIcon,
-  MailIcon,
-  XIcon,
-} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CurrentRoleCell } from './current-role-cell';
+import { filterTalentPool } from '../_utils/talent-pool-filter';
 import { RemoveTalentPoolConfirmDialog } from './remove-talent-pool-dialog';
 import { TalentPoolDetailSheet } from './talent-pool-detail-sheet';
-import { TalentPoolNotesCell } from './talent-pool-notes-cell';
+import { buildTalentPoolColumns } from './talent-pool-table/talent-pool-columns';
 
 export function TalentPoolTable() {
-  // ── Store subscriptions ──────────────────────────────────────────
   const items = useCandidateStore(s => s.items);
   const loading = useCandidateStore(s => s.loading);
   const mutating = useCandidateStore(s => s.mutating);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const assignJob = useCandidateStore(s => s.assignJob);
-
   const allTags = useTagStore(s => s.items);
   const fetchTags = useTagStore(s => s.fetch);
-
-  const jobs = useJobStore(s => s.items);
-  const fetchJobs = useJobStore(s => s.fetch);
-
-  const clients = useClientStore(s => s.items);
-  const fetchClients = useClientStore(s => s.fetch);
-
   const fetchApps = useApplicationStore(s => s.fetch);
+  const { openJobs } = useAssignableJobs();
 
-  // Subscribe to real-time updates for candidates and applications
   useSocketRoom('candidates');
   useSocketRoom('applications');
 
@@ -91,104 +59,45 @@ export function TalentPoolTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [assignJobOpen, setAssignJobOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<Candidate | null>(null);
   const [removePoolTarget, setRemovePoolTarget] = useState<Candidate | null>(
     null
   );
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeMode, setComposeMode] = useState<ComposeMode>({ type: 'new' });
-  // Bulk selection — drives the header checkbox and the bulk action bar.
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { selectedIds, toggle, toggleAll, clear } = useIdSelection();
+  const { composeOpen, setComposeOpen, composeMode, openComposeFor } =
+    useCandidateEmailComposer();
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
     useTablePagination({ storageKey: 'talent-pool', defaultSize: 20 });
 
-  // Fetch tags & jobs once on mount (no-op after boot — data already loaded)
   useEffect(() => {
     if (allTags.length === 0) fetchTags();
   }, [allTags.length, fetchTags]);
 
-  useEffect(() => {
-    if (jobs.length === 0) fetchJobs({ page: 1, limit: 9999 });
-  }, [jobs.length, fetchJobs]);
-
-  // Fetch clients once on mount for resolving client names in assign dialog
-  useEffect(() => {
-    if (clients.length === 0) fetchClients({ page: 1, limit: 9999 });
-  }, [clients.length, fetchClients]);
-
-  // Debounced search ref
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
-
-  // After boot, ALL candidates are in the store. We filter by talentPool,
-  // tags, and search query client-side — no server round-trip needed.
-  // The server-side fetch useEffect has been replaced by local filtering.
-
-  const openJobs = useMemo(() => {
-    const clientMap = new Map(clients.map(c => [c._id, c.companyName]));
-    return jobs
-      .filter(j => j.status === 'open')
-      .map(j => ({
-        _id: j._id,
-        title: j.title,
-        clientName: clientMap.get(j.clientId) ?? '',
-        stages: (j.pipeline?.stages ?? [])
-          .filter(s => s.isActive)
-          .sort((a, b) => a.order - b.order)
-          .map(s => ({ _id: s._id, name: s.name })),
-      }));
-  }, [jobs, clients]);
-
-  // ── Client-side filtering ────────────────────────────────────────
-  // After boot, ALL candidates are in the store. We filter locally.
-  const data = useMemo(() => {
-    let result = items.filter(c => c.inTalentPool === true);
-
-    // Search filter
-    const q = query.trim().toLowerCase();
-    if (q) {
-      result = result.filter(c => {
-        const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-        if (fullName.includes(q)) return true;
-        if (c.email?.toLowerCase().includes(q)) return true;
-        if (c.phone?.toLowerCase().includes(q)) return true;
-        const skills = (c.parsedData?.skills ?? []).join(' ').toLowerCase();
-        if (skills.includes(q)) return true;
-        const exp = c.parsedData?.experience?.[0];
-        if (exp?.title?.toLowerCase().includes(q)) return true;
-        if (exp?.company?.toLowerCase().includes(q)) return true;
-        return false;
-      });
-    }
-
-    // Tag filter
-    if (tagFilter.length > 0) {
-      result = result.filter(c =>
-        c.tags?.some(t => {
-          const tagId = getTagId(t);
-          return !!tagId && tagFilter.includes(tagId);
-        })
-      );
-    }
-
-    return result;
-  }, [items, query, tagFilter]);
-
+  // After boot ALL candidates are in the store, so filtering is local.
+  const data = useMemo(
+    () => filterTalentPool(items, query, tagFilter),
+    [items, query, tagFilter]
+  );
   const totalRows = data.length;
+  const hasFilters = !!query || tagFilter.length > 0;
+
+  // Derived from the FILTERED list, so a selection made before a search
+  // cannot smuggle in a hidden candidate.
+  const selectedRows = useMemo(
+    () => data.filter(c => selectedIds.has(c._id)),
+    [data, selectedIds]
+  );
 
   function handleSearchChange(q: string) {
-    // Update input immediately for responsive typing
     setInputValue(q);
-    // Debounce the actual search query to avoid re-filtering on every keystroke
     if (searchTimer.current) clearTimeout(searchTimer.current);
     resetPage();
-    // Selections belong to the previous filter — dropping them stops a bulk
+    // Selections belong to the previous filter; dropping them stops a bulk
     // action from reaching a candidate the user can no longer see.
-    setSelectedIds(new Set());
-    searchTimer.current = setTimeout(() => {
-      setQuery(q);
-    }, 300);
+    clear();
+    searchTimer.current = setTimeout(() => setQuery(q), 300);
   }
 
   function handleClearSearch() {
@@ -200,7 +109,7 @@ export function TalentPoolTable() {
   function handleTagsChange(tags: string[]) {
     setTagFilter(tags);
     resetPage();
-    setSelectedIds(new Set());
+    clear();
   }
 
   async function handleRemoveFromPool() {
@@ -217,51 +126,6 @@ export function TalentPoolTable() {
     }
   }
 
-  function openDetail(candidate: Candidate) {
-    setSelected(candidate);
-    setDetailOpen(true);
-  }
-
-  function openAssignJob(candidate: Candidate) {
-    setAssignTarget(candidate);
-    setAssignJobOpen(true);
-  }
-
-  /** Add or remove one candidate from the bulk selection. */
-  function toggleSelect(id: string) {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  const selectedCount = selectedIds.size;
-  // Rows picked for the bulk bar. Derived from the FILTERED list, so a
-  // selection made before a search cannot smuggle in a hidden candidate.
-  const selectedRows = useMemo(
-    () => data.filter(c => selectedIds.has(c._id)),
-    [data, selectedIds]
-  );
-
-  /**
-   * Open the composer for one or many candidates.
-   *
-   * Every address goes into the single To list, so one send reaches all of
-   * them. Candidates with no email address are filtered out — the row action is
-   * already disabled for them, and a bulk selection can easily mix both.
-   */
-  function openComposeFor(candidates: Candidate[]) {
-    const reachable = candidates.filter(c => (c.email ?? '').trim());
-    if (reachable.length === 0) {
-      toast.error('None of the selected candidates has an email address.');
-      return;
-    }
-    setComposeMode(buildCandidateComposeMode(reachable));
-    setComposeOpen(true);
-  }
-
   async function handleAssignToJob(jobId: string, startStageId?: string) {
     if (!assignTarget) return;
     try {
@@ -270,199 +134,28 @@ export function TalentPoolTable() {
       toast.success(
         `${assignTarget.firstName} ${assignTarget.lastName} assigned to job`
       );
-      setAssignJobOpen(false);
       setAssignTarget(null);
     } catch (e) {
       toast.error((e as Error).message);
     }
   }
 
-  const columns: ColumnDef<Candidate>[] = useMemo(
-    () => [
-      {
-        id: 'select',
-        header: () => (
-          <Checkbox
-            // Computed inline (instead of from component-scope helpers) so the
-            // memo only depends on `data` and `selectedIds`.
-            checked={
-              data.length > 0 && data.every(c => selectedIds.has(c._id))
-                ? true
-                : selectedIds.size > 0
-                  ? 'indeterminate'
-                  : false
-            }
-            onCheckedChange={() =>
-              setSelectedIds(prev =>
-                prev.size === data.length
-                  ? new Set()
-                  : new Set(data.map(c => c._id))
-              )
-            }
-            aria-label="Select all candidates"
-          />
-        ),
-        cell: ({ row }) => (
-          <div onClick={e => e.stopPropagation()}>
-            <Checkbox
-              checked={selectedIds.has(row.original._id)}
-              onCheckedChange={() => toggleSelect(row.original._id)}
-              aria-label={`Select ${row.original.firstName} ${row.original.lastName}`}
-            />
-          </div>
-        ),
-        enableSorting: false,
-        size: 40,
-      },
-      {
-        id: 'candidate',
-        accessorFn: row => `${row.firstName} ${row.lastName}`,
-        header: ({ column }) => (
-          <SortHeader column={column} label="Candidate" />
-        ),
-        cell: ({ row }) => <CandidateCell candidate={row.original} />,
-        size: 200,
-        minSize: 150,
-      },
-      {
-        id: 'currentRole',
-        accessorFn: row => row.parsedData?.experience?.[0]?.title ?? '',
-        header: () => <ColHeader>Current Role</ColHeader>,
-        cell: ({ row }) => <CurrentRoleCell candidate={row.original} />,
-        size: 180,
-        minSize: 130,
-      },
-      {
-        id: 'skills',
-        accessorFn: row => (row.parsedData?.skills ?? []).join(' '),
-        header: () => <ColHeader>Skills</ColHeader>,
-        cell: ({ row }) => <SkillsCell candidate={row.original} />,
-        size: 160,
-        minSize: 100,
-      },
-      {
-        id: 'experience',
-        accessorKey: 'yearsOfExperience',
-        header: ({ column }) => <SortHeader column={column} label="Exp" />,
-        cell: ({ row }) => {
-          const yrs = row.original.yearsOfExperience;
-          const whole = Math.floor(yrs);
-          const hasFraction = yrs > 0 && yrs !== whole;
-          return (
-            <span className="text-sm tabular-nums">
-              {whole}
-              {hasFraction && (
-                <sup className="text-[10px] -top-0.5">+</sup>
-              )}{' '}
-              <span className="text-muted-foreground">yrs</span>
-            </span>
-          );
-        },
-        size: 70,
-        minSize: 60,
-      },
-      {
-        id: 'tags',
-        header: () => <ColHeader>Tags</ColHeader>,
-        cell: ({ row }) => <TagList tags={row.original.tags} max={3} />,
-        size: 120,
-        minSize: 80,
-      },
-      {
-        id: 'talentPoolNotes',
-        header: () => <ColHeader>Notes</ColHeader>,
-        cell: ({ row }) => <TalentPoolNotesCell candidate={row.original} />,
-        size: 160,
-        minSize: 150,
-      },
-      {
-        id: 'actions',
-        header: () => (
-          <div className="flex justify-center">
-            <EllipsisIcon className="size-4 text-muted-foreground" />
-          </div>
-        ),
-        cell: ({ row }) => {
-          const candidate = row.original;
-          return (
-            <div
-              className="flex items-center gap-1"
-              onClick={e => e.stopPropagation()}
-            >
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon-xs"
-                      className="rounded p-2 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 dark:hover:bg-destructive/10 dark:hover:border-destructive/40"
-                      disabled={mutating}
-                      onClick={() => setRemovePoolTarget(candidate)}
-                      aria-label={`Remove ${candidate.firstName} ${candidate.lastName} from the talent pool`}
-                    >
-                      <XIcon className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    Remove from talent pool
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon-xs"
-                      className="rounded p-2 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
-                      onClick={() => openAssignJob(candidate)}
-                      aria-label={`Assign ${candidate.firstName} ${candidate.lastName} to a job`}
-                    >
-                      <BriefcaseIcon className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    Assign to a new job
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon-xs"
-                      className="rounded p-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 dark:hover:border-blue-700/40"
-                      disabled={!candidate.email || mutating}
-                      onClick={() => openComposeFor([candidate])}
-                      aria-label={`Email ${candidate.firstName} ${candidate.lastName}`}
-                    >
-                      <MailIcon className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {candidate.email ? 'Email candidate' : 'No email address'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          );
-        },
-        size: 120,
-        minSize: 110,
-      },
-    ],
-    // `mutating` is read by the action buttons below and MUST be a dependency:
-    // with an empty array the columns were built once and the buttons stayed
-    // frozen at their mount value, so they never disabled during a mutation and
-    // a second click could fire a duplicate request. `selectedIds`/`data` are
-    // required for the checkbox column, which must re-render when the selection
-    // changes. The `open*`/`toggle*` helpers are intentionally not listed —
-    // they are plain functions recreated each render, so including them would
-    // rebuild these columns on every render for no benefit; the ones that read
-    // `data` still see a fresh copy because `data` is a dependency.
+  const columns = useMemo(
+    () =>
+      buildTalentPoolColumns({
+        rows: data,
+        selectedIds,
+        onToggleRow: toggle,
+        onToggleAll: () => toggleAll(data.map(c => c._id)),
+        mutating,
+        onRemove: setRemovePoolTarget,
+        onAssign: setAssignTarget,
+        onEmail: c => openComposeFor([c]),
+      }),
+    // `mutating` must be a dependency so the row buttons disable during a
+    // mutation; the handlers only touch stable setters and are omitted on
+    // purpose so the columns are not rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [mutating, selectedIds, data]
   );
 
@@ -481,12 +174,9 @@ export function TalentPoolTable() {
     autoResetPageIndex: false,
   });
 
-  const hasFilters = !!query || tagFilter.length > 0;
-
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-4 flex-1 min-h-0">
-        {/* Toolbar */}
         <div className="flex items-center gap-3 flex-wrap shrink-0">
           <ClearableSearchInput
             value={inputValue}
@@ -494,7 +184,6 @@ export function TalentPoolTable() {
             onClear={handleClearSearch}
             placeholder="Search by name, email, skills, role, or tags…"
           />
-
           <TagFilter
             allTags={allTags}
             selected={tagFilter}
@@ -508,35 +197,14 @@ export function TalentPoolTable() {
             : `${totalRows} ${totalRows === 1 ? 'candidate' : 'candidates'}${hasFilters ? ' found' : ' in talent pool'}`}
         </p>
 
-        {/* Bulk selection bar */}
-        {selectedCount > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs shrink-0">
-            <Badge variant="secondary" className="text-xs">
-              {selectedCount} selected
-            </Badge>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openComposeFor(selectedRows)}
-            >
-              <MailIcon className="size-4" />
-              Email
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-auto text-muted-foreground"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              <XIcon className="size-4" />
-              Clear
-            </Button>
-          </div>
+        {selectedIds.size > 0 && (
+          <CandidateBulkEmailBar
+            selectedCount={selectedIds.size}
+            onEmail={() => openComposeFor(selectedRows)}
+            onClear={clear}
+          />
         )}
 
-        {/* Table */}
         <div className="rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
           <div className="overflow-auto flex-1">
             <Table>
@@ -567,7 +235,10 @@ export function TalentPoolTable() {
                     <TableRow
                       key={row.id}
                       className="border-b last:border-0 hover:bg-foreground/4 dark:hover:bg-white/3 cursor-pointer"
-                      onClick={() => openDetail(row.original)}
+                      onClick={() => {
+                        setSelected(row.original);
+                        setDetailOpen(true);
+                      }}
                     >
                       {row.getVisibleCells().map(cell => (
                         <TableCell
@@ -623,11 +294,8 @@ export function TalentPoolTable() {
       />
 
       <AssignJobDialog
-        open={assignJobOpen}
-        onClose={() => {
-          setAssignJobOpen(false);
-          setAssignTarget(null);
-        }}
+        open={!!assignTarget}
+        onClose={() => setAssignTarget(null)}
         onConfirm={handleAssignToJob}
         jobs={openJobs}
       />

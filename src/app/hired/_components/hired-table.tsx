@@ -1,10 +1,8 @@
 import { CandidateDetailSheet } from '@/app/candidates/_components/candidate-detail-sheet';
-import {
-  ComposeEmailSheet,
-  type ComposeMode,
-} from '@/app/emails/_components/compose-email-sheet';
-import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
+import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import { useCandidateEmailComposer } from '@/app/emails/_hooks/use-candidate-email-composer';
 import { AssignJobDialog } from '@/components/assign-job-dialog';
+import { CandidateBulkEmailBar } from '@/components/candidate-bulk-email-bar';
 import { TableSkeleton } from '@/components/candidate-table/table-skeleton';
 import { ClearableSearchInput } from '@/components/clearable-search-input';
 import { TablePagination } from '@/components/table-pagination';
@@ -18,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useIdSelection } from '@/hooks/use-id-selection';
 import { useSocketRoom } from '@/hooks/use-socket-room';
 import { useTablePagination } from '@/hooks/use-table-pagination';
 import { cn } from '@/lib/utils';
@@ -36,7 +35,6 @@ import { toast } from 'sonner';
 import { useHiredData } from '../_hooks/use-hired-data';
 import { filterHired } from '../_utils/hired-data';
 import { buildHiredColumns } from './hired-table/hired-columns';
-import { HiredBulkBar } from './hired-table/hired-bulk-bar';
 
 /**
  * Hired candidates get their own page, mirroring Talent Pool and Ineligible.
@@ -70,12 +68,12 @@ export function HiredTable() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'hiredDate', desc: true },
   ]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { selectedIds, toggle, toggleAll, clear } = useIdSelection();
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<Candidate | null>(null);
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeMode, setComposeMode] = useState<ComposeMode>({ type: 'new' });
+  const { composeOpen, setComposeOpen, composeMode, openComposeFor } =
+    useCandidateEmailComposer();
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const { pageIndex, pageSize, handlePaginationChange, resetPage } =
@@ -99,7 +97,7 @@ export function HiredTable() {
     resetPage();
     // Selections belong to the previous filter; dropping them stops a bulk
     // action from reaching a candidate the user can no longer see.
-    setSelectedIds(new Set());
+    clear();
     searchTimer.current = setTimeout(() => setQuery(q), 300);
   }
 
@@ -140,37 +138,13 @@ export function HiredTable() {
     }
   }
 
-  /**
-   * Open the composer for one or many candidates. Every address goes into the
-   * single To list. Candidates with no email are dropped: the row action is
-   * already disabled for them, and a bulk selection can mix both.
-   */
-  function openComposeFor(targets: Candidate[]) {
-    const reachable = targets.filter(c => (c.email ?? '').trim());
-    if (reachable.length === 0) {
-      toast.error('None of the selected candidates has an email address.');
-      return;
-    }
-    setComposeMode(buildCandidateComposeMode(reachable));
-    setComposeOpen(true);
-  }
-
   const columns = useMemo(
     () =>
       buildHiredColumns({
         rows: data,
         selectedIds,
-        onToggleRow: id =>
-          setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-          }),
-        onToggleAll: () =>
-          setSelectedIds(prev =>
-            prev.size === data.length ? new Set() : new Set(data.map(c => c._id))
-          ),
+        onToggleRow: toggle,
+        onToggleAll: () => toggleAll(data.map(c => c._id)),
         hireInfo: hireInfoByCandidateId,
         otherActivity: otherActivityByCandidateId,
         mutating,
@@ -221,7 +195,7 @@ export function HiredTable() {
             onChange={ids => {
               setTagFilter(ids);
               resetPage();
-              setSelectedIds(new Set());
+              clear();
             }}
           />
         </div>
@@ -233,10 +207,10 @@ export function HiredTable() {
         </p>
 
         {selectedRows.length > 0 && (
-          <HiredBulkBar
+          <CandidateBulkEmailBar
             selectedCount={selectedRows.length}
             onEmail={() => openComposeFor(selectedRows)}
-            onClear={() => setSelectedIds(new Set())}
+            onClear={clear}
           />
         )}
 
