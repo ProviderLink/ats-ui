@@ -1,7 +1,7 @@
 import type { Candidate } from '@/store/types';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { ComposeMode } from '../_components/compose-email-sheet';
+import type { ComposeMode } from '../_utils/compose-mode';
 import { buildCandidateComposeMode } from '../_utils/candidate-compose';
 
 /** Composer state for emailing one or many candidates from a list page. */

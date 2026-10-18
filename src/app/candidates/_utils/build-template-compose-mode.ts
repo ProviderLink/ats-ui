@@ -1,7 +1,7 @@
-import type { ComposeMode } from '@/app/emails/_components/compose-email-sheet';
+import type { ComposeMode } from '@/app/emails/_utils/compose-mode';
 import { currentSenderName } from '@/app/emails/_utils/candidate-compose';
 import type { Application, Candidate, EmailTemplate } from '@/store/types';
-import { defaultSubject, substituteTemplate } from './email-template';
+import { defaultSubject, substituteTemplate } from '@/lib/email-template';
 
 export type ComposeTemplateType =
   | 'offer'

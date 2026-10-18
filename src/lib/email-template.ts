@@ -1,6 +1,10 @@
 
 /** Substitute `{{var}}` placeholders in template strings with values. */
-export function substituteTemplate(tpl: string, vars: Record<string, string>): string {
+export function substituteTemplate(
+  tpl: string,
+  vars?: Record<string, string>
+): string {
+  if (!vars) return tpl;
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, key) =>
     key in vars ? vars[key] : `{{${key}}}`
   );

@@ -1,4 +1,4 @@
-import type { ComposeMode } from '@/app/emails/_components/compose-email-sheet';
+import type { ComposeMode } from '@/app/emails/_utils/compose-mode';
 import { buildCandidateComposeMode } from '@/app/emails/_utils/candidate-compose';
 import type { RejectPayload } from '@/components/reject-dialog';
 import { useApplicationStore } from '@/store/slices/applications.store';

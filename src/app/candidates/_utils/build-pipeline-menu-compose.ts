@@ -1,4 +1,4 @@
-import type { ComposeMode } from '@/app/emails/_components/compose-email-sheet';
+import type { ComposeMode } from '@/app/emails/_utils/compose-mode';
 import { currentSenderName } from '@/app/emails/_utils/candidate-compose';
 import type { Application, Candidate, Job } from '@/store/types';
 

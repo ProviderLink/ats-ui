@@ -1,4 +1,4 @@
-import type { ComposeMode } from '@/app/emails/_components/compose-email-sheet';
+import type { ComposeMode } from '@/app/emails/_utils/compose-mode';
 import { useAuthStore } from '@/store/slices/auth.store';
 import type { Candidate } from '@/store/types';
 
