@@ -1,3 +1,4 @@
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -160,12 +161,11 @@ export function CrmEditForm({
 
       <div className="flex flex-col gap-2">
         <Label>Notes</Label>
-        <textarea
+        <Textarea
           rows={4}
           value={draft.notes ?? ''}
           onChange={e => set('notes', e.target.value)}
           placeholder="Internal notes about this client..."
-          className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring resize-none dark:bg-input/30"
         />
       </div>
 

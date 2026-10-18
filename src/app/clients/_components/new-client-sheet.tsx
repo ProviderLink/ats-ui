@@ -1,4 +1,5 @@
 import { TagsSelector } from '@/components/tags-selector';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -454,11 +455,10 @@ export function NewClientSheet({ open, onOpenChange, client }: Props) {
             )}
 
             <Field label="Description">
-              <textarea
+              <Textarea
                 rows={3}
                 placeholder="Brief description of the company..."
                 {...register('description')}
-                className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring resize-none dark:bg-input/30"
               />
             </Field>
 

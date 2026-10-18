@@ -1,3 +1,4 @@
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -46,12 +47,11 @@ export function NoteForm({
       </div>
       <div className="flex flex-col gap-2">
         <Label>Note *</Label>
-        <textarea
+        <Textarea
           rows={3}
           value={content}
           onChange={e => setContent(e.target.value)}
           placeholder="Brief note about the interaction..."
-          className="w-full rounded-md border border-input bg-transparent px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring resize-none dark:bg-input/30"
         />
       </div>
       <div className="flex gap-2">

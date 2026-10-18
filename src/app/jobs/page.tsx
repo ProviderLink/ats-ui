@@ -3,7 +3,7 @@ import { getJson } from '@/lib/api-client';
 import { sortableTime } from '@/lib/utils';
 import type { Client, Job, Pagination } from '@/store';
 import { useJobStore } from '@/store';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { JobList } from './_components/job-list';
 import { JobPanel } from './_components/job-panel';
@@ -43,7 +43,7 @@ async function fetchAllClients(): Promise<Client[]> {
   return Array.isArray(res) ? res : (res.data ?? []);
 }
 
-function JobsPageContent() {
+export default function JobsPage() {
   const [searchParams] = useSearchParams();
   const jobParam = searchParams.get('job') ?? '';
   const clientParam = searchParams.get('client') ?? '';
@@ -129,13 +129,5 @@ function JobsPageContent() {
       />
       <JobPanel job={selected} clients={clients} />
     </div>
-  );
-}
-
-export default function JobsPage() {
-  return (
-    <Suspense>
-      <JobsPageContent />
-    </Suspense>
   );
 }

@@ -1,3 +1,4 @@
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 import type { Application } from '@/store/types';
@@ -24,8 +25,8 @@ export function PipelineNotesSection({
     <div className="flex flex-col gap-2">
       <SectionLabel>Notes</SectionLabel>
       <div className="flex flex-col gap-2">
-        <textarea
-          className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        <Textarea
+          className="min-h-20"
           placeholder="Add pipeline notes..."
           value={notesText}
           onChange={e => onNotesTextChange(e.target.value)}
