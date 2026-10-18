@@ -1,4 +1,3 @@
-'use client';
 
 import { EMAIL_TEMPLATE_TYPES } from '@/app/settings/_data/settings';
 import { Badge } from '@/components/ui/badge';

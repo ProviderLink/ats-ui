@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { escapeHtml } from '@/lib/html';
 import { parseRecipients } from '@/lib/recipients';
+import { formatFileSize } from '@/lib/utils';
 import { useEmailStore, useEmailTemplateStore } from '@/store';
 import type { Email, EmailAttachment } from '@/store/types';
 import {
@@ -41,12 +42,6 @@ function substituteVars(
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, key) =>
     key in vars ? vars[key] : `{{${key}}}`
   );
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 type ComposeMode =

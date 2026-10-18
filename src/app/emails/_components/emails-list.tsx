@@ -16,10 +16,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getJson } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useEmailStore } from '@/store';
-import type { Email, EmailDirection, EmailStatus } from '@/store/types';
+import type { Email, EmailStatus } from '@/store/types';
 import {
-  ArrowDownLeftIcon,
-  ArrowUpRightIcon,
   BriefcaseIcon,
   CheckIcon,
   PenSquareIcon,
@@ -32,6 +30,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ComposeEmailSheet } from './compose-email-sheet';
 import { EmailDetailSheet } from './email-detail-sheet';
+import { EMAIL_STATUS_STYLES } from '@/lib/status-styles';
+import { DirectionIcon } from './direction-icon';
 
 type TabValue = 'all' | 'inbox' | 'sent' | 'failed';
 
@@ -43,43 +43,8 @@ function TabCountChip({ n }: { n: number }) {
   );
 }
 
-const statusConfig: Record<EmailStatus, { label: string; cls: string }> = {
-  delivered: {
-    label: 'Delivered',
-    cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400',
-  },
-  received: {
-    label: 'Received',
-    cls: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-950/60 dark:text-blue-400',
-  },
-  sent: {
-    label: 'Sent',
-    cls: 'border-border bg-muted text-muted-foreground',
-  },
-  pending: {
-    label: 'Pending',
-    cls: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-400',
-  },
-  failed: {
-    label: 'Failed',
-    cls: 'border-destructive/30 bg-destructive/10 text-destructive',
-  },
-  delayed: {
-    label: 'Delayed',
-    cls: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800/60 dark:bg-orange-950/60 dark:text-orange-400',
-  },
-  bounced: {
-    label: 'Bounced',
-    cls: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-950/60 dark:text-red-400',
-  },
-  complained: {
-    label: 'Complained',
-    cls: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-950/60 dark:text-red-400',
-  },
-};
-
 function StatusPill({ status }: { status: EmailStatus }) {
-  const { label, cls } = statusConfig[status];
+  const { label, cls } = EMAIL_STATUS_STYLES[status];
   return (
     <span
       className={cn(
@@ -89,24 +54,6 @@ function StatusPill({ status }: { status: EmailStatus }) {
     >
       {label}
     </span>
-  );
-}
-
-function DirectionIcon({ direction }: { direction: EmailDirection }) {
-  const isOut = direction === 'outbound';
-  return (
-    <div
-      className={cn(
-        'flex size-7 shrink-0 items-center justify-center rounded-md',
-        isOut ? 'bg-primary/10 text-primary' : 'bg-blue-500/10 text-blue-500'
-      )}
-    >
-      {isOut ? (
-        <ArrowUpRightIcon className="size-3.5" />
-      ) : (
-        <ArrowDownLeftIcon className="size-3.5" />
-      )}
-    </div>
   );
 }
 

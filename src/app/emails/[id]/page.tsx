@@ -2,13 +2,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, formatFileSize } from '@/lib/utils';
 import { useEmailStore } from '@/store';
 import type { Email, EmailAttachment } from '@/store/types';
 import {
-  ArrowDownLeftIcon,
   ArrowLeftIcon,
-  ArrowUpRightIcon,
   BriefcaseIcon,
   DownloadIcon,
   FileIcon,
@@ -22,41 +20,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ComposeEmailSheet } from '../_components/compose-email-sheet';
-
-const statusCls: Record<string, string> = {
-  delivered:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400',
-  received:
-    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-950/60 dark:text-blue-400',
-  sent: 'border-border bg-muted text-muted-foreground',
-  pending:
-    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-400',
-  failed: 'border-destructive/30 bg-destructive/10 text-destructive',
-};
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function DirectionIcon({ direction }: { direction: Email['direction'] }) {
-  const isOut = direction === 'outbound';
-  return (
-    <div
-      className={cn(
-        'flex size-7 shrink-0 items-center justify-center rounded-md',
-        isOut ? 'bg-primary/10 text-primary' : 'bg-blue-500/10 text-blue-500'
-      )}
-    >
-      {isOut ? (
-        <ArrowUpRightIcon className="size-3.5" />
-      ) : (
-        <ArrowDownLeftIcon className="size-3.5" />
-      )}
-    </div>
-  );
-}
+import { EMAIL_STATUS_STYLES } from '@/lib/status-styles';
+import { DirectionIcon } from '../_components/direction-icon';
 
 function ContextChip({ email }: { email: Email }) {
   const ctx = email.context;
@@ -115,7 +80,7 @@ function EmailMessage({
   onResend: (id: string) => void;
 }) {
   const date = email.sentAt ?? email.receivedAt ?? email.createdAt;
-  const cls = statusCls[email.status] ?? statusCls.sent;
+  const { cls } = EMAIL_STATUS_STYLES[email.status];
 
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
