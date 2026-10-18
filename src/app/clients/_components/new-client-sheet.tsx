@@ -1,5 +1,3 @@
-'use client';
-
 import { TagsSelector } from '@/components/tags-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
