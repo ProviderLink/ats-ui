@@ -1,7 +1,7 @@
 import type React from 'react';
 
 const HEADER_CLS =
-  'text-xs font-medium uppercase tracking-wide text-muted-foreground';
+  'inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground';
 
 export function ColHeader({
   children,

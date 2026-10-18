@@ -1,3 +1,5 @@
+import { ColHeader } from '@/components/candidate-table/col-header';
+import { SortHeader } from '@/components/candidate-table/sort-header';
 import type { Client } from '@/store/types';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
@@ -12,11 +14,9 @@ import {
 } from 'lucide-react';
 import type { JobCounts } from '../../_utils/client-list';
 import { ClientStatusBadge } from './client-status-badge';
-import { ColHeader } from './col-header';
 import { CompanyCell } from './company-cell';
 import { ContactCell } from './contact-cell';
 import { RowActionButton } from './row-action-button';
-import { SortHeader } from './sort-header';
 
 interface ClientColumnsOptions {
   jobCounts: JobCounts;
