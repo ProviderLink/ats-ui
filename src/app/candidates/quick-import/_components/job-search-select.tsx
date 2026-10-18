@@ -1,6 +1,14 @@
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronsUpDownIcon, SearchIcon, XIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { keywordFilter } from '@/lib/command-filter';
+import { ChevronsUpDownIcon, XIcon } from 'lucide-react';
+import { useState } from 'react';
 import { useController, type Control } from 'react-hook-form';
 import type { JobOption, QuickImportValues } from '../_utils/quick-import-form';
 
@@ -17,23 +25,11 @@ export function JobSearchSelect({
 }) {
   const { field } = useController({ control, name });
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
 
   const selected = jobs.find(j => j._id === field.value);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return jobs;
-    const q = search.toLowerCase();
-    return jobs.filter(
-      j =>
-        j.title.toLowerCase().includes(q) ||
-        j.clientName.toLowerCase().includes(q)
-    );
-  }, [jobs, search]);
-
   function select(id: string) {
     field.onChange(id);
-    setSearch('');
     setOpen(false);
   }
 
@@ -79,42 +75,18 @@ export function JobSearchSelect({
             </div>
           </button>
         </PopoverTrigger>
-        <PopoverContent
-          className="w-96 p-0"
-          align="start"
-          onPointerDownOutside={e => {
-            // Don't close when clicking inside the popover
-            const target = e.target as HTMLElement;
-            if (target.closest('[data-radix-popper-content-wrapper]')) {
-              e.preventDefault();
-            }
-          }}
-        >
-          <div className="flex items-center border-b px-3 py-2">
-            <SearchIcon className="mr-2 size-4 shrink-0 text-muted-foreground" />
-            <input
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring rounded"
-              placeholder="Search by title or client..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="max-h-60 overflow-y-auto p-1">
-            {filtered.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No jobs found.
-              </p>
-            ) : (
-              filtered.map(job => (
-                <button
+        <PopoverContent className="w-96 p-0" align="start">
+          <Command filter={keywordFilter}>
+            <CommandInput placeholder="Search by title or client..." />
+            <CommandList>
+              <CommandEmpty>No jobs found.</CommandEmpty>
+              {jobs.map(job => (
+                <CommandItem
                   key={job._id}
-                  type="button"
-                  className={`flex w-full flex-col rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-accent ${job._id === field.value ? 'bg-primary/10 border-l-2 border-l-primary rounded-l-none' : ''}`}
-                  onPointerDown={e => {
-                    e.preventDefault();
-                    select(job._id);
-                  }}
+                  value={job._id}
+                  keywords={[job.title, job.clientName]}
+                  onSelect={() => select(job._id)}
+                  className={`flex-col items-start gap-0 px-3 py-2.5 ${job._id === field.value ? 'bg-primary/10 border-l-2 border-l-primary rounded-l-none' : ''}`}
                 >
                   <span
                     className={`text-sm ${job._id === field.value ? 'font-semibold' : 'font-medium'}`}
@@ -124,10 +96,10 @@ export function JobSearchSelect({
                   <span className="text-xs text-muted-foreground">
                     {job.clientName}
                   </span>
-                </button>
-              ))
-            )}
-          </div>
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
         </PopoverContent>
       </Popover>
       {error && (
