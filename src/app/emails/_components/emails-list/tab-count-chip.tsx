@@ -1,0 +1,7 @@
+export function TabCountChip({ n }: { n: number }) {
+  return (
+    <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted-foreground/15 px-1 text-[10px] font-medium text-muted-foreground">
+      {n}
+    </span>
+  );
+}
