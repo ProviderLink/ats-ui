@@ -32,6 +32,10 @@ export function ClientsDataTable({
   onPageChange,
   onPageSizeChange,
 }: ClientsDataTableProps) {
+  // TanStack keeps one stable `table` object whose row model changes in place.
+  // React Compiler would cache `getRowModel()` against that object and never
+  // see rows added or removed, so opt this component out.
+  'use no memo';
   const { pageIndex, pageSize } = table.getState().pagination;
   const rows = table.getRowModel().rows;
 

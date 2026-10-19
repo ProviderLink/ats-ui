@@ -2,23 +2,28 @@ import { Badge } from '@/components/ui/badge';
 import { ROLE_LABELS } from '@/lib/role-labels';
 import type { User } from '@/store/types/user.types';
 import { getMemberPermissions } from '../../_utils/member-permissions';
-import { DetailRow, Empty } from './detail-row';
+import { DetailRow, Empty, Section } from './detail-row';
 
 export function AccessTab({ member }: { member: User }) {
   const permissions = getMemberPermissions(member);
   const appAccess = member.appAccess ?? [];
+  const roles = member.roles ?? [];
 
   return (
-    <>
-      <div className="divide-y">
+    <div className="flex flex-col gap-6">
+      <Section title="Role and apps">
         <DetailRow label="Roles">
-          <div className="flex flex-wrap justify-end gap-1.5">
-            {member.roles?.map(r => (
-              <Badge key={r} variant="secondary" className="text-xs">
-                {ROLE_LABELS[r] ?? r}
-              </Badge>
-            ))}
-          </div>
+          {roles.length === 0 ? (
+            <Empty text="None" />
+          ) : (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {roles.map(r => (
+                <Badge key={r} variant="secondary" className="text-xs">
+                  {ROLE_LABELS[r] ?? r}
+                </Badge>
+              ))}
+            </div>
+          )}
         </DetailRow>
         <DetailRow label="App access">
           {appAccess.length === 0 ? (
@@ -33,22 +38,25 @@ export function AccessTab({ member }: { member: User }) {
             </div>
           )}
         </DetailRow>
-      </div>
+      </Section>
 
-      {permissions.length > 0 && (
-        <div>
-          <p className="mb-1 text-sm font-medium">Permissions</p>
-          <div className="divide-y">
-            {permissions.map(({ label, actions }) => (
-              <DetailRow key={label} label={label}>
-                <span className="text-xs text-muted-foreground">
-                  {actions.length ? actions.join(' · ') : 'Allowed'}
-                </span>
-              </DetailRow>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
+      <Section title="Permissions">
+        {permissions.length === 0 ? (
+          <p className="py-2.5 text-sm text-muted-foreground">
+            {roles.includes('admin')
+              ? 'Admins have full access.'
+              : 'No extra permissions granted.'}
+          </p>
+        ) : (
+          permissions.map(({ label, actions }) => (
+            <DetailRow key={label} label={label}>
+              <span className="text-xs text-muted-foreground">
+                {actions.length ? actions.join(' · ') : 'Allowed'}
+              </span>
+            </DetailRow>
+          ))
+        )}
+      </Section>
+    </div>
   );
 }

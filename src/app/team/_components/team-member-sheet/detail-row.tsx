@@ -16,3 +16,21 @@ export function DetailRow({
 export function Empty({ text = '—' }: { text?: string }) {
   return <span className="text-muted-foreground">{text}</span>;
 }
+
+/** A titled group of rows. */
+export function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      <div className="divide-y">{children}</div>
+    </section>
+  );
+}

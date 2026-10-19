@@ -28,6 +28,10 @@ export function CandidatesDataTable({
   pageSize,
   totalRows,
 }: CandidatesDataTableProps) {
+  // TanStack keeps one stable `table` object whose row model changes in place.
+  // React Compiler would cache `getRowModel()` against that object and never
+  // see rows added or removed, so opt this component out.
+  'use no memo';
   return (
     <div className="relative rounded-lg border flex flex-col flex-1 min-h-0 overflow-hidden">
       <div
