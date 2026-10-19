@@ -67,7 +67,7 @@ export function NavMain({
               <Button
                 asChild
                 variant="ghost"
-                className={`h-10 min-w-10 flex-1 justify-start pl-1.75 hover:border hover:border-input group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!${quickImportActive ? ' border border-input bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
+                className={`h-10 min-w-10 flex-1 justify-start border border-dashed border-sidebar-foreground/20 pl-1.75 hover:border hover:border-input group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!${quickImportActive ? ' border border-input bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
               >
                 <Link to="/ats/candidates/quick-import">
                   <CirclePlusIcon />
