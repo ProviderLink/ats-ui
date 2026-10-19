@@ -1,10 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatDate } from '@/lib/utils';
 import type { User } from '@/store/types/user.types';
 import { type ColumnDef } from '@tanstack/react-table';
 import {
-  CalendarIcon,
   CircleDotIcon,
   EllipsisIcon,
   ShieldIcon,
@@ -103,22 +101,6 @@ export const baseColumns: ColumnDef<User>[] = [
     ),
     cell: ({ row }) => (
       <AccountStatus member={row.original} />
-    ),
-  },
-  {
-    id: 'joinedAt',
-    accessorKey: 'createdAt',
-    size: 120,
-    header: () => (
-      <ColHeader
-        icon={<CalendarIcon className="size-3 text-muted-foreground" />}
-        label="Joined date"
-      />
-    ),
-    cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">
-        {formatDate(row.original.createdAt)}
-      </span>
     ),
   },
   {
