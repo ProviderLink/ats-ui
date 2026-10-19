@@ -15,6 +15,10 @@ export interface UserState {
 
 export interface UserActions {
   fetch: (params?: UserFilters) => Promise<void>;
+  /** Reload the whole list from the server, even after boot. Fails silently. */
+  refresh: () => Promise<void>;
+  /** Reload one member (e.g. fresh sign-in times). Fails silently. */
+  refreshOne: (id: string) => Promise<void>;
   create: (data: CreateUserDto) => Promise<User>;
   update: (id: string, data: UpdateUserDto) => Promise<void>;
   updateMe: (data: {

@@ -78,6 +78,35 @@ export const useUserStore = create<UserState & UserActions>()(
           }
         },
 
+        // `fetch` is a no-op once boot has loaded the list, so fields the server
+        // changes on its own (last sign-in) went stale. These always hit the
+        // server and keep the current list on failure.
+        refresh: async () => {
+          try {
+            const res = await getJson<User[] | { data: User[] }>(
+              '/shared/users'
+            );
+            const data = Array.isArray(res)
+              ? res
+              : ((res as { data: User[] }).data ?? []);
+            set(s => {
+              s.items = data;
+            });
+          } catch {
+            // Keep showing what we have.
+          }
+        },
+
+        refreshOne: async id => {
+          if (!isValidObjectId(id)) return;
+          try {
+            const user = await getJson<User>(`/shared/users/${id}`);
+            set(s => replaceUser(s, id, user));
+          } catch {
+            // Keep showing what we have.
+          }
+        },
+
         create: async data => {
           const inviter = useAuthStore.getState().user;
           const payload = {

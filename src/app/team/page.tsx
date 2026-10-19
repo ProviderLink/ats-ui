@@ -10,12 +10,15 @@ export default function TeamPage() {
   const isRefreshing = useUserStore(s => s.isRefreshing);
   const error = useUserStore(s => s.error);
   const fetch = useUserStore(s => s.fetch);
+  const refresh = useUserStore(s => s.refresh);
 
   usePresence();
 
   useEffect(() => {
     fetch();
-  }, [fetch]);
+    // Boot data can be hours old; pull fresh sign-in times and roles.
+    refresh();
+  }, [fetch, refresh]);
 
   useEffect(() => {
     if (error) toast.error('Failed to load team members');

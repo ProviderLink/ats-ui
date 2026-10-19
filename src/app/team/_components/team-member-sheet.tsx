@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUserStore } from '@/store/slices/users.store';
+import { useEffect } from 'react';
 import type { User } from '@/store/types/user.types';
 import { MEMBER_ACTIVITY_FILTERS } from '../_utils/member-activity-filters';
 import { AccessTab } from './team-member-sheet/access-tab';
@@ -30,6 +31,12 @@ export function TeamMemberSheet({
   // Read the live record so edits and refreshes show without reopening.
   const live = useUserStore(s => s.items.find(u => u._id === selected?._id));
   const member = live ?? selected;
+  const refreshOne = useUserStore(s => s.refreshOne);
+  const memberId = selected?._id;
+  useEffect(() => {
+    if (open && memberId) refreshOne(memberId);
+  }, [open, memberId, refreshOne]);
+
   if (!member) return null;
 
   return (
