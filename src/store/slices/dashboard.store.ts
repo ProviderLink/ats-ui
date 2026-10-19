@@ -130,11 +130,21 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
       refreshTimer = setTimeout(() => {
         refreshTimer = null;
         const s = get();
-        // Only refresh while the dashboard is actually on screen, and skip if
-        // a fetch is already in flight.
-        if (s.isActive && !s.loading && !s.isRefreshing) s.fetch();
+        // Only refresh while the dashboard is actually on screen.
+        if (!s.isActive) return;
+        // A change that lands while a fetch is running is not in that fetch's
+        // data, so remember it and refresh again once the fetch finishes.
+        if (s.loading || s.isRefreshing) pendingRefresh = true;
+        else s.fetch();
       }, 1500);
     });
+
+    let pendingRefresh = false;
+    const runPendingRefresh = () => {
+      if (!pendingRefresh) return;
+      pendingRefresh = false;
+      if (get().isActive) void get().fetch();
+    };
 
     return {
       ...initialState,
@@ -235,6 +245,7 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
             s.loading = false;
             s.isRefreshing = false;
           });
+          runPendingRefresh();
         } catch (e) {
           if (seq !== fetchSeq) return;
           set(s => {
@@ -242,6 +253,7 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
             s.isRefreshing = false;
             s.error = (e as Error).message;
           });
+          runPendingRefresh();
         }
       },
 
