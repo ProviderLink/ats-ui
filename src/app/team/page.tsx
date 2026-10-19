@@ -1,3 +1,4 @@
+import { usePresence } from '@/hooks/use-presence';
 import { useUserStore } from '@/store/slices/users.store';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -9,6 +10,8 @@ export default function TeamPage() {
   const isRefreshing = useUserStore(s => s.isRefreshing);
   const error = useUserStore(s => s.error);
   const fetch = useUserStore(s => s.fetch);
+
+  usePresence();
 
   useEffect(() => {
     fetch();

@@ -67,6 +67,12 @@ type StoreDispatcher = {
 
 type InvalidatorFn = () => void;
 
+/** Receives the full online list (snapshot) or a single user's change. */
+export interface PresenceListener {
+  onSnapshot: (onlineIds: string[]) => void;
+  onUpdate: (userId: string, online: boolean) => void;
+}
+
 const WS_URL =
   (import.meta.env.VITE_WS_URL as string | undefined) ??
   'http://localhost:5001';
@@ -119,6 +125,7 @@ class SocketManager {
   private socket: Socket | null = null;
   private destroyed = false;
   private invalidators: Set<InvalidatorFn> = new Set();
+  private presenceListener: PresenceListener | null = null;
   private dispatchers: StoreDispatcher = {
     candidate: null,
     job: null,
@@ -161,7 +168,7 @@ class SocketManager {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30_000,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
     });
 
     for (const event of EVENTS) {
@@ -178,6 +185,13 @@ class SocketManager {
     for (const event of DOMAIN_EVENTS) {
       this.socket.on(event, () => this.invalidate());
     }
+
+    this.socket.on('presence:update', (msg: { userId: string; online: boolean }) =>
+      this.presenceListener?.onUpdate(msg.userId, msg.online)
+    );
+    // Runs on the first connect and after every reconnect, so the snapshot is
+    // always refreshed once the socket is back.
+    this.socket.on('connect', () => this.requestPresence());
 
     this.socket.on('connect_error', err => {
       if (err.message?.includes('auth') || err.message?.includes('token')) {
@@ -204,6 +218,24 @@ class SocketManager {
       this.socket = null;
     }
     this.connect();
+  }
+
+  /** Start receiving presence for the Team page; returns the unsubscribe. */
+  subscribePresence(listener: PresenceListener): () => void {
+    this.presenceListener = listener;
+    this.requestPresence();
+    return () => {
+      if (this.presenceListener === listener) this.presenceListener = null;
+      this.socket?.emit('presence:unsubscribe');
+    };
+  }
+
+  private requestPresence(): void {
+    const listener = this.presenceListener;
+    if (!listener || !this.socket?.connected) return;
+    this.socket.emit('presence:subscribe', (ids: string[]) =>
+      listener.onSnapshot(Array.isArray(ids) ? ids : [])
+    );
   }
 
   joinJob(jobId: string): void {

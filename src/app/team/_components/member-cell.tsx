@@ -1,3 +1,4 @@
+import { usePresenceStore } from '@/store/slices/presence.store';
 import { cn } from '@/lib/utils';
 import type { User } from '@/store/types/user.types';
 import { memberAvatarClass } from '../_utils/member-avatar';
@@ -13,8 +14,10 @@ export function MemberCell({
   const last = member.lastName ?? '';
   const initials = ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || '?';
   const bg = memberAvatarClass(first, last);
+  const isOnline = usePresenceStore(s => Boolean(s.online[member._id]));
   return (
     <div className="flex items-start gap-3 min-w-0">
+      <div className="relative shrink-0">
       <div
         className={cn(
           'size-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 select-none overflow-hidden',
@@ -29,6 +32,15 @@ export function MemberCell({
           />
         ) : (
           initials
+        )}
+      </div>
+        {isOnline && (
+          <span
+            role="img"
+            aria-label="Online"
+            title="Online"
+            className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-green-500 ring-2 ring-background"
+          />
         )}
       </div>
       <div className="flex flex-col gap-1.5 min-w-0 pt-1.5">
