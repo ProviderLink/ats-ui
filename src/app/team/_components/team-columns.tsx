@@ -9,9 +9,9 @@ import {
   UserIcon,
   UsersIcon,
 } from 'lucide-react';
-import { ROLE_LABELS } from '@/lib/role-labels';
 import { ColHeader } from './team-col-header';
 import { AccountStatus } from './account-status';
+import { RoleBadges } from './role-badge';
 
 export const baseColumns: ColumnDef<User>[] = [
   {
@@ -82,13 +82,7 @@ export const baseColumns: ColumnDef<User>[] = [
         label="Role"
       />
     ),
-    cell: ({ row }) => (
-      <span className="text-sm">
-        {row.original.roles?.[0]
-          ? (ROLE_LABELS[row.original.roles[0]] ?? row.original.roles[0])
-          : '—'}
-      </span>
-    ),
+    cell: ({ row }) => <RoleBadges roles={row.original.roles} />,
   },
   {
     id: 'status',

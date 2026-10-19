@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
-import { ROLE_LABELS } from '@/lib/role-labels';
 import type { User } from '@/store/types/user.types';
 import { getMemberPermissions } from '../../_utils/member-permissions';
+import { RoleBadges } from '../role-badge';
 import { DetailRow, Empty, Section } from './detail-row';
 
 export function AccessTab({ member }: { member: User }) {
@@ -13,17 +13,7 @@ export function AccessTab({ member }: { member: User }) {
     <div className="flex flex-col gap-6">
       <Section title="Role and apps">
         <DetailRow label="Roles">
-          {roles.length === 0 ? (
-            <Empty text="None" />
-          ) : (
-            <div className="flex flex-wrap justify-end gap-1.5">
-              {roles.map(r => (
-                <Badge key={r} variant="secondary" className="text-xs">
-                  {ROLE_LABELS[r] ?? r}
-                </Badge>
-              ))}
-            </div>
-          )}
+          <RoleBadges roles={roles} className="justify-end" />
         </DetailRow>
         <DetailRow label="App access">
           {appAccess.length === 0 ? (

@@ -1,15 +1,14 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ROLE_LABELS } from '@/lib/role-labels';
 import { cn } from '@/lib/utils';
 import { usePresenceStore } from '@/store/slices/presence.store';
 import type { User } from '@/store/types/user.types';
 import { AccountStatus } from '../account-status';
+import { RoleBadges } from '../role-badge';
 import { memberAvatarClass } from '../../_utils/member-avatar';
 import {
   BadgeCheckIcon,
@@ -106,16 +105,8 @@ export function MemberHeader({ member, onEdit }: MemberHeaderProps) {
           <dt className="text-xs text-muted-foreground">
             {roles.length === 1 ? 'Role' : 'Roles'}
           </dt>
-          <dd className="flex flex-wrap gap-1.5">
-            {roles.length === 0 ? (
-              <span className="text-xs text-muted-foreground">None</span>
-            ) : (
-              roles.map(r => (
-                <Badge key={r} variant="secondary" className="text-xs">
-                  {ROLE_LABELS[r] ?? r}
-                </Badge>
-              ))
-            )}
+          <dd>
+            <RoleBadges roles={roles} />
           </dd>
         </div>
       </dl>
