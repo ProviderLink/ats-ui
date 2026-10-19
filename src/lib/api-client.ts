@@ -119,6 +119,27 @@ async function silentRefresh(original401?: Response): Promise<void> {
 }
 
 /**
+ * Refresh the access token on behalf of a non-HTTP caller (the real-time
+ * socket). Shares the in-flight promise with the 401 path so only one refresh
+ * request runs at a time. Never ends the session itself: it reports whether a
+ * fresh token is now available and leaves session handling to the HTTP path.
+ */
+export async function refreshAccessToken(): Promise<boolean> {
+  if (_refreshFailed) return false;
+  if (!_refreshPromise) {
+    _refreshPromise = silentRefresh().finally(() => {
+      _refreshPromise = null;
+    });
+  }
+  try {
+    await _refreshPromise;
+    return _authToken !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Execute a fetch factory. On 401 → attempt one silent token refresh, then retry.
  * If refresh also fails, call onUnauthorized and throw.
  */

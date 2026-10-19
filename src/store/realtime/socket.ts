@@ -1,4 +1,4 @@
-import { getAuthToken } from '@/lib/api-client';
+import { getAuthToken, refreshAccessToken } from '@/lib/api-client';
 import { io, Socket } from 'socket.io-client';
 import type {
   Application,
@@ -124,6 +124,8 @@ const EVENTS: SocketEventType[] = [
 class SocketManager {
   private socket: Socket | null = null;
   private destroyed = false;
+  private recoverTimer: ReturnType<typeof setTimeout> | null = null;
+  private recoverAttempt = 0;
   private invalidators: Set<InvalidatorFn> = new Set();
   private presenceListener: PresenceListener | null = null;
   private dispatchers: StoreDispatcher = {
@@ -164,7 +166,10 @@ class SocketManager {
     this.destroyed = false;
 
     this.socket = io(`${WS_URL}/ats`, {
-      auth: { token },
+      // A function, so every (re)connect handshake carries the CURRENT access
+      // token. A fixed object would resend the token from first connect, which
+      // is rejected once it expires (2h) and left the socket permanently dead.
+      auth: cb => cb({ token: getAuthToken() ?? token }),
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30_000,
@@ -193,6 +198,25 @@ class SocketManager {
     // always refreshed once the socket is back.
     this.socket.on('connect', () => this.requestPresence());
 
+    // The server closes the socket itself when the token is rejected, and
+    // socket.io never auto-reconnects after a server-initiated close. Recover
+    // by refreshing the token and connecting again.
+    // The server accepts the handshake and then closes a bad token, so
+    // "connected" alone is not success: only reset the backoff once the
+    // connection has stayed up, otherwise a dead token would retry every second.
+    let stableTimer: ReturnType<typeof setTimeout> | null = null;
+    this.socket.on('connect', () => {
+      const current = this.socket;
+      stableTimer = setTimeout(() => {
+        if (this.socket === current && current?.connected)
+          this.recoverAttempt = 0;
+      }, 5000);
+    });
+    this.socket.on('disconnect', reason => {
+      if (stableTimer) clearTimeout(stableTimer);
+      if (reason === 'io server disconnect') this.scheduleRecover();
+    });
+
     this.socket.on('connect_error', err => {
       if (err.message?.includes('auth') || err.message?.includes('token')) {
         console.warn('[Socket] Auth error — not retrying');
@@ -201,8 +225,44 @@ class SocketManager {
     });
   }
 
+  /** Refresh the token and reopen the socket, with capped backoff + jitter. */
+  private scheduleRecover(): void {
+    if (this.destroyed || this.recoverTimer) return;
+    const base = Math.min(1000 * 2 ** this.recoverAttempt, 30_000);
+    const delay = base / 2 + Math.random() * (base / 2);
+    this.recoverAttempt += 1;
+    this.recoverTimer = setTimeout(() => {
+      this.recoverTimer = null;
+      void this.recover();
+    }, delay);
+  }
+
+  private async recover(): Promise<void> {
+    const socket = this.socket;
+    if (this.destroyed || !socket || socket.connected) return;
+    if (!getAuthToken()) return; // logged out: nothing to recover
+    await refreshAccessToken();
+    // The session may have ended or the socket been replaced while refreshing.
+    if (this.destroyed || this.socket !== socket || socket.connected) return;
+    if (!getAuthToken()) return;
+    socket.connect();
+    // A rejected handshake closes again; the disconnect handler retries.
+    // Back off if it never even connects.
+    setTimeout(() => {
+      if (!this.destroyed && this.socket === socket && !socket.connected)
+        this.scheduleRecover();
+    }, 10_000);
+  }
+
+  private clearRecover(): void {
+    if (this.recoverTimer) clearTimeout(this.recoverTimer);
+    this.recoverTimer = null;
+    this.recoverAttempt = 0;
+  }
+
   disconnect(): void {
     this.destroyed = true;
+    this.clearRecover();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
@@ -212,6 +272,7 @@ class SocketManager {
 
   reconnect(): void {
     this.destroyed = false;
+    this.clearRecover();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
