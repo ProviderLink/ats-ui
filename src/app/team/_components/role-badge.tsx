@@ -1,3 +1,8 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ROLE_LABELS } from '@/lib/role-labels';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/store/types/enums';
@@ -37,22 +42,48 @@ export function RoleBadge({ role }: { role: string }) {
   );
 }
 
-/** Every role a member holds, wrapping onto more lines when needed. */
+/**
+ * The roles a member holds. With `maxVisible`, extra roles collapse into a
+ * "+N" chip (full list on hover) so a table cell keeps one fixed-height line.
+ */
 export function RoleBadges({
   roles,
   className,
+  maxVisible,
 }: {
   roles: string[] | undefined;
   className?: string;
+  maxVisible?: number;
 }) {
   if (!roles || roles.length === 0) {
     return <span className="text-sm text-muted-foreground">—</span>;
   }
+  const limit = maxVisible ?? roles.length;
+  const shown = roles.slice(0, limit);
+  const hidden = roles.slice(limit);
   return (
-    <div className={cn('flex flex-wrap gap-1.5', className)}>
-      {roles.map(r => (
+    <div
+      className={cn(
+        'flex gap-1.5',
+        maxVisible === undefined ? 'flex-wrap' : 'flex-nowrap',
+        className
+      )}
+    >
+      {shown.map(r => (
         <RoleBadge key={r} role={r} />
       ))}
+      {hidden.length > 0 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex cursor-default items-center rounded-md border border-border bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+              +{hidden.length}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {hidden.map(r => ROLE_LABELS[r as UserRole] ?? r).join(', ')}
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }

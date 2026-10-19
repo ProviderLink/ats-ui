@@ -82,7 +82,7 @@ export const baseColumns: ColumnDef<User>[] = [
         label="Role"
       />
     ),
-    cell: ({ row }) => <RoleBadges roles={row.original.roles} />,
+    cell: ({ row }) => <RoleBadges roles={row.original.roles} maxVisible={1} />,
   },
   {
     id: 'status',
