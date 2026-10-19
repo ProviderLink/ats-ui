@@ -11,7 +11,7 @@ import type {
   ApplicationActions,
   ApplicationState,
 } from './applications.store.types';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 import { createMutate } from './mutation';
 
 const initialState: ApplicationState = {
@@ -58,7 +58,7 @@ export const useApplicationStore = create<
             params &&
             Object.keys(params).some(k => k !== 'page' && k !== 'limit');
           if (
-            useBootStore.getState().isBooted &&
+            canSkipFetch() &&
             get().items.length > 0 &&
             !hasExplicitFilter
           )

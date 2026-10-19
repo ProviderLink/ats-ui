@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { CreateTagDto, Tag, UpdateTagDto } from '../types';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 
 interface TagState {
   items: Tag[];
@@ -38,7 +38,7 @@ export const useTagStore = create<TagState & TagActions>()(
 
       fetch: async () => {
         // No-op after boot — all data is already client-side.
-        if (useBootStore.getState().isBooted && get().items.length > 0) return;
+        if (canSkipFetch() && get().items.length > 0) return;
 
         const hasData = get().items.length > 0;
         set(s => {

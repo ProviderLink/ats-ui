@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { AppSettings, UpdateSettingsDto } from '../types';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 
 interface SettingsState {
   settings: AppSettings | null;
@@ -34,7 +34,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
 
       fetch: async () => {
         // No-op after boot — all data is already client-side.
-        if (useBootStore.getState().isBooted && get().settings !== null) return;
+        if (canSkipFetch() && get().settings !== null) return;
 
         const hasData = get().settings !== null;
         set(s => {

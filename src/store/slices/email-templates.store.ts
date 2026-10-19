@@ -7,7 +7,7 @@ import type {
   EmailTemplate,
   UpdateEmailTemplateDto,
 } from '../types';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 
 interface EmailTemplateState {
   items: EmailTemplate[];
@@ -43,7 +43,7 @@ export const useEmailTemplateStore = create<
 
       fetch: async () => {
         // No-op after boot — all data is already client-side.
-        if (useBootStore.getState().isBooted && get().items.length > 0) return;
+        if (canSkipFetch() && get().items.length > 0) return;
 
         set(s => {
           s.loading = true;

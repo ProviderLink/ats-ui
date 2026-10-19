@@ -9,7 +9,7 @@ import type {
   StandardizedJobContent,
 } from '../types';
 import { useApplicationStore } from './applications.store';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 import { replaceJob, upsertJob } from './jobs.store.helpers';
 import type { JobActions, JobState } from './jobs.store.types';
 import { createMutate } from './mutation';
@@ -53,7 +53,7 @@ export const useJobStore = create<JobState & JobActions>()(
               return (params as Record<string, unknown>)[k] !== undefined;
             });
           if (
-            useBootStore.getState().isBooted &&
+            canSkipFetch() &&
             get().items.length > 0 &&
             !hasExplicitFilter &&
             !itemsAreSubset

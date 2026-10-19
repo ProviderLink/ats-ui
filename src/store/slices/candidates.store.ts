@@ -10,7 +10,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { Candidate, CandidateFilters, Pagination } from '../types';
 import { useApplicationStore } from './applications.store';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 import {
   applyCandidatePatch,
   buildCandidateFormData,
@@ -55,7 +55,7 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             params &&
             Object.keys(params).some(k => k !== 'page' && k !== 'limit');
           if (
-            useBootStore.getState().isBooted &&
+            canSkipFetch() &&
             get().items.length > 0 &&
             !hasExplicitFilter
           )

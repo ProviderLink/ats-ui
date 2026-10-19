@@ -1,3 +1,4 @@
+import { resyncAllData } from '../../lib/resync';
 import { useApplicationStore } from '../slices/applications.store';
 import { useCandidateStore } from '../slices/candidates.store';
 import { useClientStore } from '../slices/clients.store';
@@ -44,3 +45,4 @@ socketManager.register('email_template', {
 socketManager.register('email', {
   _patch: useEmailStore.getState()._patch,
 });
+socketManager.registerResync(resyncAllData);

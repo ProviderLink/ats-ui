@@ -8,7 +8,7 @@ import type {
   Pagination,
   UpdateInterviewDto,
 } from '../types';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 import {
   interviewPath,
   replaceInterview,
@@ -55,7 +55,7 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
             params &&
             Object.keys(params).some(k => k !== 'page' && k !== 'limit');
           if (
-            useBootStore.getState().isBooted &&
+            canSkipFetch() &&
             get().items.length > 0 &&
             !hasExplicitFilter &&
             !itemsAreSubset

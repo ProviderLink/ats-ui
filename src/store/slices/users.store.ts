@@ -11,7 +11,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { User } from '../types';
 import { useAuthStore } from './auth.store';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 import { createMutate } from './mutation';
 import { replaceUser, upsertUser } from './users.store.helpers';
 import type { UserActions, UserState } from './users.store.types';
@@ -44,7 +44,7 @@ export const useUserStore = create<UserState & UserActions>()(
               return (params as Record<string, unknown>)[k] !== undefined;
             });
           if (
-            useBootStore.getState().isBooted &&
+            canSkipFetch() &&
             get().items.length > 0 &&
             !hasExplicitFilter
           )

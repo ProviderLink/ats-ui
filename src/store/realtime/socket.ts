@@ -66,6 +66,7 @@ type StoreDispatcher = {
 };
 
 type InvalidatorFn = () => void;
+type ResyncFn = () => Promise<void> | void;
 
 /** Receives the full online list (snapshot) or a single user's change. */
 export interface PresenceListener {
@@ -126,6 +127,9 @@ class SocketManager {
   private destroyed = false;
   private recoverTimer: ReturnType<typeof setTimeout> | null = null;
   private recoverAttempt = 0;
+  private resyncFn: ResyncFn | null = null;
+  private resyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private hasConnected = false;
   private invalidators: Set<InvalidatorFn> = new Set();
   private presenceListener: PresenceListener | null = null;
   private dispatchers: StoreDispatcher = {
@@ -151,6 +155,28 @@ class SocketManager {
   registerInvalidator(fn: InvalidatorFn): () => void {
     this.invalidators.add(fn);
     return () => this.invalidators.delete(fn);
+  }
+
+  /**
+   * Register the refresh to run after a RE-connect. Socket events emitted while
+   * the socket was down are not replayed, so without this the stores stay stale
+   * until a manual reload.
+   */
+  registerResync(fn: ResyncFn): void {
+    this.resyncFn = fn;
+  }
+
+  /** Jittered so a server restart doesn't make every client refetch at once. */
+  private scheduleResync(): void {
+    if (this.resyncTimer) return;
+    this.resyncTimer = setTimeout(
+      () => {
+        this.resyncTimer = null;
+        void Promise.resolve(this.resyncFn?.()).catch(() => undefined);
+        this.invalidate();
+      },
+      500 + Math.random() * 2500
+    );
   }
 
   private invalidate(): void {
@@ -206,10 +232,17 @@ class SocketManager {
     // connection has stayed up, otherwise a dead token would retry every second.
     let stableTimer: ReturnType<typeof setTimeout> | null = null;
     this.socket.on('connect', () => {
+      // First connect of this session is covered by boot; every later one
+      // follows a gap in which events may have been missed.
+      const isReconnect = this.hasConnected;
+      this.hasConnected = true;
       const current = this.socket;
       stableTimer = setTimeout(() => {
-        if (this.socket === current && current?.connected)
-          this.recoverAttempt = 0;
+        if (this.socket !== current || !current?.connected) return;
+        this.recoverAttempt = 0;
+        // Only once the connection held: a rejected handshake connects and
+        // closes at once and must not trigger a refetch loop.
+        if (isReconnect) this.scheduleResync();
       }, 5000);
     });
     this.socket.on('disconnect', reason => {
@@ -262,6 +295,9 @@ class SocketManager {
 
   disconnect(): void {
     this.destroyed = true;
+    this.hasConnected = false;
+    if (this.resyncTimer) clearTimeout(this.resyncTimer);
+    this.resyncTimer = null;
     this.clearRecover();
     if (this.socket) {
       this.socket.removeAllListeners();
@@ -272,6 +308,7 @@ class SocketManager {
 
   reconnect(): void {
     this.destroyed = false;
+    this.hasConnected = false;
     this.clearRecover();
     if (this.socket) {
       this.socket.removeAllListeners();

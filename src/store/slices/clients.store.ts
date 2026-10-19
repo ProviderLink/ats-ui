@@ -10,7 +10,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { Client, ClientFilters, ClientNote, Pagination } from '../types';
 import { useApplicationStore } from './applications.store';
-import { useBootStore } from './boot.store';
+import { canSkipFetch } from './boot.store';
 import {
   normalizeClient,
   replaceClient,
@@ -54,7 +54,7 @@ export const useClientStore = create<ClientState & ClientActions>()(
               return (params as Record<string, unknown>)[k] !== undefined;
             });
           if (
-            useBootStore.getState().isBooted &&
+            canSkipFetch() &&
             get().items.length > 0 &&
             !hasExplicitFilter
           )
