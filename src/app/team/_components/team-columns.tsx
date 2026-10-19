@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { ROLE_LABELS } from '@/lib/role-labels';
 import { ColHeader } from './team-col-header';
-import { StatusBadge } from './member-status-badge';
+import { AccountStatus } from './account-status';
 
 export const baseColumns: ColumnDef<User>[] = [
   {
@@ -102,10 +102,7 @@ export const baseColumns: ColumnDef<User>[] = [
       />
     ),
     cell: ({ row }) => (
-      <StatusBadge
-        isActive={row.original.isActive}
-        isInviteAccepted={row.original.isInviteAccepted}
-      />
+      <AccountStatus member={row.original} />
     ),
   },
   {

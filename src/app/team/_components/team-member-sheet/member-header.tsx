@@ -9,51 +9,16 @@ import { ROLE_LABELS } from '@/lib/role-labels';
 import { cn } from '@/lib/utils';
 import { usePresenceStore } from '@/store/slices/presence.store';
 import type { User } from '@/store/types/user.types';
+import { AccountStatus } from '../account-status';
 import { memberAvatarClass } from '../../_utils/member-avatar';
 import {
   BadgeCheckIcon,
-  CircleCheckIcon,
-  CircleOffIcon,
-  ClockIcon,
   PencilIcon,
 } from 'lucide-react';
 
 interface MemberHeaderProps {
   member: User;
   onEdit: () => void;
-}
-
-/** Account state as an icon pill, so it is not mistaken for the online dot. */
-function AccountStatus({ member }: { member: User }) {
-  const invited = member.isActive && !member.isInviteAccepted;
-  const [Icon, label, tone] = invited
-    ? [
-        ClockIcon,
-        'Invite pending',
-        'border-amber-400/60 text-amber-600 dark:text-amber-400',
-      ]
-    : member.isActive
-      ? [
-          CircleCheckIcon,
-          'Active account',
-          'border-border text-foreground',
-        ]
-      : [
-          CircleOffIcon,
-          'Inactive account',
-          'border-rose-400/60 text-rose-600 dark:text-rose-400',
-        ];
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium',
-        tone
-      )}
-    >
-      <Icon className="size-3" />
-      {label}
-    </span>
-  );
 }
 
 export function MemberHeader({ member, onEdit }: MemberHeaderProps) {
