@@ -37,7 +37,7 @@ export function OverviewTab({ member }: { member: User }) {
         </DetailRow>
       </Section>
 
-      <Section title="Last sign-in">
+      <Section title="Last active">
         <DetailRow label="ATS">
           <SignIn value={member.lastLoginAts} />
         </DetailRow>
