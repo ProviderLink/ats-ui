@@ -69,4 +69,5 @@ export interface InterviewActions {
   reset: () => void;
   _patch: (interview: Interview) => void;
   _remove: (id: string) => void;
+  _removeByCandidateId: (candidateId: string) => void;
 }

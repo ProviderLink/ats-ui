@@ -14,13 +14,25 @@ socketManager.register('tag', {
   _patch: useTagStore.getState()._patch,
   _remove: useTagStore.getState()._remove,
 });
+// Deleting a candidate also deletes its applications, interviews and emails on
+// the server and only `candidate:deleted` is emitted, so clear the dependants
+// here — otherwise other users keep orphaned rows until they reload.
 socketManager.register('candidate', {
   _patch: useCandidateStore.getState()._patch,
-  _remove: useCandidateStore.getState()._remove,
+  _remove: id => {
+    useCandidateStore.getState()._remove(id);
+    useApplicationStore.getState()._removeByCandidateId(id);
+    useInterviewStore.getState()._removeByCandidateId(id);
+    useEmailStore.getState()._removeByCandidateId(id);
+  },
 });
+// Same cleanup the deleting user's own store does for a job / client.
 socketManager.register('job', {
   _patch: useJobStore.getState()._patch,
-  _remove: useJobStore.getState()._remove,
+  _remove: id => {
+    useJobStore.getState()._remove(id);
+    useApplicationStore.getState()._removeByJobId(id);
+  },
 });
 socketManager.register('application', {
   _patch: useApplicationStore.getState()._patch,
@@ -32,7 +44,11 @@ socketManager.register('interview', {
 });
 socketManager.register('client', {
   _patch: useClientStore.getState()._patch,
-  _remove: useClientStore.getState()._remove,
+  _remove: id => {
+    useClientStore.getState()._remove(id);
+    useJobStore.getState()._removeByClientId(id);
+    useApplicationStore.getState()._removeByClientId(id);
+  },
 });
 socketManager.register('pipeline_template', {
   _patch: usePipelineTemplateStore.getState()._patch,

@@ -40,6 +40,7 @@ interface EmailActions {
   setFilters: (f: Partial<EmailFilters>) => void;
   reset: () => void;
   _patch: (email: Email) => void;
+  _removeByCandidateId: (candidateId: string) => void;
 }
 
 const initialState: EmailState = {
@@ -277,6 +278,15 @@ export const useEmailStore = create<EmailState & EmailActions>()(
           if (idx !== -1) s.items[idx] = email;
           else s.items.unshift(email);
           if (s.detail[email._id]) s.detail[email._id] = email;
+        }),
+
+      _removeByCandidateId: candidateId =>
+        set(s => {
+          s.items = s.items.filter(x => x.context?.candidateId !== candidateId);
+          for (const id of Object.keys(s.detail)) {
+            if (s.detail[id].context?.candidateId === candidateId)
+              delete s.detail[id];
+          }
         }),
     })),
     {

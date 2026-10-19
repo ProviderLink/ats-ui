@@ -286,6 +286,14 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
             s.items = s.items.filter(x => x._id !== id);
             delete s.detail[id];
           }),
+
+        _removeByCandidateId: candidateId =>
+          set(s => {
+            s.items = s.items.filter(x => x.candidateId !== candidateId);
+            for (const id of Object.keys(s.detail)) {
+              if (s.detail[id].candidateId === candidateId) delete s.detail[id];
+            }
+          }),
       };
     }),
     {
