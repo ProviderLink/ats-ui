@@ -17,6 +17,12 @@ import type {
   Candidate,
   CandidateStatusBreakdownItem,
   Client,
+  DashApplication,
+  DashboardMetrics,
+  DashCandidate,
+  DashClient,
+  DashInterview,
+  DashJob,
   DashboardSnapshot,
   Interview,
   InterviewStatusBreakdownItem,
@@ -36,11 +42,11 @@ interface DashboardState {
   /** True while the dashboard page is mounted — gates socket-driven refetches. */
   isActive: boolean;
 
-  clients: Client[];
-  jobs: Job[];
-  candidates: Candidate[];
-  applications: Application[];
-  interviews: Interview[];
+  clients: DashClient[];
+  jobs: DashJob[];
+  candidates: DashCandidate[];
+  applications: DashApplication[];
+  interviews: DashInterview[];
   snapshot: DashboardSnapshot | null;
 
   kpi: KpiSummary | null;
@@ -116,11 +122,18 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
     // updated / deleted for candidates, applications, jobs, clients,
     // interviews, plus the domain status-change events) triggers an
     // immediate background refresh of all dashboard data.
+    // Debounced: a burst of events (bulk import, reconnect resync) becomes one
+    // refresh instead of one per event.
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     socketManager.registerInvalidator(() => {
-      const s = get();
-      // Only refresh while the dashboard is actually on screen, and skip if
-      // a fetch is already in flight.
-      if (s.isActive && !s.loading && !s.isRefreshing) s.fetch();
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        const s = get();
+        // Only refresh while the dashboard is actually on screen, and skip if
+        // a fetch is already in flight.
+        if (s.isActive && !s.loading && !s.isRefreshing) s.fetch();
+      }, 1500);
     });
 
     return {
@@ -145,33 +158,51 @@ export const useDashboardStore = create<DashboardState & DashboardActions>()(
         });
 
         try {
-          // Kick off the dashboard snapshot and every list endpoint in parallel.
-          // Each list uses a very large limit so the client can compute accurate
-          // breakdowns (counts, trend, conversions) without paginating.
-          const [
-            snapshotRes,
-            clients,
-            jobs,
-            candidates,
-            applications,
-            interviews,
-          ] = await Promise.all([
-            getJson<DashboardSnapshot>('/ats/dashboard').catch(() => null),
-            fetchList<Client>('/ats/clients', { page: 1, limit: HUGE_LIMIT }),
-            fetchList<Job>('/ats/jobs', { page: 1, limit: HUGE_LIMIT }),
-            fetchList<Candidate>('/ats/candidates', {
-              page: 1,
-              limit: HUGE_LIMIT,
-            }),
-            fetchList<Application>('/ats/applications', {
-              page: 1,
-              limit: HUGE_LIMIT,
-            }),
-            fetchList<Interview>('/ats/interviews', {
-              page: 1,
-              limit: HUGE_LIMIT,
-            }),
-          ]);
+          // One slim request: aggregate counts plus only the fields the charts
+          // read. Falls back to the original six full-list requests if the
+          // endpoint is unavailable (e.g. an older backend), so the dashboard
+          // can never end up worse than before.
+          const lean = await getJson<DashboardMetrics>(
+            '/ats/dashboard/metrics'
+          ).catch(() => null);
+
+          let snapshotRes: DashboardSnapshot | null;
+          let clients: DashClient[];
+          let jobs: DashJob[];
+          let candidates: DashCandidate[];
+          let applications: DashApplication[];
+          let interviews: DashInterview[];
+
+          if (lean) {
+            snapshotRes = { overview: lean.overview };
+            clients = lean.clients;
+            jobs = lean.jobs;
+            candidates = lean.candidates;
+            applications = lean.applications;
+            interviews = lean.interviews;
+          } else {
+            [snapshotRes, clients, jobs, candidates, applications, interviews] =
+              await Promise.all([
+                getJson<DashboardSnapshot>('/ats/dashboard').catch(() => null),
+                fetchList<Client>('/ats/clients', {
+                  page: 1,
+                  limit: HUGE_LIMIT,
+                }),
+                fetchList<Job>('/ats/jobs', { page: 1, limit: HUGE_LIMIT }),
+                fetchList<Candidate>('/ats/candidates', {
+                  page: 1,
+                  limit: HUGE_LIMIT,
+                }),
+                fetchList<Application>('/ats/applications', {
+                  page: 1,
+                  limit: HUGE_LIMIT,
+                }),
+                fetchList<Interview>('/ats/interviews', {
+                  page: 1,
+                  limit: HUGE_LIMIT,
+                }),
+              ]);
+          }
 
           const snapshot = snapshotRes ?? null;
 

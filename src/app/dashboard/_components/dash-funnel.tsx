@@ -2,7 +2,7 @@ import { ArrowRight, Users } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Candidate } from '@/store';
+import type { DashCandidate } from '@/store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 
 const STAGES = [
@@ -47,7 +47,7 @@ export function DashFunnel() {
   // Talent Pool or permanently ineligible, so the dashboard would disagree with
   // the tab it is describing.
   const pendingCount = candidates.filter(
-    (c: Candidate) =>
+    (c: DashCandidate) =>
       c.status === 'pending' &&
       !c.inTalentPool &&
       c.eligibilityStatus !== 'permanently_ineligible'
@@ -73,9 +73,9 @@ export function DashFunnel() {
   // Keep this funnel candidate-based: "hired" is candidates with status
   // 'hired' — kpi.hiredCount is application-based and would mix units.
   const hiredCount = candidates.filter(
-    (c: Candidate) => c.status === 'hired'
+    (c: DashCandidate) => c.status === 'hired'
   ).length;
-  const talentPool = candidates.filter((c: Candidate) => c.inTalentPool).length;
+  const talentPool = candidates.filter((c: DashCandidate) => c.inTalentPool).length;
 
   const counts: Record<string, number> = {
     pending: pendingCount,

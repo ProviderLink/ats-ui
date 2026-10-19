@@ -1,4 +1,21 @@
+import type { Application } from './application.types';
+import type { Candidate } from './candidate.types';
+import type { Client } from './client.types';
 import type { InterviewStatus, JobStatus } from './enums';
+import type { Interview } from './interview.types';
+import type { Job } from './job.types';
+
+/**
+ * The only fields the dashboard reads from each entity. The slim metrics
+ * endpoint returns exactly these, so a field added here must also be added to
+ * the backend projection (`atsDashboard.service.ts`).
+ */
+export type DashClient = Pick<Client, '_id' | 'createdAt' | 'companyName'>;
+export type DashJob = Pick<Job, '_id' | 'status' | 'clientId' | 'createdAt' | 'title'>;
+export type DashCandidate = Pick<Candidate, '_id' | 'status' | 'createdAt' | 'inTalentPool' | 'eligibilityStatus'>;
+export type DashApplication = Pick<Application, '_id' | 'phase' | 'jobId' | 'candidateId' | 'appliedAt' | 'hiredAt' | 'source'>;
+export type DashInterview = Pick<Interview, '_id' | 'status'>;
+
 
 /**
  * Raw shape returned by GET /ats/dashboard. The endpoint nests the aggregate
@@ -27,6 +44,16 @@ export interface DashboardSnapshot {
   recentApplications?: unknown[];
   upcomingInterviews?: unknown[];
   jobStats?: unknown[];
+}
+
+/** Response of GET /ats/dashboard/metrics. */
+export interface DashboardMetrics {
+  overview: NonNullable<DashboardSnapshot['overview']>;
+  clients: DashClient[];
+  jobs: DashJob[];
+  candidates: DashCandidate[];
+  applications: DashApplication[];
+  interviews: DashInterview[];
 }
 
 export interface KpiSummary {

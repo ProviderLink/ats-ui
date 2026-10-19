@@ -1,13 +1,13 @@
 import type {
-  Application,
-  Candidate,
-  Client,
   CandidateStatusBreakdownItem,
+  DashApplication,
+  DashCandidate,
+  DashClient,
+  DashInterview,
+  DashJob,
   DashboardSnapshot,
-  Interview,
   InterviewStatus,
   InterviewStatusBreakdownItem,
-  Job,
   JobStatus,
   JobStatusBreakdownItem,
   KpiSummary,
@@ -122,9 +122,9 @@ function normalizePhase(phase: string): LifecycleStage {
  * that actually have applications appear (avoids a long tail of empty rows).
  */
 export function buildTopJobs(
-  applications: Application[],
-  jobs: Job[],
-  clients: Client[]
+  applications: DashApplication[],
+  jobs: DashJob[],
+  clients: DashClient[]
 ): TopJobItem[] {
   const jobMap = new Map(jobs.map(j => [j._id, j]));
   const clientMap = new Map(clients.map(c => [c._id, c]));
@@ -155,7 +155,7 @@ export function buildTopJobs(
 }
 
 export function buildCandidateStatusBreakdown(
-  candidates: Candidate[]
+  candidates: DashCandidate[]
 ): CandidateStatusBreakdownItem[] {
   const counts = new Map<string, number>();
   for (const c of candidates) {
@@ -172,7 +172,7 @@ export function buildCandidateStatusBreakdown(
     .sort((a, b) => b.count - a.count);
 }
 
-export function buildJobStatusBreakdown(jobs: Job[]): JobStatusBreakdownItem[] {
+export function buildJobStatusBreakdown(jobs: DashJob[]): JobStatusBreakdownItem[] {
   const counts = new Map<JobStatus, number>();
   for (const j of jobs) {
     counts.set(j.status, (counts.get(j.status) ?? 0) + 1);
@@ -188,7 +188,7 @@ export function buildJobStatusBreakdown(jobs: Job[]): JobStatusBreakdownItem[] {
 }
 
 export function buildInterviewStatusBreakdown(
-  interviews: Interview[]
+  interviews: DashInterview[]
 ): InterviewStatusBreakdownItem[] {
   const counts = new Map<InterviewStatus, number>();
   for (const i of interviews) {
@@ -209,7 +209,7 @@ export function buildInterviewStatusBreakdown(
  * `appliedAt` timestamps. Real timestamps from the API drive every datapoint
  * — if there is no activity in a month it shows 0.
  */
-export function buildTrend(applications: Application[]): TrendPoint[] {
+export function buildTrend(applications: DashApplication[]): TrendPoint[] {
   const now = new Date();
   const buckets: TrendPoint[] = [];
   for (let i = 2; i >= 0; i--) {
@@ -258,7 +258,7 @@ function localDateKey(d: Date): string {
  * datapoint.
  */
 export function buildApplicationsTrend(
-  applications: Application[],
+  applications: DashApplication[],
   days = 90
 ): TrendDayPoint[] {
   const today = new Date();
@@ -296,7 +296,7 @@ export function buildApplicationsTrend(
  * previous *forward* stage (pending → approved → hired). `rejected` is shown
  * for transparency but excluded from the conversion chain.
  */
-export function buildPipelineStages(applications: Application[]): PipelineStageItem[] {
+export function buildPipelineStages(applications: DashApplication[]): PipelineStageItem[] {
   const counts = new Map<LifecycleStage, number>();
   counts.set('pending', 0);
   counts.set('approved', 0);
@@ -341,11 +341,11 @@ const fromSnap = (snap: number | undefined, derived: number): number =>
 
 export function buildKpi(
   snap: DashboardSnapshot | null,
-  clients: Client[],
-  jobs: Job[],
-  candidates: Candidate[],
-  applications: Application[],
-  interviews: Interview[]
+  clients: DashClient[],
+  jobs: DashJob[],
+  candidates: DashCandidate[],
+  applications: DashApplication[],
+  interviews: DashInterview[]
 ): KpiSummary {
   const ov = snap?.overview ?? null;
   const openJobs = jobs.filter(j => j.status === 'open').length;

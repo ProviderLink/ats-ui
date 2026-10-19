@@ -16,7 +16,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Application } from '@/store';
+import type { DashApplication } from '@/store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 
 import { countByMonth } from '../_utils/month-buckets';
@@ -34,7 +34,7 @@ const RANGES = [
 
 type Range = (typeof RANGES)[number]['key'];
 
-function buildDailyData(applications: Application[], days: number) {
+function buildDailyData(applications: DashApplication[], days: number) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const buckets: { date: string; applied: number }[] = [];
@@ -59,7 +59,7 @@ function buildDailyData(applications: Application[], days: number) {
   return buckets;
 }
 
-function buildMonthlyData(applications: Application[], months: number) {
+function buildMonthlyData(applications: DashApplication[], months: number) {
   return countByMonth(
     applications.map(app => app.appliedAt),
     months

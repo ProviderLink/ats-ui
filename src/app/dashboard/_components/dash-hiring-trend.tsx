@@ -18,7 +18,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Application } from '@/store';
+import type { DashApplication } from '@/store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 
 import { countByMonth } from '../_utils/month-buckets';
@@ -29,7 +29,7 @@ const chartConfig = {
   hires: { label: 'Hires', color: HIRE_COLOR },
 } satisfies ChartConfig;
 
-function buildMonthlyData(applications: Application[], months: number) {
+function buildMonthlyData(applications: DashApplication[], months: number) {
   // Only trust the actual hire date; falling back to `updatedAt`/`appliedAt`
   // would plot the hire in the wrong month when `hiredAt` is missing.
   const hireDates = applications
