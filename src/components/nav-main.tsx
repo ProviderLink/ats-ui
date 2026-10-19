@@ -61,7 +61,8 @@ export function NavMain({
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-6">
-        <SidebarMenu>
+        {/* Dashed divider (test) between the quick actions and the nav list. */}
+        <SidebarMenu className="-mb-3 border-b border-dashed border-sidebar-foreground/30 pb-3">
           <SidebarMenuItem className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-1">
             <CollapsedTooltip label="Quick Import">
               <Button
