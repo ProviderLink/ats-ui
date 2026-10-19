@@ -4,10 +4,12 @@ import { useCandidateStore } from '../slices/candidates.store';
 import { useClientStore } from '../slices/clients.store';
 import { useEmailTemplateStore } from '../slices/email-templates.store';
 import { useEmailStore } from '../slices/emails.store';
+import { useInterviewScorecardStore } from '../slices/interview-scorecards.store';
 import { useInterviewStore } from '../slices/interviews.store';
 import { useJobStore } from '../slices/jobs.store';
 import { usePipelineTemplateStore } from '../slices/pipeline-templates.store';
 import { useTagStore } from '../slices/tags.store';
+import { useUserStore } from '../slices/users.store';
 import { socketManager } from './socket';
 
 socketManager.register('tag', {
@@ -60,5 +62,12 @@ socketManager.register('email_template', {
 });
 socketManager.register('email', {
   _patch: useEmailStore.getState()._patch,
+});
+socketManager.register('user', {
+  _patch: useUserStore.getState()._patch,
+  _remove: useUserStore.getState()._remove,
+});
+socketManager.register('interview_scorecard', {
+  _patch: useInterviewScorecardStore.getState()._patch,
 });
 socketManager.registerResync(resyncAllData);

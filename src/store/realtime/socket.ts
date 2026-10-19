@@ -10,7 +10,9 @@ import type {
   Job,
   PipelineTemplate,
   Tag,
+  User,
 } from '../types';
+import type { InterviewScorecard } from '../types/interview-scorecard.types';
 
 type ResourceType =
   | 'candidate'
@@ -21,7 +23,9 @@ type ResourceType =
   | 'tag'
   | 'pipeline_template'
   | 'email_template'
-  | 'email';
+  | 'email'
+  | 'user'
+  | 'interview_scorecard';
 
 type EventAction = 'created' | 'updated' | 'deleted';
 
@@ -63,6 +67,8 @@ type StoreDispatcher = {
     _remove: (id: string) => void;
   } | null;
   email: { _patch: (e: Email) => void } | null;
+  user: { _patch: (u: User) => void; _remove: (id: string) => void } | null;
+  interview_scorecard: { _patch: (s: InterviewScorecard) => void } | null;
 };
 
 type InvalidatorFn = () => void;
@@ -120,6 +126,11 @@ const EVENTS: SocketEventType[] = [
   'email_template:deleted',
   'email:created',
   'email:updated',
+  'user:created',
+  'user:updated',
+  'user:deleted',
+  'interview_scorecard:created',
+  'interview_scorecard:updated',
 ];
 
 class SocketManager {
@@ -142,6 +153,8 @@ class SocketManager {
     pipeline_template: null,
     email_template: null,
     email: null,
+    user: null,
+    interview_scorecard: null,
   };
 
   register<K extends keyof StoreDispatcher>(
@@ -403,6 +416,9 @@ class SocketManager {
         case 'email_template':
           this.dispatchers.email_template?._remove(id);
           break;
+        case 'user':
+          this.dispatchers.user?._remove(id);
+          break;
       }
       return;
     }
@@ -433,6 +449,14 @@ class SocketManager {
         break;
       case 'email_template':
         this.dispatchers.email_template?._patch(msg.data as EmailTemplate);
+        break;
+      case 'user':
+        this.dispatchers.user?._patch(msg.data as User);
+        break;
+      case 'interview_scorecard':
+        this.dispatchers.interview_scorecard?._patch(
+          msg.data as InterviewScorecard
+        );
         break;
       case 'email':
         this.dispatchers.email?._patch(msg.data as Email);
