@@ -180,6 +180,13 @@ export const useClientStore = create<ClientState & ClientActions>()(
           set(s => replaceClient(s, id, client));
         },
 
+        removeLogo: async id => {
+          const client = toClient(
+            await deleteJson<Client | { data: Client }>(`/ats/clients/${id}/logo`)
+          );
+          set(s => replaceClient(s, id, client));
+        },
+
         addContact: async (id, data) => {
           await mutate(
             async () =>

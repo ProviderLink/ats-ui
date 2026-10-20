@@ -32,6 +32,7 @@ export interface ClientActions {
   update: (id: string, data: UpdateClientDto) => Promise<void>;
   remove: (id: string) => Promise<void>;
   uploadLogo: (id: string, file: File) => Promise<void>;
+  removeLogo: (id: string) => Promise<void>;
   addContact: (id: string, data: CreateContactDto) => Promise<void>;
   updateContact: (
     id: string,

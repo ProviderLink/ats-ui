@@ -11,11 +11,13 @@ export function useSaveClient(
   client: Client | undefined,
   tagIds: string[],
   logoFile: File | null,
+  logoRemoved: boolean,
   onDone: () => void
 ) {
   const create = useClientStore(s => s.create);
   const update = useClientStore(s => s.update);
   const uploadLogo = useClientStore(s => s.uploadLogo);
+  const removeLogo = useClientStore(s => s.removeLogo);
   const addContact = useClientStore(s => s.addContact);
 
   return async function save(values: ClientFormValues) {
@@ -28,6 +30,9 @@ export function useSaveClient(
         if (logoFile) {
           await uploadLogo(client._id, logoFile);
           toast.success('Logo updated');
+        } else if (logoRemoved && client.logo) {
+          await removeLogo(client._id);
+          toast.success('Logo removed');
         }
         logOptimisticActivity(
           'client',

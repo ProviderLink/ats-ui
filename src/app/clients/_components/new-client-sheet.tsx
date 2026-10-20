@@ -61,6 +61,7 @@ export function NewClientSheet({
     client?.logo ?? null
   );
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [logoRemoved, setLogoRemoved] = useState(false);
 
   const {
     register,
@@ -80,10 +81,11 @@ export function NewClientSheet({
       setTagIds(getTagIds(client?.tags));
       setLogoPreview(client?.logo ?? null);
       setPendingLogoFile(null);
+      setLogoRemoved(false);
     }
   }, [open, client, reset]);
 
-  const save = useSaveClient(client, tagIds, pendingLogoFile, () =>
+  const save = useSaveClient(client, tagIds, pendingLogoFile, logoRemoved, () =>
     onOpenChange(false)
   );
 
@@ -112,10 +114,12 @@ export function NewClientSheet({
               onSelect={file => {
                 setLogoPreview(URL.createObjectURL(file));
                 setPendingLogoFile(file);
+                setLogoRemoved(false);
               }}
               onRemove={() => {
                 setLogoPreview(null);
                 setPendingLogoFile(null);
+                setLogoRemoved(true);
               }}
             />
 
