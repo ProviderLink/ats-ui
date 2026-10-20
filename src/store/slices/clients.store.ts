@@ -170,7 +170,7 @@ export const useClientStore = create<ClientState & ClientActions>()(
 
         uploadLogo: async (id, file) => {
           const fd = new FormData();
-          fd.append('file', file);
+          fd.append('logo', file);
           const client = toClient(
             await postForm<Client | { data: Client }>(
               `/ats/clients/${id}/logo`,
