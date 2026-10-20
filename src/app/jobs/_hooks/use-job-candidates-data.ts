@@ -1,6 +1,7 @@
 import { getJson } from '@/lib/api-client';
 import type { Application } from '@/store';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { isIneligibleRejection } from '../_utils/job-candidates';
 import { useCandidatesForApplications } from './use-candidates-for-applications';
 
 interface CacheEntry {
@@ -58,7 +59,17 @@ export function useJobCandidatesData(jobId: string) {
     };
   }, [jobId]);
 
-  const { candidates, resolving } = useCandidatesForApplications(applications);
+  const visibleApplications = useMemo(
+    () => applications.filter(a => !isIneligibleRejection(a)),
+    [applications]
+  );
+  const { candidates, resolving } =
+    useCandidatesForApplications(visibleApplications);
 
-  return { applications, candidates, loading: loading || resolving, error };
+  return {
+    applications: visibleApplications,
+    candidates,
+    loading: loading || resolving,
+    error,
+  };
 }

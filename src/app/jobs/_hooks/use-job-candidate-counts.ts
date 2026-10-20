@@ -2,6 +2,8 @@ import { getJson } from '@/lib/api-client';
 import type { Application } from '@/store';
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useBootStore } from '@/store/slices/boot.store';
+import { useCandidateStore } from '@/store/slices/candidates.store';
+import { isIneligibleRejection } from '../_utils/job-candidates';
 import { useEffect, useMemo, useState } from 'react';
 
 /**
@@ -50,12 +52,39 @@ export function useJobCandidateCounts(): Map<string, number> {
   }, [storeIsComplete]);
 
   const applications = storeIsComplete ? storeItems : fetched;
+  const candidates = useCandidateStore(s => s.items);
+  const candidateFilters = useCandidateStore(s => s.filters);
+  const candidatePagination = useCandidateStore(s => s.pagination);
+  const booted = useBootStore(s => s.isBooted);
+
+  // The default candidate list hides permanently ineligible candidates, so a
+  // rejected application whose candidate is missing from a complete list is
+  // one of theirs (covers rejections recorded before the destination was set).
+  const candidatesComplete =
+    booted &&
+    candidates.length > 0 &&
+    !candidateFilters.status &&
+    candidateFilters.inTalentPool === undefined &&
+    !candidateFilters.search &&
+    !candidateFilters.tags?.length &&
+    (!candidatePagination || candidates.length >= candidatePagination.total);
 
   return useMemo(() => {
+    const knownCandidates = candidatesComplete
+      ? new Set(candidates.map(c => c._id))
+      : null;
     const map = new Map<string, number>();
     for (const a of applications) {
+      // Pending applicants are still in review and not shown under the job.
+      if (a.phase === 'pending' || isIneligibleRejection(a)) continue;
+      if (
+        a.phase === 'rejected' &&
+        knownCandidates &&
+        !knownCandidates.has(a.candidateId)
+      )
+        continue;
       map.set(a.jobId, (map.get(a.jobId) ?? 0) + 1);
     }
     return map;
-  }, [applications]);
+  }, [applications, candidates, candidatesComplete]);
 }

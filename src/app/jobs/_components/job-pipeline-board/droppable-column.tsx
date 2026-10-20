@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Candidate } from '@/store';
 import { useDroppable } from '@dnd-kit/core';
@@ -10,6 +11,7 @@ interface DroppableColumnProps {
   stageName: string;
   stageColor: string;
   pairs: AppWithCandidate[];
+  loading?: boolean;
   onOpen: (c: Candidate) => void;
   onDelete: (pair: AppWithCandidate, e: React.MouseEvent) => void;
 }
@@ -19,6 +21,7 @@ export function DroppableColumn({
   stageName,
   stageColor,
   pairs,
+  loading = false,
   onOpen,
   onDelete,
 }: DroppableColumnProps) {
@@ -46,7 +49,7 @@ export function DroppableColumn({
           className="text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full shrink-0 min-w-5 text-center"
           style={{ backgroundColor: `${stageColor}25`, color: stageColor }}
         >
-          {pairs.length}
+          {loading ? <Skeleton className="h-3 w-3 rounded-full" /> : pairs.length}
         </span>
       </div>
       <div
@@ -64,7 +67,16 @@ export function DroppableColumn({
             : 'border-border/50 bg-muted/10'
         )}
       >
-        {pairs.length === 0 ? (
+        {loading && pairs.length === 0 ? (
+          <div
+            className="space-y-2"
+            role="status"
+            aria-label="Loading candidates"
+          >
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : pairs.length === 0 ? (
           <div className="flex items-center justify-center h-full min-h-20 text-[11px] text-muted-foreground/50 select-none">
             Drop here
           </div>

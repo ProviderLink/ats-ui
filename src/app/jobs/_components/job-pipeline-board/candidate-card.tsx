@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Candidate } from '@/store';
 import { BanIcon } from 'lucide-react';
@@ -39,7 +40,8 @@ export function CandidateCard({
       onClick={onClick}
       className={cn(
         'group relative rounded-lg border bg-background p-3 w-full text-foreground',
-        onClick && 'cursor-pointer hover:bg-muted/70 transition-colors'
+        onClick &&
+          'cursor-pointer transition-colors hover:border-dashed hover:border-chart-3'
       )}
     >
       <div className="flex items-start gap-2">
@@ -70,18 +72,21 @@ export function CandidateCard({
             {[yearsExp, salaryUsd].filter(Boolean).join(' · ')}
           </span>
           {onDelete && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               title="Reject from this job"
               aria-label="Reject this candidate from the job"
-              className="shrink-0 inline-flex items-center justify-center size-7 rounded-md border border-red-200 bg-red-50 text-red-500 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400 hover:bg-red-100 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/40 dark:hover:text-red-300 focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+              className="shrink-0 border-destructive/25 bg-destructive/5 text-destructive/80 shadow-none hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:hover:bg-destructive/20"
               onClick={e => {
                 e.stopPropagation();
                 onDelete(e);
               }}
             >
-              <BanIcon className="size-3.5" />
-            </button>
+              <BanIcon />
+              Reject
+            </Button>
           )}
         </div>
       )}

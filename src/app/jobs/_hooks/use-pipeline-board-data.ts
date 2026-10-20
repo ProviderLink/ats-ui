@@ -1,6 +1,7 @@
 import { getJson } from '@/lib/api-client';
 import type { Application } from '@/store';
 import { useEffect, useMemo, useState } from 'react';
+import { isIneligibleRejection } from '../_utils/job-candidates';
 import { useCandidatesForApplications } from './use-candidates-for-applications';
 
 interface CacheEntry {
@@ -21,6 +22,7 @@ export function usePipelineBoardData(jobId: string) {
   const [applications, setApplications] = useState<Application[]>(
     cacheFresh ? cached.applications : []
   );
+  const [loading, setLoading] = useState(!cacheFresh);
 
   useEffect(() => {
     let alive = true;
@@ -38,9 +40,12 @@ export function usePipelineBoardData(jobId: string) {
         cache.set(jobId, { applications: apps, fetchedAt: Date.now() });
 
         setApplications(apps);
+        setLoading(false);
       })
       .catch((err: unknown) => {
-        if (!alive || cacheFresh) return;
+        if (!alive) return;
+        setLoading(false);
+        if (cacheFresh) return;
         // With no cache the board renders empty columns and the user gets no
         // other signal.
         console.error('[PipelineBoard] fetch failed:', err);
@@ -52,10 +57,10 @@ export function usePipelineBoardData(jobId: string) {
   }, [jobId]);
 
   const jobApplications = useMemo(
-    () => applications.filter(a => a.jobId === jobId),
+    () => applications.filter(a => a.jobId === jobId && !isIneligibleRejection(a)),
     [applications, jobId]
   );
-  const { candidates } = useCandidatesForApplications(jobApplications);
+  const { candidates, resolving } = useCandidatesForApplications(jobApplications);
 
-  return { applications, candidates };
+  return { applications, candidates, loading: loading || resolving };
 }

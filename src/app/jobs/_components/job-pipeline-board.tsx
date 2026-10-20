@@ -3,6 +3,7 @@ import type { Job } from '@/store';
 import { DndContext, DragOverlay, rectIntersection } from '@dnd-kit/core';
 import { useNavigate } from 'react-router-dom';
 import { useBoardReject } from '../_hooks/use-board-reject';
+import { isIneligibleRejection } from '../_utils/job-candidates';
 import { usePipelineBoardData } from '../_hooks/use-pipeline-board-data';
 import { usePipelineBoardDnd } from '../_hooks/use-pipeline-board-dnd';
 import {
@@ -19,9 +20,11 @@ interface JobPipelineBoardProps {
 
 export function JobPipelineBoard({ job }: JobPipelineBoardProps) {
   const navigate = useNavigate();
-  const { applications, candidates } = usePipelineBoardData(job._id);
+  const { applications, candidates, loading } = usePipelineBoardData(job._id);
 
-  const jobApplications = applications.filter(a => a.jobId === job._id);
+  const jobApplications = applications.filter(
+    a => a.jobId === job._id && !isIneligibleRejection(a)
+  );
   const pairs = pairWithCandidates(
     jobApplications.filter(a => a.phase === 'approved'),
     candidates
@@ -65,6 +68,7 @@ export function JobPipelineBoard({ job }: JobPipelineBoardProps) {
               stageId={stage._id}
               stageName={stage.name}
               stageColor={stage.color}
+              loading={loading}
               pairs={pairs.filter(
                 p => (dnd.stageMap[p.application._id] ?? '') === stage._id
               )}

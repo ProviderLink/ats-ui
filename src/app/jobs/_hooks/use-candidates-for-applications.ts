@@ -19,7 +19,12 @@ export function useCandidatesForApplications(applications: Application[]): {
   const missing = useMemo(() => {
     if (applications.length === 0) return false;
     const known = new Set(storeItems.map(c => c._id));
-    return applications.some(a => !known.has(a.candidateId));
+    // A rejected application whose candidate is absent belongs to someone the
+    // default list hides (permanently ineligible); a full download cannot
+    // find them either, so it is not a reason to fetch.
+    return applications.some(
+      a => a.phase !== 'rejected' && !known.has(a.candidateId)
+    );
   }, [applications, storeItems]);
 
   useEffect(() => {

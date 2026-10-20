@@ -27,6 +27,18 @@ const PHASE_ORDER: Record<ApplicationPhase, number> = {
   rejected: 3,
 };
 
+/**
+ * A rejection that sent the candidate to the permanently-ineligible list. The
+ * candidate leaves the job entirely, so these are neither listed nor counted.
+ * Normal rejections stay visible under the Rejected chip.
+ */
+export function isIneligibleRejection(application: Application): boolean {
+  return (
+    application.phase === 'rejected' &&
+    application.dispositionDestination === 'permanently_ineligible'
+  );
+}
+
 // Deliberately not filtered by `job.status`: candidates stay assigned to a job
 // while it is on hold or closed, and every one of them should be listed.
 export function pairWithCandidates(
