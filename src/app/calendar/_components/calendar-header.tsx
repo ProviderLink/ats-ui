@@ -1,5 +1,11 @@
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -11,9 +17,12 @@ import { INTERVIEW_STATUS_LABELS } from '@/lib/interview-styles';
 import type { InterviewStatus } from '@/store/types';
 import {
   ChevronLeftIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
   FilterIcon,
   PlusIcon,
+  UserRoundIcon,
+  UserSearchIcon,
 } from 'lucide-react';
 import { getWeekStart } from '../_utils/calendar-helpers';
 
@@ -64,6 +73,7 @@ interface CalendarHeaderProps {
   onViewChange: (view: CalendarView) => void;
   onStatusFilterChange: (status: InterviewStatus | 'all') => void;
   onNewEvent: () => void;
+  onNewExternalEvent: () => void;
 }
 
 export function CalendarHeader({
@@ -76,6 +86,7 @@ export function CalendarHeader({
   onViewChange,
   onStatusFilterChange,
   onNewEvent,
+  onNewExternalEvent,
 }: CalendarHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-3 shrink-0 flex-wrap">
@@ -142,10 +153,41 @@ export function CalendarHeader({
           ))}
         </ToggleGroup>
 
-        <Button size="sm" onClick={onNewEvent}>
-          <PlusIcon className="size-4" />
-          New Event
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm">
+              <PlusIcon className="size-4" />
+              New Event
+              <ChevronDownIcon className="size-3.5 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuItem
+              onSelect={onNewEvent}
+              className="items-start gap-2.5 py-2"
+            >
+              <UserSearchIcon className="size-4 mt-0.5 shrink-0" />
+              <div className="flex flex-col">
+                <span className="font-medium">Interview</span>
+                <span className="text-xs text-muted-foreground">
+                  For a candidate already in the ATS
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={onNewExternalEvent}
+              className="items-start gap-2.5 py-2"
+            >
+              <UserRoundIcon className="size-4 mt-0.5 shrink-0 text-teal-600" />
+              <div className="flex flex-col">
+                <span className="font-medium">External meeting</span>
+                <span className="text-xs text-muted-foreground">
+                  For someone who isn&apos;t in the ATS
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

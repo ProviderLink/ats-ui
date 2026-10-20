@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { Interview } from '@/store/types';
+import type { CalendarEvent } from '@/store/types';
 import {
   getEventsOnDate,
   getWeekStart,
@@ -10,8 +10,8 @@ import { EventCard } from './event-card';
 
 interface WeekViewProps {
   currentDate: Date;
-  events: Interview[];
-  onEventClick: (event: Interview) => void;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
 }
 
 export function WeekView({ currentDate, events, onEventClick }: WeekViewProps) {

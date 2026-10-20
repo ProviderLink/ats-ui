@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/slices/users.store';
-import type { Interview } from '@/store/types';
+import type { CalendarEvent } from '@/store/types';
 import { CalendarIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -13,8 +13,8 @@ import { AgendaEventCard } from './agenda-event-card';
 
 interface AgendaViewProps {
   currentDate: Date;
-  events: Interview[];
-  onEventClick: (event: Interview) => void;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
 }
 
 export function AgendaView({
@@ -38,7 +38,7 @@ export function AgendaView({
   const startISO = toISO(new Date(year, month, 1));
   const endISO = toISO(new Date(year, month + 1, 0));
 
-  const grouped = new Map<string, Interview[]>();
+  const grouped = new Map<string, CalendarEvent[]>();
   for (const e of events) {
     const d = getInterviewDate(e.scheduledAt, e.timezone);
     if (d < startISO || d > endISO) continue;

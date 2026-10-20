@@ -4,7 +4,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { Interview } from '@/store/types';
+import type { CalendarEvent } from '@/store/types';
 import {
   getEventsOnDate,
   toISO,
@@ -18,8 +18,8 @@ function getDaysInMonth(year: number, month: number) {
 
 interface MonthViewProps {
   currentDate: Date;
-  events: Interview[];
-  onEventClick: (event: Interview) => void;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
 }
 
 export function MonthView({

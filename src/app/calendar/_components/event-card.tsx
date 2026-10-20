@@ -1,15 +1,24 @@
 import { INTERVIEW_TYPE_STYLES } from '@/lib/interview-styles';
 import { cn } from '@/lib/utils';
-import type { Interview } from '@/store/types';
-import { getInterviewStartTime } from '../_utils/calendar-helpers';
+import type { CalendarEvent } from '@/store/types';
+import {
+  getInterviewStartTime,
+  isExternalMeeting,
+} from '../_utils/calendar-helpers';
+import { ExternalEventCard } from './external-event-card';
 
 interface EventCardProps {
-  event: Interview;
-  onClick: (event: Interview) => void;
+  event: CalendarEvent;
+  onClick: (event: CalendarEvent) => void;
   compact?: boolean;
 }
 
 export function EventCard({ event, onClick, compact }: EventCardProps) {
+  if (isExternalMeeting(event)) {
+    return (
+      <ExternalEventCard event={event} onClick={onClick} compact={compact} />
+    );
+  }
   const startTime = getInterviewStartTime(event.scheduledAt, event.timezone);
   return (
     <button

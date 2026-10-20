@@ -5,6 +5,7 @@ import { EMAIL_STATUS_STYLES } from '@/lib/status-styles';
 import { cn, formatDate } from '@/lib/utils';
 import type { Email } from '@/store/types';
 import { MailIcon, PaperclipIcon, RefreshCwIcon, ReplyIcon } from 'lucide-react';
+import { isExternalEmail } from '../../_utils/is-external-email';
 import { DirectionIcon } from '../direction-icon';
 import { MessageAttachment } from './message-attachment';
 import { MessageContextChip } from './message-context-chip';
@@ -28,7 +29,13 @@ export function EmailMessage({
   const attachments = email.attachments ?? [];
 
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+    <article
+      className={cn(
+        'flex flex-col gap-3 rounded-lg border border-border bg-card p-4',
+        isExternalEmail(email) &&
+          'border-dashed border-teal-500/40 bg-teal-500/5'
+      )}
+    >
       <header className="flex items-start gap-3">
         <DirectionIcon direction={email.direction} />
         <div className="min-w-0 flex-1">

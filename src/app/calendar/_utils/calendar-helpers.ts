@@ -4,7 +4,7 @@ import {
   getZonedTime,
   isValidTimezone,
 } from '@/lib/timezones';
-import type { Interview } from '@/store/types';
+import type { CalendarEvent, ExternalMeeting } from '@/store/types';
 
 export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -88,7 +88,11 @@ export function formatDateLabel(dateStr: string): {
   return { primary: weekday, secondary: monthDay };
 }
 
-export function getMeetingLocation(interview: Interview): string | null {
+export function isExternalMeeting(e: CalendarEvent): e is ExternalMeeting {
+  return 'kind' in e && e.kind === 'external';
+}
+
+export function getMeetingLocation(interview: CalendarEvent): string | null {
   const m = interview.meetingDetails;
   if (!m) return null;
   if (m.link) return m.link;
@@ -97,7 +101,7 @@ export function getMeetingLocation(interview: Interview): string | null {
   return null;
 }
 
-export function sortByStartTime(events: Interview[]): Interview[] {
+export function sortByStartTime<T extends CalendarEvent>(events: T[]): T[] {
   return [...events].sort((a, b) =>
     getInterviewStartTime(a.scheduledAt, a.timezone).localeCompare(
       getInterviewStartTime(b.scheduledAt, b.timezone)
@@ -105,7 +109,7 @@ export function sortByStartTime(events: Interview[]): Interview[] {
   );
 }
 
-export function getEventsOnDate(events: Interview[], isoDate: string) {
+export function getEventsOnDate(events: CalendarEvent[], isoDate: string) {
   return sortByStartTime(
     events.filter(e => getInterviewDate(e.scheduledAt, e.timezone) === isoDate)
   );

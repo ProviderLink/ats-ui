@@ -24,6 +24,7 @@ import { useClientStore } from '@/store/slices/clients.store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
 import { useEmailTemplateStore } from '@/store/slices/email-templates.store';
 import { useEmailStore } from '@/store/slices/emails.store';
+import { useExternalMeetingStore } from '@/store/slices/external-meetings.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
 import { usePipelineTemplateStore } from '@/store/slices/pipeline-templates.store';
@@ -86,6 +87,7 @@ export function resetSessionScopedStores(): void {
   useEmailTemplateStore.getState().reset();
   useEmailStore.getState().reset();
   useInterviewStore.getState().reset();
+  useExternalMeetingStore.getState().reset();
   useJobStore.getState().reset();
   usePipelineTemplateStore.getState().reset();
   useSettingsStore.getState().reset();

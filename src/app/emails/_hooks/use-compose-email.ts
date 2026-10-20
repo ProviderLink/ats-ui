@@ -134,7 +134,12 @@ export function useComposeEmail(
       // The selector hands back the exact template id; resolving by type would
       // log every email of a type against the first matching template.
       templateId: templateId || undefined,
-      context: prefill?.context,
+      // A reply to an external contact stays tagged so the thread keeps its colour.
+      context:
+        prefill?.context ??
+        (replyEmail?.context?.type === 'external_meeting'
+          ? { type: 'external_meeting' }
+          : undefined),
       variables: prefill?.variables,
       inReplyTo: replyEmail?._id,
       threadId: replyEmail?.threadId ?? forwardEmail?.threadId,

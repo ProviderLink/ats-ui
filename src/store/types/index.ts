@@ -7,6 +7,7 @@ export * from './dashboard.types';
 export * from './email-template.types';
 export * from './email.types';
 export * from './enums';
+export * from './external-meeting.types';
 export * from './interview.types';
 export * from './job.types';
 export * from './pipeline-template.types';

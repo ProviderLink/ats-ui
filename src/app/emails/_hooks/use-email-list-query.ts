@@ -84,6 +84,17 @@ export function useEmailListQuery() {
     void refreshCounts();
   }, [refreshCounts]);
 
+  // New mail arrives live and every list fetch returns a fresh total, but the
+  // tab counts were only fetched on mount and after the user's own actions, so
+  // they drifted from the "N emails" line. Re-read them whenever the list's
+  // total or its newest email changes.
+  const listTotal = useEmailStore(s => s.pagination?.total);
+  const newestId = useEmailStore(s => s.items[0]?._id);
+  useEffect(() => {
+    const timer = setTimeout(() => void refreshCounts(), 400);
+    return () => clearTimeout(timer);
+  }, [listTotal, newestId, refreshCounts]);
+
   useEffect(() => {
     if (prevMutating.current && !mutating) {
       void refreshCounts();

@@ -5,18 +5,20 @@ import {
   INTERVIEW_TYPE_LABELS,
 } from '@/lib/interview-styles';
 import { cn } from '@/lib/utils';
-import type { Interview } from '@/store/types';
+import type { CalendarEvent } from '@/store/types';
 import { UsersIcon, VideoIcon } from 'lucide-react';
 import {
   getInterviewEndTime,
   getInterviewStartTime,
   getMeetingLocation,
+  isExternalMeeting,
 } from '../_utils/calendar-helpers';
+import { ExternalAgendaCard } from './external-agenda-card';
 
 interface AgendaEventCardProps {
-  event: Interview;
+  event: CalendarEvent;
   interviewerNames: Record<string, string>;
-  onClick: (event: Interview) => void;
+  onClick: (event: CalendarEvent) => void;
 }
 
 export function AgendaEventCard({
@@ -24,6 +26,9 @@ export function AgendaEventCard({
   interviewerNames,
   onClick,
 }: AgendaEventCardProps) {
+  if (isExternalMeeting(event)) {
+    return <ExternalAgendaCard event={event} onClick={onClick} />;
+  }
   const startTime = getInterviewStartTime(event.scheduledAt, event.timezone);
   const endTime = getInterviewEndTime(
     event.scheduledAt,

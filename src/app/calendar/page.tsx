@@ -1,21 +1,28 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSocketRoom } from '@/hooks/use-socket-room';
+import { useExternalMeetingStore } from '@/store/slices/external-meetings.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import type {
+  CalendarEvent,
+  ExternalMeeting,
   Interview,
   InterviewFilters,
   InterviewStatus,
 } from '@/store/types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AgendaView } from './_components/agenda-view';
 import {
   CalendarHeader,
   type CalendarView,
 } from './_components/calendar-header';
 import { EventSheet } from './_components/event-sheet';
+import {
+  ExternalMeetingLayer,
+  type ExternalDialogState,
+} from './_components/external-meeting-layer';
 import { MonthView } from './_components/month-view';
 import { WeekView } from './_components/week-view';
-import { toISO } from './_utils/calendar-helpers';
+import { isExternalMeeting, toISO } from './_utils/calendar-helpers';
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -27,9 +34,26 @@ export default function CalendarPage() {
     'all'
   );
 
+  const [selectedExternal, setSelectedExternal] =
+    useState<ExternalMeeting | null>(null);
+  const [externalDialog, setExternalDialog] =
+    useState<ExternalDialogState>(null);
+
   const interviews = useInterviewStore(s => s.items);
   const loading = useInterviewStore(s => s.loading);
   const fetchInterviews = useInterviewStore(s => s.fetch);
+  const externalMeetings = useExternalMeetingStore(s => s.items);
+  const fetchExternal = useExternalMeetingStore(s => s.fetch);
+
+  // Interviews and external meetings share the calendar grid. External meetings
+  // have no "no show" state, so that filter shows interviews only.
+  const events = useMemo<CalendarEvent[]>(
+    () => [
+      ...interviews,
+      ...(statusFilter === 'no_show' ? [] : externalMeetings),
+    ],
+    [interviews, externalMeetings, statusFilter]
+  );
 
   useSocketRoom('interviews');
 
@@ -37,7 +61,12 @@ export default function CalendarPage() {
     const params: InterviewFilters = { limit: 200 };
     if (statusFilter !== 'all') params.status = statusFilter;
     fetchInterviews(params);
-  }, [fetchInterviews, statusFilter]);
+    fetchExternal(
+      statusFilter === 'all' || statusFilter === 'no_show'
+        ? undefined
+        : { status: statusFilter }
+    );
+  }, [fetchInterviews, fetchExternal, statusFilter]);
 
   useEffect(() => {
     loadInterviews();
@@ -52,8 +81,12 @@ export default function CalendarPage() {
     });
   }
 
-  function openEventDetail(event: Interview) {
-    setSelectedEvent(event);
+  function openEventDetail(event: CalendarEvent) {
+    if (isExternalMeeting(event)) {
+      setSelectedExternal(event);
+      return;
+    }
+    setSelectedEvent(event as Interview);
     setNewEventDate(undefined);
     setSheetOpen(true);
   }
@@ -76,10 +109,13 @@ export default function CalendarPage() {
         onViewChange={setView}
         onStatusFilterChange={setStatusFilter}
         onNewEvent={() => openCreateEvent()}
+        onNewExternalEvent={() =>
+          setExternalDialog({ mode: 'create', date: toISO(new Date()) })
+        }
       />
 
       <div className="flex flex-col flex-1 rounded-xl ring-1 ring-foreground/10 bg-card shadow-xs overflow-hidden min-h-0">
-        {loading && interviews.length === 0 ? (
+        {loading && events.length === 0 ? (
           <div className="flex flex-col flex-1 p-4 gap-3">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-full w-full" />
@@ -87,19 +123,19 @@ export default function CalendarPage() {
         ) : view === 'month' ? (
           <MonthView
             currentDate={currentDate}
-            events={interviews}
+            events={events}
             onEventClick={openEventDetail}
           />
         ) : view === 'week' ? (
           <WeekView
             currentDate={currentDate}
-            events={interviews}
+            events={events}
             onEventClick={openEventDetail}
           />
         ) : (
           <AgendaView
             currentDate={currentDate}
-            events={interviews}
+            events={events}
             onEventClick={openEventDetail}
           />
         )}
@@ -110,6 +146,14 @@ export default function CalendarPage() {
         onOpenChange={setSheetOpen}
         event={selectedEvent}
         defaultDate={newEventDate}
+        onMutate={loadInterviews}
+      />
+
+      <ExternalMeetingLayer
+        selected={selectedExternal}
+        onSelectedChange={setSelectedExternal}
+        dialog={externalDialog}
+        onDialogChange={setExternalDialog}
         onMutate={loadInterviews}
       />
     </div>

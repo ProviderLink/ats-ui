@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import type { Email } from '@/store/types';
 import { Trash2Icon } from 'lucide-react';
 import { formatShortDate } from '../../_utils/format-short-date';
+import { isExternalEmail } from '../../_utils/is-external-email';
 import { DirectionIcon } from '../direction-icon';
 import { EmailContextChip } from './email-context-chip';
 import { SenderAvatar } from './sender-avatar';
@@ -30,7 +31,13 @@ export function EmailItem({
   const snippet = (email.bodyText ?? '').replace(/\n+/g, ' ').slice(0, 100);
 
   return (
-    <div className="flex w-full items-start gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/60 active:bg-muted">
+    <div
+      className={cn(
+        'flex w-full items-start gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/60 active:bg-muted',
+        isExternalEmail(email) &&
+          'border-l-2 border-dashed border-teal-500/50 bg-teal-500/5'
+      )}
+    >
       <Checkbox
         checked={selected}
         onCheckedChange={() => onToggle()}

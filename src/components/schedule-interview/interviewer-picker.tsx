@@ -7,6 +7,8 @@ interface InterviewerPickerProps {
   selectedIds: string[];
   currentUserId?: string;
   onChange: (ids: string[]) => void;
+  /** Heading for the group; defaults to "Interviewers". */
+  label?: string;
 }
 
 export function InterviewerPicker({
@@ -14,6 +16,7 @@ export function InterviewerPicker({
   selectedIds,
   currentUserId,
   onChange,
+  label = 'Interviewers',
 }: InterviewerPickerProps) {
   const toggle = (id: string) =>
     onChange(
@@ -25,7 +28,7 @@ export function InterviewerPicker({
   return (
     <div className="flex flex-col gap-1.5">
       <Label>
-        Interviewers
+        {label}
         <span className="text-muted-foreground font-normal">
           {' '}
           (optional — you are included by default)
