@@ -3,7 +3,7 @@ import { jobStatusLabel, locationTypeLabel } from '@/lib/job-format';
 import { JOB_STATUS_VARIANT } from '@/lib/status-styles';
 import { cn } from '@/lib/utils';
 import type { Job } from '@/store';
-import { UserIcon } from 'lucide-react';
+import { BuildingIcon, UserIcon } from 'lucide-react';
 
 interface JobListItemProps {
   job: Job;
@@ -36,19 +36,23 @@ export function JobListItem({
           {jobStatusLabel[job.status]}
         </Badge>
       </div>
-      <p
-        className={cn(
-          'mt-0.5 text-sm transition-colors',
-          selected
-            ? 'text-foreground/70'
-            : 'text-muted-foreground group-hover:text-foreground/70'
-        )}
-      >
-        {clientName ?? '—'}
-      </p>
+      {clientName && (
+        <p
+          title={clientName}
+          className={cn(
+            'mt-0.5 flex items-center gap-1 text-xs transition-colors',
+            selected
+              ? 'text-foreground/60'
+              : 'text-muted-foreground/80 group-hover:text-foreground/60'
+          )}
+        >
+          <BuildingIcon className="size-3 shrink-0" aria-hidden />
+          <span className="truncate">{clientName}</span>
+        </p>
+      )}
       <div
         className={cn(
-          'mt-1 flex items-center gap-2 text-xs transition-colors',
+          'mt-1.5 flex items-center gap-2 text-xs transition-colors',
           selected
             ? 'text-foreground/55'
             : 'text-muted-foreground group-hover:text-foreground/55'
