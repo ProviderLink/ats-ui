@@ -1,10 +1,10 @@
 import { getJson } from '@/lib/api-client';
-import type { Application, Candidate } from '@/store';
-import { useEffect, useState } from 'react';
+import type { Application } from '@/store';
+import { useEffect, useMemo, useState } from 'react';
+import { useCandidatesForApplications } from './use-candidates-for-applications';
 
 interface CacheEntry {
   applications: Application[];
-  candidates: Candidate[];
   fetchedAt: number;
 }
 
@@ -21,39 +21,23 @@ export function usePipelineBoardData(jobId: string) {
   const [applications, setApplications] = useState<Application[]>(
     cacheFresh ? cached.applications : []
   );
-  const [candidates, setCandidates] = useState<Candidate[]>(
-    cacheFresh ? cached.candidates : []
-  );
 
   useEffect(() => {
     let alive = true;
 
-    Promise.all([
-      // All jobs' applications, filtered locally: the board must know whether a
-      // candidate still holds another live application, so rejecting here
-      // doesn't silently affect that job.
-      getJson<Application[] | { data: Application[] }>('/ats/applications', {
-        limit: 9999,
-      } as Record<string, unknown>),
-      getJson<Candidate[] | { data: Candidate[] }>('/ats/candidates', {
-        limit: 9999,
-      }),
-    ])
-      .then(([appsRes, candsRes]) => {
+    // All jobs' applications, filtered locally: the board must know whether a
+    // candidate still holds another live application, so rejecting here
+    // doesn't silently affect that job.
+    getJson<Application[] | { data: Application[] }>('/ats/applications', {
+      limit: 9999,
+    } as Record<string, unknown>)
+      .then(appsRes => {
         if (!alive) return;
         const apps = Array.isArray(appsRes) ? appsRes : (appsRes.data ?? []);
-        const cands = Array.isArray(candsRes)
-          ? candsRes
-          : (candsRes.data ?? []);
 
-        cache.set(jobId, {
-          applications: apps,
-          candidates: cands,
-          fetchedAt: Date.now(),
-        });
+        cache.set(jobId, { applications: apps, fetchedAt: Date.now() });
 
         setApplications(apps);
-        setCandidates(cands);
       })
       .catch((err: unknown) => {
         if (!alive || cacheFresh) return;
@@ -66,6 +50,12 @@ export function usePipelineBoardData(jobId: string) {
       alive = false;
     };
   }, [jobId]);
+
+  const jobApplications = useMemo(
+    () => applications.filter(a => a.jobId === jobId),
+    [applications, jobId]
+  );
+  const { candidates } = useCandidatesForApplications(jobApplications);
 
   return { applications, candidates };
 }

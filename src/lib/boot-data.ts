@@ -8,6 +8,7 @@ import { useApplicationStore } from '@/store/slices/applications.store';
 import { useBootStore } from '@/store/slices/boot.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
+import { useDashboardStore } from '@/store/slices/dashboard.store';
 import { useEmailTemplateStore } from '@/store/slices/email-templates.store';
 import { useEmailStore } from '@/store/slices/emails.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
@@ -74,20 +75,43 @@ export async function bootAllData(): Promise<void> {
   b.setBooting();
 
   const run = (async () => {
+    const timings: { request: string; ms: number }[] = [];
+    const started = performance.now();
+    const timed = (request: string, p: Promise<unknown>) =>
+      p.finally(() =>
+        timings.push({ request, ms: Math.round(performance.now() - started) })
+      );
+
+    // The inbox only feeds the unread badge and the Emails page, which update
+    // reactively, so it loads in the background instead of holding the loader.
+    // Ineligible candidates are loaded by their own page on demand.
+    void useEmailStore.getState().fetch({ limit: 50, page: 1 });
+
+    // The dashboard reads its own slim endpoint, not the lists below, so start
+    // it now instead of after the loader goes away.
+    if (window.location.pathname.startsWith('/ats/dashboard')) {
+      void useDashboardStore.getState().fetch();
+    }
+
     const r = await Promise.allSettled([
-      useClientStore.getState().fetch({ limit: 9999 }),
-      useJobStore.getState().fetch({ limit: 9999 }),
-      useCandidateStore.getState().fetch({ limit: 9999 }),
-      useCandidateStore.getState().fetchIneligible(),
-      useApplicationStore.getState().fetch({ limit: 9999 }),
-      useInterviewStore.getState().fetch({ limit: 9999 }),
-      useTagStore.getState().fetch(),
-      useUserStore.getState().fetch({ limit: 9999 }),
-      useSettingsStore.getState().fetch(),
-      useEmailTemplateStore.getState().fetch(),
-      usePipelineTemplateStore.getState().fetch(),
-      useEmailStore.getState().fetch({ limit: 50, page: 1 }),
+      timed('clients', useClientStore.getState().fetch({ limit: 9999 })),
+      timed('jobs', useJobStore.getState().fetch({ limit: 9999 })),
+      timed('candidates', useCandidateStore.getState().fetch({ limit: 9999 })),
+      timed(
+        'applications',
+        useApplicationStore.getState().fetch({ limit: 9999 })
+      ),
+      timed('interviews', useInterviewStore.getState().fetch({ limit: 9999 })),
+      timed('tags', useTagStore.getState().fetch()),
+      timed('users', useUserStore.getState().fetch({ limit: 9999 })),
+      timed('settings', useSettingsStore.getState().fetch()),
+      timed('email-templates', useEmailTemplateStore.getState().fetch()),
+      timed('pipeline-templates', usePipelineTemplateStore.getState().fetch()),
     ]);
+
+    if (import.meta.env.DEV) {
+      console.table(timings.sort((a, b) => b.ms - a.ms));
+    }
 
     const failed = r.filter(x => x.status === 'rejected');
     if (failed.length) {

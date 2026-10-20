@@ -1,10 +1,10 @@
 import { getJson } from '@/lib/api-client';
-import type { Application, Candidate } from '@/store';
+import type { Application } from '@/store';
 import { useEffect, useState } from 'react';
+import { useCandidatesForApplications } from './use-candidates-for-applications';
 
 interface CacheEntry {
   applications: Application[];
-  candidates: Candidate[];
   fetchedAt: number;
 }
 
@@ -21,9 +21,6 @@ export function useJobCandidatesData(jobId: string) {
   const [applications, setApplications] = useState<Application[]>(
     cacheFresh ? cached.applications : []
   );
-  const [candidates, setCandidates] = useState<Candidate[]>(
-    cacheFresh ? cached.candidates : []
-  );
   const [loading, setLoading] = useState(!cacheFresh);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,30 +33,17 @@ export function useJobCandidatesData(jobId: string) {
       setError(null);
     }
 
-    Promise.all([
-      getJson<Application[] | { data: Application[] }>('/ats/applications', {
-        jobId,
-        limit: 9999,
-      } as Record<string, unknown>),
-      getJson<Candidate[] | { data: Candidate[] }>('/ats/candidates', {
-        limit: 9999,
-      }),
-    ])
-      .then(([appsRes, candsRes]) => {
+    getJson<Application[] | { data: Application[] }>('/ats/applications', {
+      jobId,
+      limit: 9999,
+    } as Record<string, unknown>)
+      .then(appsRes => {
         if (!alive) return;
         const apps = Array.isArray(appsRes) ? appsRes : (appsRes.data ?? []);
-        const cands = Array.isArray(candsRes)
-          ? candsRes
-          : (candsRes.data ?? []);
 
-        cache.set(jobId, {
-          applications: apps,
-          candidates: cands,
-          fetchedAt: Date.now(),
-        });
+        cache.set(jobId, { applications: apps, fetchedAt: Date.now() });
 
         setApplications(apps);
-        setCandidates(cands);
         setLoading(false);
       })
       .catch((e: unknown) => {
@@ -74,5 +58,7 @@ export function useJobCandidatesData(jobId: string) {
     };
   }, [jobId]);
 
-  return { applications, candidates, loading, error };
+  const { candidates, resolving } = useCandidatesForApplications(applications);
+
+  return { applications, candidates, loading: loading || resolving, error };
 }
