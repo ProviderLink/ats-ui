@@ -1,10 +1,12 @@
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 interface ScorecardFieldProps {
   label: string;
   error?: string;
   hint?: string;
   required?: boolean;
+  className?: string;
   children: React.ReactNode;
 }
 
@@ -13,10 +15,11 @@ export function ScorecardField({
   error,
   hint,
   required,
+  className,
   children,
 }: ScorecardFieldProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn('flex flex-col gap-1.5', className)}>
       <Label>
         {label}
         {required && <span className="text-destructive"> *</span>}

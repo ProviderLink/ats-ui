@@ -78,6 +78,8 @@ export interface InterviewScorecard {
   _id: string;
   candidateId: string;
   jobId: string;
+  /** Calendar interview this scorecard covers; absent/null when not linked. */
+  interviewId?: string | null;
   interviewerId: string;
 
   interviewDate: string; // ISO
@@ -90,6 +92,9 @@ export interface InterviewScorecard {
   // Category 2
   experienceSelections: ExperienceSelection[];
   experienceRating: number;
+  /** Free-form tags; absent on scorecards saved before they existed. */
+  emrTags?: string[];
+  specialtyTags?: string[];
   // Category 3
   profPreparedOnTime: boolean;
   profAppearanceDemeanor: boolean;
@@ -103,12 +108,21 @@ export interface InterviewScorecard {
   techBackupInternet: boolean;
   techBackupGenerator: boolean;
   technologyRating: number;
+  /** Free-text internet speed; empty on scorecards saved before it existed. */
+  techInternetSpeedValue?: string;
   // Category 5
   availUsHours: boolean;
   availCompensationAcceptable: boolean;
   availStartAvailability: boolean;
   availOverallFit: boolean;
   availabilityRating: number;
+
+  // Per-category notes (absent on scorecards saved before they existed)
+  commNotes?: string;
+  experienceNotes?: string;
+  professionalismNotes?: string;
+  technologyNotes?: string;
+  availabilityNotes?: string;
 
   // Server-computed weighted scores (read-only on the client; server is source of truth)
   communicationWeighted: number;
@@ -137,6 +151,7 @@ export interface InterviewScorecard {
 export interface CreateInterviewScorecardDto {
   candidateId: string;
   jobId: string;
+  interviewId?: string | null;
   interviewerId?: string;
   interviewDate: string; // ISO datetime
   interviewType?: InterviewScorecardType;
@@ -144,6 +159,8 @@ export interface CreateInterviewScorecardDto {
   commEnglishComprehension: number;
   experienceSelections: ExperienceSelection[];
   experienceRating: number;
+  emrTags?: string[];
+  specialtyTags?: string[];
   profPreparedOnTime: boolean;
   profAppearanceDemeanor: boolean;
   profAttitudeReliability: boolean;
@@ -155,11 +172,17 @@ export interface CreateInterviewScorecardDto {
   techBackupInternet: boolean;
   techBackupGenerator: boolean;
   technologyRating: number;
+  techInternetSpeedValue?: string;
   availUsHours: boolean;
   availCompensationAcceptable: boolean;
   availStartAvailability: boolean;
   availOverallFit: boolean;
   availabilityRating: number;
+  commNotes?: string;
+  experienceNotes?: string;
+  professionalismNotes?: string;
+  technologyNotes?: string;
+  availabilityNotes?: string;
   strengths?: string;
   concerns?: string;
   generalNotes?: string;
@@ -173,7 +196,7 @@ export interface CreateInterviewScorecardDto {
 // (candidateId, jobId) are excluded — they never change after creation.
 export type UpdateInterviewScorecardDto = Omit<
   CreateInterviewScorecardDto,
-  'candidateId' | 'jobId'
+  'candidateId' | 'jobId' | 'interviewId'
 >;
 
 export interface InterviewScorecardListResponse {

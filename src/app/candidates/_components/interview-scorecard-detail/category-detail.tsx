@@ -9,6 +9,8 @@ interface CategoryDetailProps {
   subRows?: { label: string; value: string }[];
   extra?: React.ReactNode;
   note?: string;
+  /** Interviewer's free-text notes for this category. */
+  notes?: string;
 }
 
 export function CategoryDetail({
@@ -19,6 +21,7 @@ export function CategoryDetail({
   subRows = [],
   extra,
   note,
+  notes,
 }: CategoryDetailProps) {
   return (
     <section className="rounded-lg border p-4 flex flex-col gap-3">
@@ -62,6 +65,14 @@ export function CategoryDetail({
 
       {note && <p className="text-xs text-muted-foreground italic">{note}</p>}
       {extra}
+      {notes && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Notes
+          </span>
+          <p className="text-sm whitespace-pre-wrap">{notes}</p>
+        </div>
+      )}
     </section>
   );
 }

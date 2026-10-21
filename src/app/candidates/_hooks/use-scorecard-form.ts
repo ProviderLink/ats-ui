@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/store/slices/auth.store';
 import { withToast } from '@/lib/with-toast';
 import { useInterviewScorecardStore } from '@/store/slices/interview-scorecards.store';
 import type {
@@ -38,16 +37,24 @@ export function useScorecardForm({
   const create = useInterviewScorecardStore(s => s.create);
   const update = useInterviewScorecardStore(s => s.update);
   const mutating = useInterviewScorecardStore(s => s.mutating);
-  const currentUser = useAuthStore(s => s.user);
 
   const form = useForm<ScorecardFormValues>({
     resolver: zodResolver(scorecardSchema),
-    defaultValues: defaultScorecardValues(
-      defaultJobId ?? '',
-      currentUser?._id ?? ''
-    ),
+    defaultValues: defaultScorecardValues(defaultJobId ?? ''),
   });
   const { reset, setValue, control } = form;
+  const isDirty = form.formState.isDirty;
+
+  // Reload or tab close with unsaved input: let the browser ask first.
+  useEffect(() => {
+    if (!open || !isDirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [open, isDirty]);
 
   // Edit mode loads the existing scorecard; create mode resets to defaults and
   // auto-selects the active pipeline job (still changeable afterwards).
@@ -98,10 +105,8 @@ export function useScorecardForm({
     const fields = buildScorecardFields(values);
     try {
       if (editing) {
-        const payload: UpdateInterviewScorecardDto = {
-          interviewerId: values.interviewerId,
-          ...fields,
-        };
+        // No interviewerId: the server keeps the original author on edit.
+        const payload: UpdateInterviewScorecardDto = fields;
         await withToast('Interview scorecard updated', () =>
           update(editing._id, payload)
         );
@@ -109,7 +114,8 @@ export function useScorecardForm({
         const payload: CreateInterviewScorecardDto = {
           candidateId,
           jobId: values.jobId,
-          interviewerId: values.interviewerId,
+          interviewId: values.interviewId || null,
+          // No interviewerId: the server records the logged-in user.
           ...fields,
         };
         await withToast('Interview scorecard submitted', () => create(payload));

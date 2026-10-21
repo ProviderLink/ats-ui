@@ -7,6 +7,7 @@ import {
   detectKind,
   sanitizeRenderedDocx,
 } from '@/lib/resume-preview';
+import { useProfileLocked } from '@/lib/profile-lock-context';
 import { cn } from '@/lib/utils';
 import {
   AlertCircleIcon,
@@ -42,6 +43,9 @@ export function ResumeViewer({
   filename: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // While locked (scorecard form docked on the right) "Full view" stays inside
+  // the left sheet instead of covering the whole screen.
+  const locked = useProfileLocked();
   const [status, setStatus] = useState<PreviewStatus>('loading');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -63,6 +67,19 @@ export function ResumeViewer({
       setDownloading(false);
     }
   }, [url, filename]);
+
+  // Escape leaves full view only. Captured on window so it runs before the
+  // sheet's own Escape handler, which would otherwise close the whole sheet.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setExpanded(false);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [expanded]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,7 +177,12 @@ export function ResumeViewer({
     <div
       className={cn(
         'flex flex-col gap-2',
-        expanded ? 'fixed inset-0 z-50 bg-background p-4 flex-1' : 'h-96'
+        expanded
+          ? cn(
+              'inset-0 bg-background p-4 flex-1',
+              locked ? 'absolute z-20' : 'fixed z-50'
+            )
+          : 'h-96'
       )}
     >
       <div className="flex items-center justify-between shrink-0">

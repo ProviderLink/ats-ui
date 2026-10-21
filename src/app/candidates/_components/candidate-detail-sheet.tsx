@@ -1,9 +1,14 @@
 import { ComposeEmailSheet } from '@/app/emails/_components/compose-email-sheet';
+import { LockableRegion } from '@/components/profile-lock';
+import { ProfileLockContext } from '@/lib/profile-lock-context';
+import { LockIcon } from 'lucide-react';
 import { RestoreCandidateDialog } from '@/components/restore-candidate-dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
 import { useApplicationStore } from '@/store/slices/applications.store';
+import { cn } from '@/lib/utils';
 import type { Candidate } from '@/store/types';
+import { useState } from 'react';
 import { useCandidateApplications } from '../_hooks/use-candidate-applications';
 import { useCandidateCompose } from '../_hooks/use-candidate-compose';
 import { useCandidateInterviews } from '../_hooks/use-candidate-interviews';
@@ -37,6 +42,8 @@ export function CandidateDetailSheet({
   mutating = false,
 }: CandidateDetailSheetProps) {
   const c = useLatestCandidate(candidate);
+  // True while the interview scorecard form is docked beside this sheet.
+  const [scorecardFormOpen, setScorecardFormOpen] = useState(false);
   const fullName = c ? `${c.firstName} ${c.lastName}` : '';
   const appLoading = useApplicationStore(s => s.loading);
   const appMutating = useApplicationStore(s => s.mutating);
@@ -91,11 +98,24 @@ export function CandidateDetailSheet({
   const appliedJobTitle = c.appliedJobId ? getJobTitle(c.appliedJobId) : null;
 
   return (
-    <>
+    <ProfileLockContext.Provider value={scorecardFormOpen}>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="flex flex-col p-0 max-w-none! w-full sm:w-[68vw] min-w-95"
+          // The form's own Cancel is the only way out while it is open.
+          showCloseButton={!scorecardFormOpen}
+          // While the scorecard form is open (lg+), shrink to the left half so
+          // the profile and the form are visible and usable together.
+          className={cn(
+            'flex flex-col p-0 max-w-none! w-full sm:w-[68vw] min-w-95',
+            scorecardFormOpen &&
+              'lg:w-[45vw] lg:data-[side=right]:right-[calc(50vw+1.75rem)]'
+          )}
+          // The docked form is not part of this sheet's DOM; keep outside
+          // clicks (e.g. the backdrop) from closing the sheet and losing the draft.
+          onInteractOutside={e => {
+            if (scorecardFormOpen) e.preventDefault();
+          }}
         >
           <CandidateSheetHeader
             candidate={c}
@@ -103,6 +123,14 @@ export function CandidateDetailSheet({
             allTags={allTags}
             onUpdateTags={updateTags}
           />
+
+          {scorecardFormOpen && (
+            <p className="flex shrink-0 items-center gap-2 border-b bg-muted/50 px-6 py-2 text-xs text-muted-foreground">
+              <LockIcon className="size-3.5" />
+              Scorecard in progress — this profile is read-only until you submit or
+              cancel.
+            </p>
+          )}
 
           <CandidateDetailBody
             candidate={c}
@@ -116,9 +144,10 @@ export function CandidateDetailSheet({
             notes={notes}
             emailActivity={emailActivity}
             onScorecardCreated={() => void fetchScorecardsByCandidate(c._id)}
+            onScorecardFormOpenChange={setScorecardFormOpen}
           />
 
-          <div className="shrink-0 border-t px-6 py-4">
+          <LockableRegion className="shrink-0 border-t px-6 py-4">
             <CandidateSheetFooter
               candidate={c}
               mutating={mutating}
@@ -132,7 +161,7 @@ export function CandidateDetailSheet({
               onEmail={() => compose.openCompose(null)}
               onClose={() => onOpenChange(false)}
             />
-          </div>
+          </LockableRegion>
         </SheetContent>
       </Sheet>
 
@@ -197,6 +226,6 @@ export function CandidateDetailSheet({
         loading={ineligible.loading}
         onConfirm={ineligible.handleDeleteConfirm}
       />
-    </>
+    </ProfileLockContext.Provider>
   );
 }

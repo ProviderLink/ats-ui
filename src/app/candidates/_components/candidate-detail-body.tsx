@@ -1,3 +1,4 @@
+import { LockableRegion } from '@/components/profile-lock';
 import { Separator } from '@/components/ui/separator';
 import type { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
 import type { Application, Candidate, Job } from '@/store/types';
@@ -35,6 +36,7 @@ interface CandidateDetailBodyProps {
   notes: ReturnType<typeof usePipelineNotes>;
   emailActivity: ReturnType<typeof useCandidateEmailActivity>;
   onScorecardCreated: () => void;
+  onScorecardFormOpenChange: (open: boolean) => void;
 }
 
 export function CandidateDetailBody({
@@ -49,6 +51,7 @@ export function CandidateDetailBody({
   notes,
   emailActivity,
   onScorecardCreated,
+  onScorecardFormOpenChange,
 }: CandidateDetailBodyProps) {
   return (
     <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -70,21 +73,35 @@ export function CandidateDetailBody({
         {c.status === 'approved' && (
           <>
             <Separator />
-            <InterviewsSection
-              interviews={interviews}
-              users={users}
-              onComplete={interviewActions.completeInterview}
-              onReschedule={interviewActions.startReschedule}
-              onCancel={interviewActions.cancelScheduledInterview}
-            />
+            <LockableRegion>
+              <InterviewsSection
+                interviews={interviews}
+                users={users}
+                onComplete={interviewActions.completeInterview}
+                onReschedule={interviewActions.startReschedule}
+                onCancel={interviewActions.cancelScheduledInterview}
+              />
+            </LockableRegion>
             <Separator />
+            <LockableRegion>
             <InterviewScorecardsSection
               candidateId={c._id}
-              jobOptions={jobs.map(j => ({ _id: j._id, title: j.title }))}
+              jobOptions={jobs.map(j => {
+                const clientName = getClientName(j.clientId);
+                return {
+                  _id: j._id,
+                  title: j.title,
+                  // getClientName falls back to the raw id for unknown clients.
+                  clientName: clientName === j.clientId ? undefined : clientName,
+                };
+              })}
               users={users}
               defaultJobId={pipelineJob?._id ?? null}
               onCreated={onScorecardCreated}
+              onFormOpenChange={onScorecardFormOpenChange}
             />
+            </LockableRegion>
+            <LockableRegion>
             <PipelineNotesSection
               activeApp={activePipelineApp}
               notesText={notes.notesText}
@@ -93,6 +110,7 @@ export function CandidateDetailBody({
               saving={notes.savingNotes}
               onSave={notes.saveNotes}
             />
+            </LockableRegion>
           </>
         )}
 

@@ -11,16 +11,23 @@ import {
 import type { DefaultValues } from 'react-hook-form';
 import { z } from 'zod';
 
-const ratingField = z.number().int().min(1).max(5);
+const ratingField = z
+  .number()
+  .int()
+  .min(1, 'Please give a rating')
+  .max(5);
 
 export const scorecardSchema = z.object({
   jobId: z.string().min(1, 'Job is required'),
-  interviewerId: z.string().min(1, 'Interviewer is required'),
+  /** Calendar interview being scored; '' = not on the calendar (manual). */
+  interviewId: z.string().optional().default(''),
   interviewDate: z.string().min(1, 'Interview date is required'),
   commEnglishDiction: ratingField,
   commEnglishComprehension: ratingField,
   experienceSelections: z.array(z.enum(EXPERIENCE_SELECTIONS)).default([]),
   experienceRating: ratingField,
+  emrTags: z.array(z.string().max(50)).max(20).default([]),
+  specialtyTags: z.array(z.string().max(50)).max(20).default([]),
   profPreparedOnTime: z.boolean(),
   profAppearanceDemeanor: z.boolean(),
   profAttitudeReliability: z.boolean(),
@@ -32,11 +39,17 @@ export const scorecardSchema = z.object({
   techBackupInternet: z.boolean(),
   techBackupGenerator: z.boolean(),
   technologyRating: ratingField,
+  techInternetSpeedValue: z.string().max(100).optional().default(''),
   availUsHours: z.boolean(),
   availCompensationAcceptable: z.boolean(),
   availStartAvailability: z.boolean(),
   availOverallFit: z.boolean(),
   availabilityRating: ratingField,
+  commNotes: z.string().max(2000).optional().default(''),
+  experienceNotes: z.string().max(2000).optional().default(''),
+  professionalismNotes: z.string().max(2000).optional().default(''),
+  technologyNotes: z.string().max(2000).optional().default(''),
+  availabilityNotes: z.string().max(2000).optional().default(''),
   strengths: z.string().optional().default(''),
   concerns: z.string().optional().default(''),
   generalNotes: z.string().optional().default(''),
@@ -72,17 +85,18 @@ export function toDatetimeLocal(value: string | Date): string {
 
 /** `finalRecommendation` is deliberately omitted so submit raises its required error. */
 export function defaultScorecardValues(
-  jobId: string,
-  interviewerId: string
+  jobId: string
 ): DefaultValues<ScorecardFormValues> {
   return {
     jobId,
-    interviewerId,
+    interviewId: '',
     interviewDate: toDatetimeLocal(new Date()),
     commEnglishDiction: 0,
     commEnglishComprehension: 0,
     experienceSelections: [],
     experienceRating: 0,
+    emrTags: [],
+    specialtyTags: [],
     profPreparedOnTime: false,
     profAppearanceDemeanor: false,
     profAttitudeReliability: false,
@@ -94,11 +108,17 @@ export function defaultScorecardValues(
     techBackupInternet: false,
     techBackupGenerator: false,
     technologyRating: 0,
+    techInternetSpeedValue: '',
     availUsHours: false,
     availCompensationAcceptable: false,
     availStartAvailability: false,
     availOverallFit: false,
     availabilityRating: 0,
+    commNotes: '',
+    experienceNotes: '',
+    professionalismNotes: '',
+    technologyNotes: '',
+    availabilityNotes: '',
     strengths: '',
     concerns: '',
     generalNotes: '',
@@ -111,12 +131,14 @@ export function defaultScorecardValues(
 export function toFormValues(sc: InterviewScorecard): ScorecardFormValues {
   return {
     jobId: sc.jobId,
-    interviewerId: sc.interviewerId,
+    interviewId: sc.interviewId ?? '',
     interviewDate: toDatetimeLocal(sc.interviewDate),
     commEnglishDiction: sc.commEnglishDiction,
     commEnglishComprehension: sc.commEnglishComprehension,
     experienceSelections: sc.experienceSelections,
     experienceRating: sc.experienceRating,
+    emrTags: sc.emrTags ?? [],
+    specialtyTags: sc.specialtyTags ?? [],
     profPreparedOnTime: sc.profPreparedOnTime,
     profAppearanceDemeanor: sc.profAppearanceDemeanor,
     profAttitudeReliability: sc.profAttitudeReliability,
@@ -128,11 +150,17 @@ export function toFormValues(sc: InterviewScorecard): ScorecardFormValues {
     techBackupInternet: sc.techBackupInternet,
     techBackupGenerator: sc.techBackupGenerator,
     technologyRating: sc.technologyRating,
+    techInternetSpeedValue: sc.techInternetSpeedValue ?? '',
     availUsHours: sc.availUsHours,
     availCompensationAcceptable: sc.availCompensationAcceptable,
     availStartAvailability: sc.availStartAvailability,
     availOverallFit: sc.availOverallFit,
     availabilityRating: sc.availabilityRating,
+    commNotes: sc.commNotes ?? '',
+    experienceNotes: sc.experienceNotes ?? '',
+    professionalismNotes: sc.professionalismNotes ?? '',
+    technologyNotes: sc.technologyNotes ?? '',
+    availabilityNotes: sc.availabilityNotes ?? '',
     strengths: sc.strengths ?? '',
     concerns: sc.concerns ?? '',
     generalNotes: sc.generalNotes ?? '',
@@ -155,6 +183,8 @@ export function buildScorecardFields(values: ScorecardFormValues) {
     experienceSelections:
       (values.experienceSelections as ExperienceSelection[]) ?? [],
     experienceRating: Number(values.experienceRating),
+    emrTags: values.emrTags ?? [],
+    specialtyTags: values.specialtyTags ?? [],
     profPreparedOnTime: !!values.profPreparedOnTime,
     profAppearanceDemeanor: !!values.profAppearanceDemeanor,
     profAttitudeReliability: !!values.profAttitudeReliability,
@@ -166,11 +196,17 @@ export function buildScorecardFields(values: ScorecardFormValues) {
     techBackupInternet: !!values.techBackupInternet,
     techBackupGenerator: !!values.techBackupGenerator,
     technologyRating: Number(values.technologyRating),
+    techInternetSpeedValue: values.techInternetSpeedValue?.trim() ?? '',
     availUsHours: !!values.availUsHours,
     availCompensationAcceptable: !!values.availCompensationAcceptable,
     availStartAvailability: !!values.availStartAvailability,
     availOverallFit: !!values.availOverallFit,
     availabilityRating: Number(values.availabilityRating),
+    commNotes: values.commNotes ?? '',
+    experienceNotes: values.experienceNotes ?? '',
+    professionalismNotes: values.professionalismNotes ?? '',
+    technologyNotes: values.technologyNotes ?? '',
+    availabilityNotes: values.availabilityNotes ?? '',
     strengths: values.strengths ?? '',
     concerns: values.concerns ?? '',
     generalNotes: values.generalNotes ?? '',
@@ -181,4 +217,11 @@ export function buildScorecardFields(values: ScorecardFormValues) {
     compensationExpectation: values.compensationExpectation ?? '',
     finalRecommendation: values.finalRecommendation,
   };
+}
+
+/** A job the scorecard can be attached to, with its client for display. */
+export interface ScorecardJobOption {
+  _id: string;
+  title: string;
+  clientName?: string;
 }

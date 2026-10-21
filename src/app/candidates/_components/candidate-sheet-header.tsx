@@ -1,3 +1,4 @@
+import { LockableRegion } from '@/components/profile-lock';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -114,12 +115,14 @@ export function CandidateSheetHeader({
                 Talent Pool
               </Badge>
             )}
-            <TagsSelector
-              allTags={allTags}
-              selectedIds={getTagIds(c.tags)}
-              onChange={handleUpdateTags}
-              compact
-            />
+            <LockableRegion className="contents">
+              <TagsSelector
+                allTags={allTags}
+                selectedIds={getTagIds(c.tags)}
+                onChange={handleUpdateTags}
+                compact
+              />
+            </LockableRegion>
           </div>
         </div>
 

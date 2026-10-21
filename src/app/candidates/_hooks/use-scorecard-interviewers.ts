@@ -22,7 +22,7 @@ export function useScorecardInterviewers(
     const toOption = (u: (typeof users)[number]) => ({
       _id: u._id,
       name: `${u.firstName} ${u.lastName}`,
-      role: u.roles.map(r => ROLE_LABELS[r] ?? r).join(', '),
+      roles: u.roles.map(r => ROLE_LABELS[r] ?? r),
     });
 
     const result = users
