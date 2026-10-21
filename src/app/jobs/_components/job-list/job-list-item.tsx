@@ -1,9 +1,40 @@
 import { Badge } from '@/components/ui/badge';
-import { jobStatusLabel, locationTypeLabel } from '@/lib/job-format';
+import {
+  jobPriorityLabel,
+  jobStatusLabel,
+  locationTypeLabel,
+} from '@/lib/job-format';
 import { JOB_STATUS_VARIANT } from '@/lib/status-styles';
 import { cn } from '@/lib/utils';
-import type { Job } from '@/store';
-import { BuildingIcon, UserIcon } from 'lucide-react';
+import type { Job, JobPriority } from '@/store';
+import { BuildingIcon, FlagIcon, UserIcon } from 'lucide-react';
+
+// Flag + label coloured by severity, so priority reads without a legend.
+const PRIORITY_CLS: Record<JobPriority, string> = {
+  low: 'text-muted-foreground',
+  medium: 'text-amber-600 dark:text-amber-400',
+  high: 'text-pine-teal-600 dark:text-pine-teal-400',
+  urgent: 'text-destructive font-semibold',
+};
+
+function PriorityFlag({ priority }: { priority: JobPriority }) {
+  return (
+    <span
+      className={cn(
+        'ml-auto flex items-center gap-1 font-medium',
+        PRIORITY_CLS[priority]
+      )}
+      title={`Priority: ${jobPriorityLabel[priority]}`}
+    >
+      <FlagIcon
+        className="size-3"
+        fill={priority === 'low' ? 'none' : 'currentColor'}
+        aria-hidden
+      />
+      {jobPriorityLabel[priority]}
+    </span>
+  );
+}
 
 interface JobListItemProps {
   job: Job;
@@ -24,10 +55,10 @@ export function JobListItem({
     <button
       onClick={onSelect}
       className={cn(
-        'group w-full text-left px-4 py-3 transition-colors hover:bg-foreground/[0.04]',
+        'group w-full text-left px-4 py-3 border border-dashed transition-colors',
         selected
-          ? 'bg-foreground/[0.06] border-r-2 border-r-primary'
-          : 'border-r-2 border-r-transparent'
+          ? 'bg-foreground/[0.06] border-foreground/60'
+          : 'border-transparent hover:bg-foreground/[0.04] hover:border-foreground/25'
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -68,6 +99,7 @@ export function JobListItem({
           <UserIcon className="size-3" />
           {candidateCount} candidate{candidateCount !== 1 ? 's' : ''}
         </span>
+        <PriorityFlag priority={job.priority} />
       </div>
     </button>
   );

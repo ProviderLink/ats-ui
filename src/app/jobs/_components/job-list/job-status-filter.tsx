@@ -8,16 +8,28 @@ import {
 import { jobStatusLabel } from '@/lib/job-format';
 import { cn } from '@/lib/utils';
 import type { JobStatus } from '@/store';
+import type { ReactNode } from 'react';
 import { ChevronDownIcon, CircleDotIcon } from 'lucide-react';
 
 interface JobStatusFilterProps {
   status?: JobStatus;
   onChange: (status?: JobStatus) => void;
+  /** Extra filters rendered in the same row. */
+  children?: ReactNode;
+  /** True when any filter in the row is active (shows "Clear filter"). */
+  hasFilter?: boolean;
+  onClear?: () => void;
 }
 
 const OPTIONS = ['all', 'open', 'draft', 'on_hold', 'closed'] as const;
 
-export function JobStatusFilter({ status, onChange }: JobStatusFilterProps) {
+export function JobStatusFilter({
+  status,
+  onChange,
+  children,
+  hasFilter = !!status,
+  onClear = () => onChange(undefined),
+}: JobStatusFilterProps) {
   return (
     <div className="px-3 py-2 border-b flex items-center gap-2 flex-wrap">
       <DropdownMenu>
@@ -51,12 +63,14 @@ export function JobStatusFilter({ status, onChange }: JobStatusFilterProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {status && (
+      {children}
+
+      {hasFilter && (
         <Button
           variant="ghost"
           size="sm"
           className="h-7 text-xs text-muted-foreground"
-          onClick={() => onChange(undefined)}
+          onClick={onClear}
         >
           Clear filter
         </Button>

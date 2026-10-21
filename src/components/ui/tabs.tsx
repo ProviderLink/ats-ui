@@ -73,6 +73,8 @@ function TabsTrigger({
         'group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start',
         // Active state — identical to account page active TabButton
         'data-active:bg-card data-active:text-foreground data-active:shadow-sm data-active:ring-1 data-active:ring-border-subtle',
+        // Hovering the active tab must not change it
+        'data-active:hover:bg-card data-active:hover:text-foreground',
         // Line variant overrides
         'group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:px-3 group-data-[variant=line]/tabs-list:py-2.5 group-data-[variant=line]/tabs-list:border-b-2 group-data-[variant=line]/tabs-list:border-transparent group-data-[variant=line]/tabs-list:hover:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:border-primary group-data-[variant=line]/tabs-list:data-active:shadow-none group-data-[variant=line]/tabs-list:data-active:ring-0',
         className

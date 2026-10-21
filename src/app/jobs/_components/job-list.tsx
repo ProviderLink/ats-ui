@@ -1,18 +1,19 @@
 import { TablePagination } from '@/components/table-pagination';
 import { useTablePagination } from '@/hooks/use-table-pagination';
-import type { Client, Job, JobFilters, JobStatus } from '@/store';
+import type { Client, Job, JobFilters, JobPriority, JobStatus } from '@/store';
 import {
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useJobCandidateCounts } from '../_hooks/use-job-candidate-counts';
 import { filterJobs } from '../_utils/job-list';
 import { JobListHeader } from './job-list/job-list-header';
 import { JobListItem } from './job-list/job-list-item';
 import { JobListSkeleton } from './job-list/job-list-skeleton';
+import { JobPriorityFilter } from './job-list/job-priority-filter';
 import { JobStatusFilter } from './job-list/job-status-filter';
 import { NewJobSheet } from './new-job-sheet';
 
@@ -38,10 +39,15 @@ export function JobList({
   onSelect,
 }: JobListProps) {
   const [query, setQuery] = useState('');
+  // Priority is filtered client-side only; the server filter covers status.
+  const [priority, setPriority] = useState<JobPriority | undefined>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [addOpen, setAddOpen] = useState(
     () => searchParams.get('action') === 'new'
   );
+  // Set when the user changes the status/priority filter; the next settled
+  // result list then activates its first job in the detail panel.
+  const autoSelectRef = useRef(false);
   const candidateCountByJob = useJobCandidateCounts();
   const { pageIndex, pageSize, handlePaginationChange, setPageIndex, resetPage } =
     useTablePagination({
@@ -70,9 +76,28 @@ export function JobList({
   );
 
   const filtered = useMemo(
-    () => filterJobs(jobs ?? [], filters, query, clientMap),
-    [jobs, filters, query, clientMap]
+    () => filterJobs(jobs ?? [], { ...filters, priority }, query, clientMap),
+    [jobs, filters, priority, query, clientMap]
   );
+
+  useEffect(() => {
+    if (!autoSelectRef.current || loading || isRefreshing) return;
+    autoSelectRef.current = false;
+    const first = filtered[0];
+    if (!first) return;
+    // A `?job=` deep-link would otherwise pull the selection back.
+    if (searchParams.has('job')) {
+      setSearchParams(
+        prev => {
+          const next = new URLSearchParams(prev);
+          next.delete('job');
+          return next;
+        },
+        { replace: true }
+      );
+    }
+    onSelect(first._id);
+  }, [filtered, loading, isRefreshing, onSelect, searchParams, setSearchParams]);
 
   // Clamp pageIndex if data or filters reduce available pages
   useEffect(() => {
@@ -108,10 +133,26 @@ export function JobList({
 
         <JobStatusFilter
           status={filters.status}
-          onChange={(status: JobStatus | undefined) =>
-            onFiltersChange({ status, page: 1 })
-          }
-        />
+          onChange={(status: JobStatus | undefined) => {
+            autoSelectRef.current = true;
+            onFiltersChange({ status, page: 1 });
+          }}
+          hasFilter={!!filters.status || !!priority}
+          onClear={() => {
+            autoSelectRef.current = true;
+            setPriority(undefined);
+            onFiltersChange({ status: undefined, page: 1 });
+          }}
+        >
+          <JobPriorityFilter
+            priority={priority}
+            onChange={p => {
+              autoSelectRef.current = true;
+              setPriority(p);
+              resetPage();
+            }}
+          />
+        </JobStatusFilter>
 
         <div className="flex-1 overflow-y-auto">
           {isRefreshing && (
