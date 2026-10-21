@@ -2,12 +2,6 @@ import { CandidateCell } from '@/components/candidate-table/candidate-cell';
 import { ColHeader } from '@/components/candidate-table/col-header';
 import { SortHeader } from '@/components/candidate-table/sort-header';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/utils';
 import type { Candidate } from '@/store/types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -53,22 +47,14 @@ export function buildIneligibleColumns({
       cell: ({ row }) => {
         const label = row.original.permanentlyIneligibleReasonLabel;
         if (!label) return DASH;
+        // Wrap in full at a small size instead of truncating behind a tooltip.
         return (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="block max-w-56 truncate text-sm text-muted-foreground">
-                  {label}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs max-w-64">
-                {label}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <span className="block w-64 whitespace-normal rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs leading-snug text-foreground/80">
+            {label}
+          </span>
         );
       },
-      size: 200,
+      size: 260,
     },
     {
       id: 'ineligibleAt',

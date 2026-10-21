@@ -1,25 +1,38 @@
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ClientStatus } from '@/store/types';
 
-const STATUS_CONFIG: Record<ClientStatus, { label: string; cls: string }> = {
+const STATUS_CONFIG: Record<
+  ClientStatus,
+  { label: string; pill: string; dot: string }
+> = {
   active: {
     label: 'Active',
-    cls: 'border-pine-teal-600 text-pine-teal-700 dark:border-pine-teal-400 dark:text-pine-teal-300',
+    pill: 'bg-pine-teal-50 text-pine-teal-700 dark:bg-pine-teal-950/40 dark:text-pine-teal-300',
+    dot: 'bg-pine-teal-500',
   },
   inactive: {
     label: 'Inactive',
-    cls: 'border-silver-400 text-muted-foreground dark:border-white/20',
+    pill: 'bg-muted text-muted-foreground',
+    dot: 'bg-silver-400',
   },
   suspended: {
     label: 'Suspended',
-    cls: 'border-rose-400 text-rose-600 dark:border-rose-400 dark:text-rose-400',
+    pill: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
+    dot: 'bg-rose-500',
   },
 };
 
 export function ClientStatusBadge({ status }: { status: ClientStatus }) {
-  const { label, cls } = STATUS_CONFIG[status];
+  const { label, pill, dot } = STATUS_CONFIG[status];
   return (
-    <Badge className={cn('bg-transparent font-medium', cls)}>{label}</Badge>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+        pill
+      )}
+    >
+      <span className={cn('size-1.5 rounded-full', dot)} aria-hidden />
+      {label}
+    </span>
   );
 }

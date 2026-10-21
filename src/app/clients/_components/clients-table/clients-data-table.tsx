@@ -68,11 +68,11 @@ export function ClientsDataTable({
               rows.map(row => (
                 <TableRow
                   key={row.id}
-                  className="border-b last:border-0 hover:bg-foreground/[0.04] dark:hover:bg-white/3 cursor-pointer"
+                  className="group/row border-b last:border-0 hover:bg-foreground/[0.04] dark:hover:bg-white/3 cursor-pointer"
                   onClick={() => onRowClick(row.original)}
                 >
                   {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id} className="px-4 py-3">
+                    <TableCell key={cell.id} className="px-4 py-3.5">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

@@ -11,6 +11,7 @@ import {
   PencilIcon,
   Trash2Icon,
   UserIcon,
+  UsersIcon,
 } from 'lucide-react';
 import type { JobCounts } from '../../_utils/client-list';
 import { ClientStatusBadge } from './client-status-badge';
@@ -70,12 +71,15 @@ export function buildClientColumns({
       ),
       cell: ({ row }) => (
         <div>
-          <p className="text-sm capitalize">{row.original.industry || '—'}</p>
-          <p className="text-xs text-muted-foreground">
-            {row.original.companySize
-              ? `${row.original.companySize} employees`
-              : ''}
+          <p className="text-sm font-medium capitalize">
+            {row.original.industry || '—'}
           </p>
+          {row.original.companySize && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <UsersIcon className="size-3 shrink-0" aria-hidden />
+              {row.original.companySize} employees
+            </p>
+          )}
         </div>
       ),
     },
@@ -98,14 +102,25 @@ export function buildClientColumns({
         const counts = jobCounts.get(row.original._id);
         const total = counts?.total ?? 0;
         const open = counts?.open ?? 0;
+        if (total === 0) {
+          return <span className="text-xs text-muted-foreground">—</span>;
+        }
         return (
           <div>
-            <p className="text-sm font-medium">
-              {total > 0 ? `${total} job${total === 1 ? '' : 's'}` : '—'}
+            <p className="text-sm font-semibold tabular-nums">
+              {total} job{total === 1 ? '' : 's'}
             </p>
-            {total > 0 && (
-              <p className="text-xs text-muted-foreground">{open} open</p>
-            )}
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span
+                className={
+                  open > 0
+                    ? 'size-1.5 rounded-full bg-pine-teal-500'
+                    : 'size-1.5 rounded-full bg-silver-400'
+                }
+                aria-hidden
+              />
+              {open} open
+            </p>
           </div>
         );
       },
@@ -121,10 +136,11 @@ export function buildClientColumns({
       cell: ({ row }) => {
         const client = row.original;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {canEdit && (
               <RowActionButton
                 label={`Edit ${client.companyName}`}
+                tone="edit"
                 tooltip="Edit client"
                 icon={<PencilIcon className="size-3.5" />}
                 onClick={() => onEdit(client)}
@@ -132,7 +148,7 @@ export function buildClientColumns({
             )}
             {canDelete && (
               <RowActionButton
-                destructive
+                tone="destructive"
                 label={`Delete ${client.companyName}`}
                 tooltip="Delete client"
                 icon={<Trash2Icon className="size-3.5" />}
@@ -141,6 +157,7 @@ export function buildClientColumns({
             )}
             <RowActionButton
               label={`View jobs for ${client.companyName}`}
+              tone="view"
               tooltip="View jobs for this client"
               icon={<ExternalLinkIcon className="size-3.5" />}
               onClick={() => onViewJobs(client)}
