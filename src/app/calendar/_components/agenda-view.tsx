@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/slices/users.store';
 import type { CalendarEvent } from '@/store/types';
 import { CalendarIcon } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   formatDateLabel,
   getInterviewDate,
@@ -47,6 +47,14 @@ export function AgendaView({
 
   const sortedDates = Array.from(grouped.keys()).sort();
 
+  // Land on today (or the next day with events) instead of the month's first
+  // day. Past months have no such day and stay at the top.
+  const focusDate = sortedDates.find(d => d >= todayISO);
+  const focusRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    focusRef.current?.scrollIntoView({ block: 'start' });
+  }, [startISO, focusDate]);
+
   if (sortedDates.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -65,7 +73,11 @@ export function AgendaView({
         const { primary, secondary } = formatDateLabel(dateStr);
 
         return (
-          <div key={dateStr} className="flex gap-4">
+          <div
+            key={dateStr}
+            ref={dateStr === focusDate ? focusRef : undefined}
+            className="flex gap-4"
+          >
             <div className="w-24 shrink-0 pt-1">
               <p
                 className={cn(
