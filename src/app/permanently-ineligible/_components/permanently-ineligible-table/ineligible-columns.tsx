@@ -85,9 +85,10 @@ export function buildIneligibleColumns({
     {
       id: 'actions',
       header: () => (
-        <div className="flex justify-center">
-          <ShieldAlertIcon className="size-4 text-muted-foreground" />
-        </div>
+        <ColHeader
+          label="Actions"
+          icon={<ShieldAlertIcon className="size-3" />}
+        />
       ),
       enableSorting: false,
       size: 130,

@@ -1,12 +1,9 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/slices/users.store';
 import type { Candidate } from '@/store/types';
 import { ShieldCheckIcon, StarIcon } from 'lucide-react';
-import { avatarBg } from '@/lib/candidate-styles';
 
 export function CandidateCell({ candidate }: { candidate: Candidate }) {
-  const bg = avatarBg(candidate.firstName);
   const allUsers = useUserStore(s => s.items);
   const hasCrm = allUsers.some(
     u =>
@@ -16,23 +13,6 @@ export function CandidateCell({ candidate }: { candidate: Candidate }) {
   );
   return (
     <div className="flex items-center gap-3 min-w-0">
-      {candidate.avatar ? (
-        <img
-          src={candidate.avatar}
-          alt={`${candidate.firstName} ${candidate.lastName}`}
-          className="size-8 rounded-md object-cover shrink-0"
-        />
-      ) : (
-        <div
-          className={cn(
-            'size-8 rounded-md flex items-center justify-center text-xs font-semibold shrink-0 select-none',
-            bg
-          )}
-        >
-          {candidate.firstName[0]}
-          {candidate.lastName[0]}
-        </div>
-      )}
       <div className="min-w-0">
         <p className="text-sm font-medium leading-tight truncate flex items-center gap-1">
           {candidate.firstName} {candidate.lastName}
