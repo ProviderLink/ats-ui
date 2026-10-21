@@ -13,7 +13,6 @@ import { CheckIcon } from 'lucide-react';
 import { getTimezoneOffsetLabel } from '@/lib/timezones';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { workspaceSettings as initialWorkspace } from '../_data/settings';
 
 export function WorkspaceCard() {
   const settings = useSettingsStore(s => s.settings);
@@ -22,9 +21,7 @@ export function WorkspaceCard() {
   const fetch = useSettingsStore(s => s.fetch);
   const update = useSettingsStore(s => s.update);
 
-  const [timezone, setTimezone] = useState(
-    settings?.companyTimezone ?? initialWorkspace.timezone
-  );
+  const [timezone, setTimezone] = useState(settings?.companyTimezone ?? '');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -37,6 +34,7 @@ export function WorkspaceCard() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!timezone) return;
     try {
       await update({ companyTimezone: timezone });
       toast.success('Workspace settings saved');
@@ -81,7 +79,7 @@ export function WorkspaceCard() {
               type="submit"
               size="sm"
               className="gap-1.5"
-              disabled={mutating}
+              disabled={mutating || !timezone}
             >
               {saved ? <CheckIcon className="size-3.5" /> : null}
               {saved ? 'Saved' : mutating ? 'Saving…' : 'Save changes'}

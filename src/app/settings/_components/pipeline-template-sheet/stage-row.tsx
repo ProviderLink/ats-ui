@@ -32,6 +32,7 @@ export function StageRow({ stage, index, onChange, onRemove }: StageRowProps) {
         value={stage.name}
         onChange={e => onChange({ name: e.target.value })}
         placeholder="Stage name"
+        maxLength={100}
         className="h-8 text-xs flex-1"
       />
       <Button

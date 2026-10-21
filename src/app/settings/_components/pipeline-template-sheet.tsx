@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import type { PipelineTemplate } from '@/store/types';
+import { Loader2Icon } from 'lucide-react';
+import { useState } from 'react';
 import {
   usePipelineTemplateForm,
   type PipelineTemplateFormData,
@@ -25,7 +27,8 @@ interface PipelineTemplateSheetProps {
    *  to warn that saving will transfer the default status from that template.
    */
   existingDefaultName?: string | null;
-  onSave: (data: PipelineTemplateFormData) => void;
+  /** Rejects when the save fails so the sheet can stay open. */
+  onSave: (data: PipelineTemplateFormData) => Promise<void>;
 }
 
 export function PipelineTemplateSheet({
@@ -36,17 +39,36 @@ export function PipelineTemplateSheet({
   onSave,
 }: PipelineTemplateSheetProps) {
   const form = usePipelineTemplateForm(open, template);
+  const [submitting, setSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const data = form.getData();
     if (!data) return;
-    onSave(data);
-    onOpenChange(false);
+    if (form.errors.length > 0) {
+      setShowErrors(true);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSave(data);
+      onOpenChange(false);
+    } catch {
+      // The caller already toasted the error; keep the sheet open so nothing
+      // the user typed is lost.
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleOpenChange(v: boolean) {
+    if (!v) setShowErrors(false);
+    onOpenChange(v);
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="w-full sm:max-w-sm flex flex-col gap-0 p-0">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle>
@@ -71,6 +93,7 @@ export function PipelineTemplateSheet({
                 value={form.name}
                 onChange={e => form.setName(e.target.value)}
                 placeholder="e.g. Standard Hiring"
+                maxLength={100}
                 required
               />
             </div>
@@ -95,6 +118,14 @@ export function PipelineTemplateSheet({
               onActiveChange={form.setIsActive}
             />
 
+            {showErrors && form.errors.length > 0 && (
+              <ul className="list-disc pl-5 text-xs text-destructive">
+                {form.errors.map(err => (
+                  <li key={err}>{err}</li>
+                ))}
+              </ul>
+            )}
+
             <StagesEditor
               stages={form.stages}
               onAdd={form.addStage}
@@ -107,12 +138,18 @@ export function PipelineTemplateSheet({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
+              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!form.name.trim()}>
-              {template ? 'Save changes' : 'Create template'}
+            <Button type="submit" disabled={submitting || !form.name.trim()}>
+              {submitting && <Loader2Icon className="size-3.5 animate-spin" />}
+              {submitting
+                ? 'Saving…'
+                : template
+                  ? 'Save changes'
+                  : 'Create template'}
             </Button>
           </div>
         </form>

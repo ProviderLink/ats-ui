@@ -113,6 +113,10 @@ export function PipelineTemplatesCard() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         template={editing}
+        existingDefaultName={
+          templates.find(t => t.isDefault && t._id !== editing?._id)?.name ??
+          null
+        }
         onSave={data => actions.save(data, editing)}
       />
 

@@ -16,8 +16,12 @@ import { escapeHtml } from '@/lib/html';
 import { cn } from '@/lib/utils';
 import type { EmailTemplate, EmailTemplateType } from '@/store/types';
 import { Loader2Icon } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { EMAIL_TEMPLATE_TYPES, EMAIL_VARIABLES } from '@/lib/email-templates';
+import { useEffect, useRef, useState } from 'react';
+import {
+  EMAIL_TEMPLATE_TYPES,
+  emailVariablesForType,
+  KNOWN_EMAIL_VARIABLES,
+} from '@/lib/email-templates';
 
 export type EmailTemplateInput = Omit<
   EmailTemplate,
@@ -36,6 +40,26 @@ type Props = {
   onSave: (data: EmailTemplateInput) => Promise<void> | void;
 };
 
+/** Plain text -> the paragraph HTML this editor produces. */
+function textToHtml(text: string): string {
+  return text
+    ? text
+        .split('\n\n')
+        .map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
+        .join('')
+    : '';
+}
+
+/** `{{placeholders}}` in the text that the server does not recognise. */
+function unknownPlaceholders(text: string): string[] {
+  const known = new Set<string>(KNOWN_EMAIL_VARIABLES);
+  const found = new Set<string>();
+  for (const m of text.matchAll(/\{\{(\w+)\}\}/g)) {
+    if (!known.has(m[1])) found.add(m[1]);
+  }
+  return [...found];
+}
+
 export function EmailTemplateSheet({
   open,
   onOpenChange,
@@ -48,6 +72,16 @@ export function EmailTemplateSheet({
   const [type, setType] = useState<EmailTemplateType>('general');
   const [isDefault, setIsDefault] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Rich templates (links, bold, lists, …) can't round-trip through this plain
+  // text editor, so their body stays locked until the user opts in.
+  const [bodyUnlocked, setBodyUnlocked] = useState(false);
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const lastField = useRef<'subject' | 'body'>('body');
+
+  const isRichTemplate =
+    !!template && textToHtml(template.bodyText.trim()) !== template.bodyHtml;
+  const bodyLocked = isRichTemplate && !bodyUnlocked;
 
   useEffect(() => {
     if (open) {
@@ -56,35 +90,49 @@ export function EmailTemplateSheet({
       setBodyText(template?.bodyText ?? '');
       setType(template?.type ?? 'general');
       setIsDefault(template?.isDefault ?? false);
+      setBodyUnlocked(false);
+      lastField.current = 'body';
     }
   }, [open, template]);
 
+  /** Insert at the caret of whichever field was focused last. */
   function insertVariable(v: string) {
-    setBodyText(prev => prev + `{{${v}}}`);
+    const token = `{{${v}}}`;
+    const inSubject = lastField.current === 'subject';
+    if (!inSubject && bodyLocked) return;
+    const el = inSubject ? subjectRef.current : bodyRef.current;
+    const value = inSubject ? subject : bodyText;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + token + value.slice(end);
+    (inSubject ? setSubject : setBodyText)(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + token.length, start + token.length);
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !subject.trim()) return;
     const trimmedBody = bodyText.trim();
-    const usedVars = EMAIL_VARIABLES.filter(v =>
-      trimmedBody.includes(`{{${v}}}`)
+    // Untouched body: send back the stored HTML/text exactly as it was, so
+    // editing a name, subject or default never rewrites existing formatting.
+    const keepBody = !!template && trimmedBody === template.bodyText.trim();
+    const bodyHtml = keepBody ? template.bodyHtml : textToHtml(trimmedBody);
+    // Variables are derived from what is actually in the text, so deleting a
+    // placeholder removes it from the list on save.
+    const combined = `${subject}\n${trimmedBody}`;
+    const usedVars = KNOWN_EMAIL_VARIABLES.filter(v =>
+      combined.includes(`{{${v}}}`)
     );
-    // Each paragraph is plain text being wrapped as HTML — escape it, or the
-    // raw `<` reaches the recipient as markup.
-    const bodyHtml = trimmedBody
-      ? trimmedBody
-          .split('\n\n')
-          .map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
-          .join('')
-      : '';
     setSubmitting(true);
     try {
       await onSave({
         name: name.trim(),
         subject: subject.trim(),
         bodyHtml,
-        bodyText: trimmedBody,
+        bodyText: keepBody ? template.bodyText : trimmedBody,
         type,
         variables: usedVars,
         isDefault,
@@ -163,8 +211,11 @@ export function EmailTemplateSheet({
               </Label>
               <Input
                 id="et-subject"
+                ref={subjectRef}
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
+                onFocus={() => (lastField.current = 'subject')}
+                maxLength={200}
                 placeholder="e.g. Your interview for {{jobTitle}}"
                 required
               />
@@ -174,17 +225,55 @@ export function EmailTemplateSheet({
               <Label htmlFor="et-body">Body</Label>
               <Textarea
                 id="et-body"
+                ref={bodyRef}
                 value={bodyText}
                 onChange={e => setBodyText(e.target.value)}
+                onFocus={() => (lastField.current = 'body')}
+                readOnly={bodyLocked}
                 placeholder="Write your email body here..."
                 className="resize-y min-h-52 font-mono text-xs leading-relaxed"
               />
+              {isRichTemplate && (
+                <div className="flex flex-col gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+                  <span>
+                    This template has rich formatting (links, bold, lists…)
+                    that this plain-text editor can&apos;t show.{' '}
+                    {bodyLocked
+                      ? 'Its body is locked so the formatting is kept. You can still change the name, subject, type and default.'
+                      : 'Saving a changed body will replace the formatting with plain paragraphs.'}
+                  </span>
+                  {bodyLocked && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-fit text-xs"
+                      onClick={() => setBodyUnlocked(true)}
+                    >
+                      Edit body as plain text
+                    </Button>
+                  )}
+                </div>
+              )}
+              {unknownPlaceholders(`${subject}\n${bodyText}`).length > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Unknown variable
+                  {unknownPlaceholders(`${subject}\n${bodyText}`).length > 1
+                    ? 's'
+                    : ''}
+                  :{' '}
+                  {unknownPlaceholders(`${subject}\n${bodyText}`)
+                    .map(v => `{{${v}}}`)
+                    .join(', ')}{' '}
+                  — sent as-is, not filled in.
+                </p>
+              )}
               <div className="flex flex-col gap-1.5 pt-0.5">
                 <p className="text-xs text-muted-foreground">
-                  Insert variable:
+                  Insert variable at cursor (subject or body):
                 </p>
                 <div className="flex flex-wrap gap-1">
-                  {EMAIL_VARIABLES.map(v => (
+                  {emailVariablesForType(type).map(v => (
                     <button
                       key={v}
                       type="button"

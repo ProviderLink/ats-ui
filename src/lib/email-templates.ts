@@ -11,6 +11,7 @@ export const EMAIL_TEMPLATE_TYPES = [
 
 export type EmailTemplateType = (typeof EMAIL_TEMPLATE_TYPES)[number]['value'];
 
+/** Variables the composer fills in for every template type. */
 export const EMAIL_VARIABLES = [
   'candidateName',
   'candidateEmail',
@@ -20,6 +21,25 @@ export const EMAIL_VARIABLES = [
   'currentStage',
   'senderName',
 ] as const;
+
+/** Variables the server accepts on a template (superset of the picker). */
+export const KNOWN_EMAIL_VARIABLES = [
+  ...EMAIL_VARIABLES,
+  'companyName',
+  'interviewDate',
+  'interviewTime',
+  'interviewType',
+  'meetingLink',
+  'interviewerName',
+] as const;
+
+/** Variables worth offering in the picker for a given template type. */
+export function emailVariablesForType(type: string): readonly string[] {
+  // `companyName` is only supplied when the confirmation email is sent.
+  return type === 'application_confirmation'
+    ? [...EMAIL_VARIABLES, 'companyName']
+    : EMAIL_VARIABLES;
+}
 
 export const EMAIL_TEMPLATE_TYPE_LABELS = Object.fromEntries(
   EMAIL_TEMPLATE_TYPES.map(t => [t.value, t.label])

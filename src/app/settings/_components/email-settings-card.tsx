@@ -12,24 +12,20 @@ import { useSettingsStore } from '@/store';
 import { CheckIcon, MailIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { workspaceSettings as initialWorkspace } from '../_data/settings';
 
 export function EmailSettingsCard() {
   const settings = useSettingsStore(s => s.settings);
   const loading = useSettingsStore(s => s.loading);
   const mutating = useSettingsStore(s => s.mutating);
   const update = useSettingsStore(s => s.update);
-  const [fromName, setFromName] = useState(
-    settings?.email.fromName ?? initialWorkspace.emailSettings.fromName
-  );
+  const [fromName, setFromName] = useState(settings?.email.fromName ?? '');
   const [saved, setSaved] = useState(false);
 
   // The sender address is fixed by the backend: Resend only sends from a
   // verified domain, and every outbound email sets Reply-To to this same
   // mailbox so candidate replies land in the inbound webhook. It is shown for
   // transparency but is not editable.
-  const fromEmail =
-    settings?.email.fromEmail ?? initialWorkspace.emailSettings.fromEmail;
+  const fromEmail = settings?.email.fromEmail ?? '';
 
   useEffect(() => {
     if (settings?.email) {
@@ -39,6 +35,7 @@ export function EmailSettingsCard() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!fromName.trim()) return;
     try {
       await update({ email: { fromName } });
       toast.success('Email sender settings saved');
@@ -84,8 +81,7 @@ export function EmailSettingsCard() {
                 value={fromEmail}
                 readOnly
                 disabled
-                placeholder="hello@company.com"
-              />
+                              />
               <p className="text-xs text-muted-foreground">
                 Fixed by the server: the domain must be verified with the email
                 provider, and replies are delivered here. Contact your
@@ -98,7 +94,7 @@ export function EmailSettingsCard() {
               type="submit"
               size="sm"
               className="gap-1.5"
-              disabled={mutating || loading}
+              disabled={mutating || loading || !fromName.trim()}
             >
               {saved ? <CheckIcon className="size-3.5" /> : null}
               {saved ? 'Saved' : mutating ? 'Saving…' : 'Save changes'}

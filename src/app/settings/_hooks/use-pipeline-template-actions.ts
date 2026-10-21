@@ -6,6 +6,7 @@ import type { PipelineTemplateFormData } from './use-pipeline-template-form';
 export function usePipelineTemplateActions() {
   const create = usePipelineTemplateStore(s => s.create);
   const update = usePipelineTemplateStore(s => s.update);
+  const setAsDefault = usePipelineTemplateStore(s => s.setAsDefault);
   const remove = usePipelineTemplateStore(s => s.remove);
 
   /** Resolves true when the template was deleted. */
@@ -22,7 +23,7 @@ export function usePipelineTemplateActions() {
 
   async function makeDefault(id: string) {
     try {
-      await update(id, { isDefault: true });
+      await setAsDefault(id);
       toast.success('Default pipeline template set');
     } catch (e) {
       toast.error((e as Error).message || 'Failed to set default template');
@@ -38,6 +39,7 @@ export function usePipelineTemplateActions() {
     }
   }
 
+  /** Rethrows after toasting so the sheet stays open on failure. */
   async function save(
     data: PipelineTemplateFormData,
     editing?: PipelineTemplate
@@ -53,6 +55,7 @@ export function usePipelineTemplateActions() {
       }
     } catch (e) {
       toast.error((e as Error).message || 'Failed to save template');
+      throw e;
     }
   }
 

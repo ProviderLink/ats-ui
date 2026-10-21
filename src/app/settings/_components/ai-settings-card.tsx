@@ -19,7 +19,6 @@ import { useSettingsStore } from '@/store';
 import { BotIcon, CheckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { workspaceSettings as initialWorkspace } from '../_data/settings';
 
 export function AiSettingsCard() {
   const settings = useSettingsStore(s => s.settings);
@@ -27,18 +26,16 @@ export function AiSettingsCard() {
   const mutating = useSettingsStore(s => s.mutating);
   const update = useSettingsStore(s => s.update);
   const [provider, setProvider] = useState(
-    settings?.ai.provider ?? initialWorkspace.aiSettings.provider
+    settings?.ai.provider ?? 'claude'
   );
   const [resumeValidation, setResumeValidation] = useState(
-    settings?.ai.resumeValidation ??
-      initialWorkspace.aiSettings.resumeValidation
+    settings?.ai.resumeValidation ?? true
   );
   const [candidateScoring, setCandidateScoring] = useState(
-    settings?.ai.candidateScoring ??
-      initialWorkspace.aiSettings.candidateScoring
+    settings?.ai.candidateScoring ?? true
   );
   const [resumeParsing, setResumeParsing] = useState(
-    settings?.ai.resumeParsing ?? initialWorkspace.aiSettings.resumeParsing
+    settings?.ai.resumeParsing ?? true
   );
   const [saved, setSaved] = useState(false);
 
@@ -52,6 +49,7 @@ export function AiSettingsCard() {
   }, [settings?.ai]);
 
   async function handleSave() {
+    if (!settings) return;
     try {
       await update({
         ai: { provider, resumeValidation, candidateScoring, resumeParsing },
@@ -83,7 +81,7 @@ export function AiSettingsCard() {
           <Select
             value={provider}
             onValueChange={v => setProvider(v as 'claude' | 'openai')}
-            disabled={loading}
+            disabled={loading || !settings}
           >
             <SelectTrigger id="ai-provider" className="w-48">
               <SelectValue />
@@ -108,7 +106,7 @@ export function AiSettingsCard() {
           <Switch
             checked={resumeValidation}
             onCheckedChange={setResumeValidation}
-            disabled={loading}
+            disabled={loading || !settings}
             aria-label="Resume validation"
           />
         </div>
@@ -122,7 +120,7 @@ export function AiSettingsCard() {
           <Switch
             checked={candidateScoring}
             onCheckedChange={setCandidateScoring}
-            disabled={loading}
+            disabled={loading || !settings}
             aria-label="Candidate scoring"
           />
         </div>
@@ -137,7 +135,7 @@ export function AiSettingsCard() {
           <Switch
             checked={resumeParsing}
             onCheckedChange={setResumeParsing}
-            disabled={loading}
+            disabled={loading || !settings}
             aria-label="Resume parsing"
           />
         </div>
@@ -146,7 +144,7 @@ export function AiSettingsCard() {
             size="sm"
             className="gap-1.5"
             onClick={handleSave}
-            disabled={mutating}
+            disabled={mutating || !settings}
           >
             {saved ? <CheckIcon className="size-3.5" /> : null}
             {saved ? 'Saved' : mutating ? 'Saving…' : 'Save changes'}

@@ -64,6 +64,13 @@ export function usePipelineTemplateForm(
     setStages(prev => prev.map(s => (s._id === id ? { ...s, ...patch } : s)));
   }
 
+  // Mirrors the server's rules so a bad save is caught before the sheet closes.
+  const errors: string[] = [];
+  if (stages.length === 0) errors.push('Add at least one stage.');
+  if (stages.some(s => !s.name.trim())) {
+    errors.push('Every stage needs a name.');
+  }
+
   function getData(): PipelineTemplateFormData | null {
     if (!name.trim()) return null;
     return {
@@ -71,7 +78,7 @@ export function usePipelineTemplateForm(
       description: description.trim(),
       isDefault,
       isActive,
-      stages,
+      stages: stages.map(s => ({ ...s, name: s.name.trim() })),
     };
   }
 
@@ -84,6 +91,7 @@ export function usePipelineTemplateForm(
     isActive,
     setIsActive,
     stages,
+    errors,
     changeDefault,
     addStage,
     removeStage,

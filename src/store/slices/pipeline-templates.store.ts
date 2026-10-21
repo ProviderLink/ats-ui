@@ -24,16 +24,47 @@ interface PipelineTemplateActions {
   update: (id: string, data: UpdatePipelineTemplateDto) => Promise<void>;
   remove: (id: string) => Promise<void>;
   /**
-   * Atomically switch the default template status from the existing default
-   * to a new template. Backend enforces a single default via a partial unique
-   * index, so we must update the existing default to `isDefault: false`
-   * before setting `isDefault: true` on the new one. If the same template is
-   * already the default, this is a no-op.
+   * Switch the default template status from the existing default to a new
+   * template (see `runWithDefaultTransfer`). If the same template is already
+   * the default, this is a no-op.
    */
   setAsDefault: (id: string) => Promise<void>;
   reset: () => void;
   _patch: (t: PipelineTemplate) => void;
   _remove: (id: string) => void;
+}
+
+/**
+ * The backend allows a single default and rejects (409) any request that would
+ * create a second one, so a default transfer is two PATCHes: demote the current
+ * default, then run `run` (which promotes the new one). If `run` fails the old
+ * default is restored so the workspace is never left without a default (and if
+ * even that fails, `onRestoreFailed` syncs the local copy to the server).
+ */
+async function runWithDefaultTransfer<T>(
+  current: PipelineTemplate | undefined,
+  run: () => Promise<T>,
+  onRestoreFailed: (demoted: PipelineTemplate) => void
+): Promise<{ result: T; demoted: PipelineTemplate | null }> {
+  if (!current) return { result: await run(), demoted: null };
+  const url = `/ats/pipeline-templates/${current._id}`;
+  const demoted = await patchJson<PipelineTemplate>(url, { isDefault: false });
+  try {
+    return { result: await run(), demoted };
+  } catch (e) {
+    try {
+      await patchJson<PipelineTemplate>(url, { isDefault: true });
+    } catch {
+      onRestoreFailed(demoted);
+    }
+    throw e;
+  }
+}
+
+function upsert(items: PipelineTemplate[], t: PipelineTemplate) {
+  const idx = items.findIndex(x => x._id === t._id);
+  if (idx !== -1) items[idx] = t;
+  else items.push(t);
 }
 
 const initialState: PipelineTemplateState = {
@@ -100,14 +131,14 @@ export const usePipelineTemplateStore = create<
           s.error = null;
         });
         try {
-          const t = await postJson<PipelineTemplate>(
-            '/ats/pipeline-templates',
-            data
+          const { result: t, demoted } = await runWithDefaultTransfer(
+            data.isDefault ? get().items.find(x => x.isDefault) : undefined,
+            () => postJson<PipelineTemplate>('/ats/pipeline-templates', data),
+            d => set(s => upsert(s.items, d))
           );
           set(s => {
-            const idx = s.items.findIndex(x => x._id === t._id);
-            if (idx !== -1) s.items[idx] = t;
-            else s.items.push(t);
+            if (demoted) upsert(s.items, demoted);
+            upsert(s.items, t);
             s.mutating = false;
           });
           return t;
@@ -126,11 +157,16 @@ export const usePipelineTemplateStore = create<
           s.error = null;
         });
         try {
-          const t = await patchJson<PipelineTemplate>(
-            `/ats/pipeline-templates/${id}`,
-            data
+          const { result: t, demoted } = await runWithDefaultTransfer(
+            data.isDefault
+              ? get().items.find(x => x.isDefault && x._id !== id)
+              : undefined,
+            () =>
+              patchJson<PipelineTemplate>(`/ats/pipeline-templates/${id}`, data),
+            d => set(s => upsert(s.items, d))
           );
           set(s => {
+            if (demoted) upsert(s.items, demoted);
             const idx = s.items.findIndex(x => x._id === id);
             if (idx !== -1) s.items[idx] = t;
             s.mutating = false;
@@ -173,27 +209,16 @@ export const usePipelineTemplateStore = create<
           s.error = null;
         });
         try {
-          // Step 1 — un-default the current default in the backend. The store
-          // is updated optimistically so subsequent reads see the change; the
-          // PATCH response also Patches the store with the server's result.
-          if (currentDefault) {
-            const undefaulted = await patchJson<PipelineTemplate>(
-              `/ats/pipeline-templates/${currentDefault._id}`,
-              { isDefault: false }
-            );
-            set(s => {
-              const idx = s.items.findIndex(x => x._id === currentDefault._id);
-              if (idx !== -1) s.items[idx] = undefaulted;
-            });
-          }
-          // Step 2 — set the new default. Either we un-defaulted the old one
-          // above, or there was no default at all; both satisfy the backend's
-          // single-default invariant.
-          const updated = await patchJson<PipelineTemplate>(
-            `/ats/pipeline-templates/${id}`,
-            { isDefault: true }
+          const { result: updated, demoted } = await runWithDefaultTransfer(
+            currentDefault,
+            () =>
+              patchJson<PipelineTemplate>(`/ats/pipeline-templates/${id}`, {
+                isDefault: true,
+              }),
+            d => set(s => upsert(s.items, d))
           );
           set(s => {
+            if (demoted) upsert(s.items, demoted);
             const idx = s.items.findIndex(x => x._id === id);
             if (idx !== -1) s.items[idx] = updated;
             s.mutating = false;
@@ -203,9 +228,6 @@ export const usePipelineTemplateStore = create<
             s.mutating = false;
             s.error = (e as Error).message;
           });
-          // Re-fetch to reconcile local state with the server's source of
-          // truth after a failed two-step switch.
-          void get().fetch();
           throw e;
         }
       },
