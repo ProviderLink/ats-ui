@@ -10,23 +10,19 @@
  * itself does NOT re-check the status — keeping the condition in exactly
  * one place per the §7 planning decision.
  */
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatDate } from '@/lib/utils';
 import { useInterviewScorecardStore } from '@/store/slices/interview-scorecards.store';
 import type { InterviewScorecard } from '@/store/types/interview-scorecard.types';
-import {
-  FINAL_RECOMMENDATION_BADGE_CLASS,
-  FINAL_RECOMMENDATION_LABELS,
-} from '@/store/types/interview-scorecard.types';
-import { ChevronRightIcon, PlusIcon, StarIcon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import { useState } from 'react';
+import type { ScorecardJobOption } from '../_utils/scorecard-form';
+import { InterviewScorecardCard } from './interview-scorecard-card';
 import { InterviewScorecardDetail } from './interview-scorecard-detail';
 
 interface Props {
   candidateId: string;
-  jobOptions: { _id: string; title: string }[];
+  jobOptions: ScorecardJobOption[];
   users: { _id: string; firstName: string; lastName: string }[];
   onAdd: () => void;
   /** Triggered when the user requests to edit an existing scorecard. */
@@ -96,57 +92,14 @@ export function InterviewScorecardHistory({
       </div>
 
       {scorecards.map(sc => (
-        <button
+        <InterviewScorecardCard
           key={sc._id}
-          type="button"
-          onClick={() => openDetail(sc)}
-          className="group rounded-lg border p-4 text-left hover:bg-muted/40 transition-colors flex items-center gap-3"
-        >
-          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium">
-                {formatDate(sc.interviewDate)}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                · {resolveJobTitle(sc.jobId)}
-              </span>
-              <Badge
-                variant="outline"
-                className={cn(
-                  'h-5 text-xs font-medium ml-auto',
-                  FINAL_RECOMMENDATION_BADGE_CLASS[sc.finalRecommendation]
-                )}
-              >
-                {FINAL_RECOMMENDATION_LABELS[sc.finalRecommendation]}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground flex-wrap">
-              <span>
-                Interviewer: {resolveInterviewerName(sc.interviewerId)}
-              </span>
-              <span className="flex items-center gap-1">
-                Overall:{' '}
-                <span className="font-medium text-foreground">
-                  {sc.overallScore.toFixed(1)}/100
-                </span>
-              </span>
-              <span className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <StarIcon
-                    key={i}
-                    className={cn(
-                      'size-3',
-                      i < Math.round((sc.overallScore / 100) * 5)
-                        ? 'fill-amber-400 text-amber-400'
-                        : 'text-muted-foreground/30'
-                    )}
-                  />
-                ))}
-              </span>
-            </div>
-          </div>
-          <ChevronRightIcon className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
-        </button>
+          scorecard={sc}
+          jobTitle={resolveJobTitle(sc.jobId)}
+          clientName={jobOptions.find(j => j._id === sc.jobId)?.clientName}
+          interviewerName={resolveInterviewerName(sc.interviewerId)}
+          onOpen={() => openDetail(sc)}
+        />
       ))}
 
       <InterviewScorecardDetail
@@ -154,6 +107,11 @@ export function InterviewScorecardHistory({
         open={detailOpen}
         onOpenChange={setDetailOpen}
         jobTitle={selected ? resolveJobTitle(selected.jobId) : null}
+        clientName={
+          selected
+            ? jobOptions.find(j => j._id === selected.jobId)?.clientName
+            : null
+        }
         interviewerName={
           selected ? resolveInterviewerName(selected.interviewerId) : null
         }

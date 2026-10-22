@@ -1,77 +1,86 @@
 import { cn } from '@/lib/utils';
-import { StarIcon } from 'lucide-react';
+import { CheckIcon, XIcon } from 'lucide-react';
+import { RatingStars } from './rating-stars';
+
+export interface CheckItem {
+  label: string;
+  value: boolean;
+}
 
 interface CategoryDetailProps {
   title: string;
   rating: number;
-  weighted: number;
-  weight: number;
-  subRows?: { label: string; value: string }[];
+  /** Yes/No criteria, shown as a checklist. */
+  checks?: CheckItem[];
+  /** Label/value facts, e.g. sub-ratings or a measured speed. */
+  facts?: { label: string; value: string }[];
   extra?: React.ReactNode;
-  note?: string;
   /** Interviewer's free-text notes for this category. */
   notes?: string;
+}
+
+function Check({ label, value }: CheckItem) {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <span
+        className={cn(
+          'grid size-4 shrink-0 place-items-center rounded-full',
+          value
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+            : 'bg-muted text-muted-foreground'
+        )}
+      >
+        {value ? (
+          <CheckIcon className="size-3" strokeWidth={3} />
+        ) : (
+          <XIcon className="size-3" strokeWidth={3} />
+        )}
+      </span>
+      <span className={value ? '' : 'text-muted-foreground'}>{label}</span>
+    </li>
+  );
 }
 
 export function CategoryDetail({
   title,
   rating,
-  weighted,
-  weight,
-  subRows = [],
+  checks = [],
+  facts = [],
   extra,
-  note,
   notes,
 }: CategoryDetailProps) {
   return (
-    <section className="rounded-lg border p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-sm font-semibold">
-          {title}
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            weight {weight}
-          </span>
-        </span>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <StarIcon
-                key={i}
-                className={cn(
-                  'size-3.5',
-                  i < rating
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'text-muted-foreground/30'
-                )}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {weighted.toFixed(1)}/{weight}
-          </span>
-        </div>
+    <section className="flex flex-col gap-3 rounded-lg border p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-semibold">{title}</h4>
+        <RatingStars rating={rating} showValue />
       </div>
 
-      {subRows.length > 0 && (
-        <ul className="text-sm text-muted-foreground flex flex-col gap-1.5">
-          {subRows.map((r, i) => (
-            <li key={i} className="flex justify-between gap-3">
-              <span>{r.label}</span>
-              <span className="text-foreground font-medium">{r.value}</span>
-            </li>
+      {facts.length > 0 && (
+        <dl className="flex flex-col gap-1.5">
+          {facts.map(f => (
+            <div key={f.label} className="flex justify-between gap-3 text-sm">
+              <dt className="text-muted-foreground">{f.label}</dt>
+              <dd className="font-medium">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {checks.length > 0 && (
+        <ul className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+          {checks.map(c => (
+            <Check key={c.label} {...c} />
           ))}
         </ul>
       )}
 
-      {note && <p className="text-xs text-muted-foreground italic">{note}</p>}
       {extra}
+
       {notes && (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Notes
-          </span>
-          <p className="text-sm whitespace-pre-wrap">{notes}</p>
-        </div>
+        <p className="whitespace-pre-wrap rounded-md bg-muted/50 px-3 py-2 text-sm leading-relaxed">
+          {notes}
+        </p>
       )}
     </section>
   );
