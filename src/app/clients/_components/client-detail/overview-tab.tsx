@@ -1,40 +1,41 @@
-import { Separator } from '@/components/ui/separator';
-import type { Client } from '@/store/types';
-import {
-  BuildingIcon,
-  GlobeIcon,
-  MailIcon,
-  MapPinIcon,
-  PhoneIcon,
-  UserIcon,
-} from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { Dash, InfoRow, SectionTitle } from './primitives';
+import type { Client } from '@/store/types';
+import { Dash, DetailRow, DetailSection } from './primitives';
 import { UserCell } from './user-cell';
 
+const linkCls =
+  'underline underline-offset-4 decoration-border hover:text-primary transition-colors';
+
 export function OverviewTab({ client }: { client: Client }) {
-  const shortAddress = client.address
-    ? [client.address.city, client.address.state, client.address.country]
-        .filter(Boolean)
-        .join(', ')
-    : null;
+  const { address } = client;
+  const addressLines = address
+    ? [
+        address.street,
+        [address.city, address.state, address.postalCode]
+          .filter(Boolean)
+          .join(', '),
+        address.country,
+      ].filter(Boolean)
+    : [];
 
   return (
     <div className="flex flex-col gap-6 py-5">
-      <div className="flex flex-col gap-4">
-        <SectionTitle>Contact Info</SectionTitle>
-        <InfoRow icon={<MailIcon className="size-4" />} label="Email">
-          <a
-            href={`mailto:${client.email}`}
-            className="underline underline-offset-4 decoration-border hover:text-primary transition-colors break-all"
-          >
+      <DetailSection title="Contact">
+        <DetailRow label="Email">
+          <a href={`mailto:${client.email}`} className={linkCls}>
             {client.email}
           </a>
-        </InfoRow>
-        <InfoRow icon={<PhoneIcon className="size-4" />} label="Phone">
-          {client.phone || <Dash />}
-        </InfoRow>
-        <InfoRow icon={<GlobeIcon className="size-4" />} label="Website">
+        </DetailRow>
+        <DetailRow label="Phone">
+          {client.phone ? (
+            <a href={`tel:${client.phone}`} className={linkCls}>
+              {client.phone}
+            </a>
+          ) : (
+            <Dash />
+          )}
+        </DetailRow>
+        <DetailRow label="Website">
           {client.website ? (
             <a
               href={
@@ -44,68 +45,53 @@ export function OverviewTab({ client }: { client: Client }) {
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-4 decoration-border hover:text-primary transition-colors"
+              className={linkCls}
             >
               {client.website}
             </a>
           ) : (
             <Dash />
           )}
-        </InfoRow>
-        <InfoRow icon={<MapPinIcon className="size-4" />} label="Address">
-          {shortAddress || <Dash />}
-        </InfoRow>
-      </div>
-
-      <Separator />
-
-      <div className="flex flex-col gap-4">
-        <SectionTitle>Company</SectionTitle>
-        <InfoRow icon={<BuildingIcon className="size-4" />} label="Industry">
-          {client.industry ? (
-            client.industry.charAt(0).toUpperCase() + client.industry.slice(1)
+        </DetailRow>
+        <DetailRow label="Address">
+          {addressLines.length ? (
+            addressLines.map((line, i) => <div key={i}>{line}</div>)
           ) : (
             <Dash />
           )}
-        </InfoRow>
-        <InfoRow icon={<UserIcon className="size-4" />} label="Company Size">
+        </DetailRow>
+      </DetailSection>
+
+      <DetailSection title="Company">
+        <DetailRow label="Industry">
+          {client.industry ? (
+            <span className="capitalize">{client.industry}</span>
+          ) : (
+            <Dash />
+          )}
+        </DetailRow>
+        <DetailRow label="Company size">
           {client.companySize ? `${client.companySize} employees` : <Dash />}
-        </InfoRow>
+        </DetailRow>
         {client.description && (
-          <InfoRow
-            icon={<BuildingIcon className="size-4" />}
-            label="Description"
-          >
-            <span className="leading-relaxed break-words whitespace-pre-wrap">
+          <DetailRow label="Description">
+            <span className="whitespace-pre-wrap leading-relaxed">
               {client.description}
             </span>
-          </InfoRow>
+          </DetailRow>
         )}
-      </div>
+      </DetailSection>
 
-      <Separator />
-
-      <div className="flex flex-col gap-3">
-        <SectionTitle>Record Info</SectionTitle>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Created</p>
-            <p className="text-sm">{formatDate(client.createdAt)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Updated</p>
-            <p className="text-sm">{formatDate(client.updatedAt)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Created by</p>
-            <UserCell userId={client.createdBy} />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Updated by</p>
-            <UserCell userId={client.updatedBy} />
-          </div>
-        </div>
-      </div>
+      <DetailSection title="Record">
+        <DetailRow label="Created">{formatDate(client.createdAt)}</DetailRow>
+        <DetailRow label="Created by">
+          <UserCell userId={client.createdBy} />
+        </DetailRow>
+        <DetailRow label="Last updated">{formatDate(client.updatedAt)}</DetailRow>
+        <DetailRow label="Updated by">
+          <UserCell userId={client.updatedBy} />
+        </DetailRow>
+      </DetailSection>
     </div>
   );
 }

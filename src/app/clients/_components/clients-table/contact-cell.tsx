@@ -1,4 +1,5 @@
 import type { ClientContact } from '@/store/types';
+import { avatarBg } from './client-avatar-utils';
 
 function initials(name: string) {
   return name
@@ -15,7 +16,8 @@ export function ContactCell({ contacts }: { contacts: ClientContact[] }) {
   return (
     <div className="flex items-center gap-2.5 min-w-0">
       <span
-        className="size-7 shrink-0 rounded-full bg-muted text-[10px] font-semibold text-muted-foreground flex items-center justify-center select-none"
+        style={{ backgroundColor: avatarBg(primary.name) }}
+        className="size-7 shrink-0 rounded-full text-[10px] font-semibold text-white flex items-center justify-center select-none"
         aria-hidden
       >
         {initials(primary.name) || '?'}

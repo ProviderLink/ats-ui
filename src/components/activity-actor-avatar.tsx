@@ -47,7 +47,7 @@ export function ActorAvatar({
       <span
         style={size}
         className={cn(
-          'grid shrink-0 place-items-center rounded-full bg-muted',
+          'grid shrink-0 place-items-center rounded-full border border-border bg-muted',
           TONE_ACCENT[tone]
         )}
       >
@@ -61,7 +61,7 @@ export function ActorAvatar({
       <span
         style={size}
         className={cn(
-          'grid shrink-0 select-none place-items-center overflow-hidden rounded-full text-[10px] font-semibold',
+          'grid shrink-0 select-none place-items-center overflow-hidden rounded-full border border-border text-[10px] font-semibold',
           !actor.avatar && avatarBg(actor.name || '?')
         )}
       >
@@ -102,7 +102,7 @@ export function ActorAvatar({
   return (
     <span
       style={size}
-      className="grid shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
+      className="grid shrink-0 place-items-center rounded-full border border-border bg-muted text-muted-foreground"
     >
       <CogIcon className="size-3.5" />
     </span>

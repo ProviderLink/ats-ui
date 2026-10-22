@@ -10,16 +10,16 @@ import { OverviewTab } from './overview-tab';
 
 export function ClientTabs({ client }: { client: Client }) {
   return (
-    <Tabs defaultValue="overview">
-      <div className="border-b px-6 py-3">
-        <TabsList>
+    <Tabs defaultValue="overview" className="gap-0">
+      <div className="overflow-x-auto px-6 pt-1">
+        <TabsList variant="line" className="w-full justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="contacts">
             Contacts
             {client.contacts.length > 0 && (
               <Badge
                 variant="outline"
-                className="h-4 px-1.5 text-[10px] rounded-full border-border"
+                className="h-4 px-1.5 text-[10px] rounded-full border-border font-normal"
               >
                 {client.contacts.length}
               </Badge>

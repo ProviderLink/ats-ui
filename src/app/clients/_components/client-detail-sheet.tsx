@@ -4,13 +4,13 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
-import type { Client } from '@/store/types';
-import { ClientIdentity } from './client-detail/client-identity';
-import { ClientTabs } from './client-detail/client-tabs';
-import { ClientTagsBar } from './client-detail/client-tags-bar';
-import { SheetHeaderActions } from './client-detail/sheet-header-actions';
-import { useClientCrmAccess } from './client-detail/use-client-crm-access';
+} from "@/components/ui/sheet";
+import type { Client } from "@/store/types";
+import { ClientIdentity } from "./client-detail/client-identity";
+import { ClientTabs } from "./client-detail/client-tabs";
+import { ClientTagsBar } from "./client-detail/client-tags-bar";
+import { SheetHeaderActions } from "./client-detail/sheet-header-actions";
+import { useClientCrmAccess } from "./client-detail/use-client-crm-access";
 
 interface ClientDetailSheetProps {
   client: Client | null;
@@ -32,7 +32,7 @@ export function ClientDetailSheet({ client, ...rest }: ClientDetailSheetProps) {
   return <ClientDetailSheetContent client={client} {...rest} />;
 }
 
-interface ContentProps extends Omit<ClientDetailSheetProps, 'client'> {
+interface ContentProps extends Omit<ClientDetailSheetProps, "client"> {
   client: Client;
 }
 
@@ -51,9 +51,18 @@ function ClientDetailSheetContent({
         side="right"
         className="flex flex-col gap-0 p-0 w-full sm:!max-w-[500px]"
       >
-        <SheetHeader className="border-b px-6 py-4 shrink-0">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-base">Client Details</SheetTitle>
+        <SheetHeader className="relative shrink-0 gap-0 overflow-hidden border-b p-6">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,var(--color-border)_1px,transparent_1.5px)] bg-[size:14px_14px] opacity-70 [mask-image:linear-gradient(to_bottom_left,black,transparent_75%)]"
+          />
+          <div className="relative flex flex-col gap-4">
+            <SheetTitle className="sr-only">{client.companyName}</SheetTitle>
+            <SheetDescription className="sr-only">
+              Client company details, contacts, jobs and activity.
+            </SheetDescription>
+            <ClientIdentity client={client} />
+            <ClientTagsBar client={client} open={open} />
             <SheetHeaderActions
               canProvision={crm.canProvision}
               crmUser={crm.crmUser}
@@ -76,14 +85,9 @@ function ClientDetailSheetContent({
               }
             />
           </div>
-          <ClientTagsBar client={client} open={open} />
-          <SheetDescription className="sr-only">
-            Client company details, contacts, jobs and activity.
-          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto">
-          <ClientIdentity client={client} />
           <ClientTabs client={client} />
         </div>
       </SheetContent>

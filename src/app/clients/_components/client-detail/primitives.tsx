@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { CheckCircleIcon, StarIcon, XCircleIcon } from 'lucide-react';
 import React from 'react';
-import { avatarColor } from './config';
+import { ClientAvatar } from '../clients-table/client-avatar';
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -81,24 +81,49 @@ export function StarRating({ score }: { score?: number | null }) {
   );
 }
 
-export function CompanyAvatar({ name, logo }: { name: string; logo?: string | null }) {
-  const bg = avatarColor(name);
-  if (logo)
-    return (
-      <img
-        src={logo}
-        alt={name}
-        className="size-14 rounded-xl object-cover shrink-0"
-      />
-    );
+export function CompanyAvatar({
+  name,
+  logo,
+}: {
+  name: string;
+  logo?: string | null;
+}) {
   return (
-    <div
-      className={cn(
-        'size-14 rounded-xl flex items-center justify-center shrink-0 select-none text-base font-semibold',
-        bg
-      )}
-    >
-      {name.slice(0, 2).toUpperCase()}
+    <ClientAvatar
+      client={{ companyName: name, logo }}
+      className="size-14 text-lg p-1"
+    />
+  );
+}
+
+export function DetailSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-1">
+      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {title}
+      </h3>
+      <dl className="divide-y">{children}</dl>
+    </section>
+  );
+}
+
+export function DetailRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[7rem_1fr] items-baseline gap-3 py-2.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words text-sm">{children}</dd>
     </div>
   );
 }

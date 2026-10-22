@@ -8,44 +8,43 @@ export function ClientIdentity({ client }: { client: Client }) {
   const crmHealth = client.crmProfile?.healthStatus
     ? healthConfig[client.crmProfile.healthStatus]
     : null;
+  const location = [client.address?.city, client.address?.state, client.address?.country]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <div className="px-6 pt-6 pb-2">
-      <div className="flex items-center gap-4">
-        <CompanyAvatar name={client.companyName} logo={client.logo} />
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-semibold leading-tight truncate">
-            {client.companyName}
+    <div className="flex items-start gap-4">
+      <CompanyAvatar name={client.companyName} logo={client.logo} />
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-lg font-semibold leading-tight">
+          {client.companyName}
+        </h2>
+        {location && (
+          <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            {location}
           </p>
-          {client.address && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {[client.address.city, client.address.state, client.address.country]
-                .filter(Boolean)
-                .join(', ')}
-            </p>
-          )}
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
+        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium',
+              status.cls
+            )}
+          >
+            <span className={cn('size-1.5 rounded-full', status.dot)} />
+            {status.label}
+          </span>
+          {crmHealth && (
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium',
-                status.cls
+                'inline-flex items-center gap-1.5 text-xs font-medium',
+                crmHealth.cls
               )}
             >
-              <span className={cn('size-1.5 rounded-full', status.dot)} />
-              {status.label}
+              <span className={cn('size-1.5 rounded-full', crmHealth.dot)} />
+              {crmHealth.label}
             </span>
-            {crmHealth && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border border-transparent px-2 py-0.5 text-xs font-medium',
-                  crmHealth.cls
-                )}
-              >
-                <span className={cn('size-1.5 rounded-full', crmHealth.dot)} />
-                {crmHealth.label}
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,17 +7,17 @@ const STATUS_CONFIG: Record<
 > = {
   active: {
     label: 'Active',
-    pill: 'bg-pine-teal-50 text-pine-teal-700 dark:bg-pine-teal-950/40 dark:text-pine-teal-300',
+    pill: 'border-[#2d8a51]/30 bg-[#2d8a51]/10 text-[#24703f] dark:border-[#69c58a]/30 dark:bg-[#69c58a]/10 dark:text-[#69c58a]',
     dot: 'bg-pine-teal-500',
   },
   inactive: {
     label: 'Inactive',
-    pill: 'bg-muted text-muted-foreground',
+    pill: 'border-border bg-muted text-muted-foreground',
     dot: 'bg-silver-400',
   },
   suspended: {
     label: 'Suspended',
-    pill: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
+    pill: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:border-rose-400/30 dark:text-rose-300',
     dot: 'bg-rose-500',
   },
 };
@@ -27,7 +27,7 @@ export function ClientStatusBadge({ status }: { status: ClientStatus }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium',
         pill
       )}
     >
