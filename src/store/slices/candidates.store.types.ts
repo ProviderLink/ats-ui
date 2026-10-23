@@ -18,11 +18,14 @@ export interface CandidateState {
   ineligibleItems: Candidate[];
   ineligibleLoaded: boolean;
   ineligibleLoading: boolean;
+  /** The talent pool has been loaded into `items` at least once this session. */
+  poolLoaded: boolean;
 }
 
 export interface CandidateActions {
   fetch: (params?: CandidateFilters) => Promise<void>;
-  fetchOne: (id: string) => Promise<void>;
+  /** `silent` skips the global loading/error flags (background refresh). */
+  fetchOne: (id: string, opts?: { silent?: boolean }) => Promise<void>;
   create: (data: CreateCandidateDto) => Promise<Candidate>;
   update: (id: string, data: UpdateCandidateDto) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -72,7 +75,17 @@ export interface CandidateActions {
   }>;
   setFilters: (f: Partial<CandidateFilters>) => void;
   fetchIneligible: (force?: boolean) => Promise<void>;
+  /** Re-fetch every cached row (after a socket reconnect). */
+  refreshCached: () => Promise<void>;
+  /** Load (or refresh) every talent-pool candidate into the shared list. */
+  loadTalentPool: () => Promise<void>;
+  /** Load a filtered subset (e.g. the talent pool) into the shared list. */
+  loadSubset: (filters: CandidateFilters) => Promise<void>;
+  /** Load candidates not yet cached (by id) into the shared list. */
+  ensureByIds: (ids: string[]) => Promise<void>;
   reset: () => void;
   _patch: (c: Candidate) => void;
+  /** Add rows not yet cached; never overwrites an existing (fresher) row. */
+  _mergeMany: (rows: Candidate[]) => void;
   _remove: (id: string) => void;
 }

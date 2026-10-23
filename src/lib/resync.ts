@@ -31,7 +31,7 @@ export function resyncAllData(): Promise<void> {
   inFlight = Promise.allSettled([
     useClientStore.getState().fetch(useClientStore.getState().filters),
     useJobStore.getState().fetch(useJobStore.getState().filters),
-    useCandidateStore.getState().fetch(useCandidateStore.getState().filters),
+    useCandidateStore.getState().refreshCached(),
     useCandidateStore.getState().ineligibleLoaded
       ? useCandidateStore.getState().fetchIneligible(true)
       : Promise.resolve(),

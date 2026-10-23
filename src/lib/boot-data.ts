@@ -1,11 +1,14 @@
 /**
  * Boot loader — calls each store's fetch with limit 9999 once after login.
+ * Candidates are deliberately NOT loaded here: they grow without bound, so
+ * each page loads the slice it shows (server-side paging) into a shared cache.
  * During boot, isBooted=false so no-op guards in fetch methods don't trigger.
  * After boot, fetch() returns immediately — all filtering is client-side.
  */
 
 import { useApplicationStore } from '@/store/slices/applications.store';
 import { useBootStore } from '@/store/slices/boot.store';
+import { useAuthStore } from '@/store/slices/auth.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useClientStore } from '@/store/slices/clients.store';
 import { useDashboardStore } from '@/store/slices/dashboard.store';
@@ -29,7 +32,6 @@ let bootPromise: Promise<void> | null = null;
 const REQUIRED_STORES = [
   { name: 'clients', store: useClientStore },
   { name: 'jobs', store: useJobStore },
-  { name: 'candidates', store: useCandidateStore },
   { name: 'applications', store: useApplicationStore },
   { name: 'interviews', store: useInterviewStore },
   { name: 'tags', store: useTagStore },
@@ -88,15 +90,23 @@ export async function bootAllData(): Promise<void> {
     void useEmailStore.getState().fetch({ limit: 50, page: 1 });
 
     // The dashboard reads its own slim endpoint, not the lists below, so start
-    // it now instead of after the loader goes away.
-    if (window.location.pathname.startsWith('/ats/dashboard')) {
-      void useDashboardStore.getState().fetch();
+    // it now (whatever page we are on) instead of after the loader goes away;
+    // opening the Dashboard later then shows the numbers at once and refreshes.
+    void useDashboardStore.getState().fetch();
+
+    // Candidate slices the sidebar pages show are fetched in the background so
+    // Talent Pool and Ineligible open instantly. They do not hold the loader.
+    void useCandidateStore
+      .getState()
+      .loadTalentPool()
+      .catch(() => undefined);
+    if (useAuthStore.getState().user?.roles?.includes('admin')) {
+      void useCandidateStore.getState().fetchIneligible();
     }
 
     const r = await Promise.allSettled([
       timed('clients', useClientStore.getState().fetch({ limit: 9999 })),
       timed('jobs', useJobStore.getState().fetch({ limit: 9999 })),
-      timed('candidates', useCandidateStore.getState().fetch({ limit: 9999 })),
       timed(
         'applications',
         useApplicationStore.getState().fetch({ limit: 9999 })
@@ -108,6 +118,15 @@ export async function bootAllData(): Promise<void> {
       timed('email-templates', useEmailTemplateStore.getState().fetch()),
       timed('pipeline-templates', usePipelineTemplateStore.getState().fetch()),
     ]);
+
+    // Hired page: the candidates behind the hire records, once applications are in.
+    const hiredIds = useApplicationStore
+      .getState()
+      .items.filter(a => a.phase === 'hired')
+      .map(a => a.candidateId);
+    if (hiredIds.length > 0) {
+      void useCandidateStore.getState().ensureByIds(hiredIds);
+    }
 
     if (import.meta.env.DEV) {
       console.table(timings.sort((a, b) => b.ms - a.ms));

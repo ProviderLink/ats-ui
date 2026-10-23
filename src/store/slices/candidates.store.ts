@@ -34,11 +34,15 @@ const initialState: CandidateState = {
   ineligibleItems: [],
   ineligibleLoaded: false,
   ineligibleLoading: false,
+  poolLoaded: false,
 };
 
 // Persist detail for instant display on revisit; items are NOT persisted
 // to avoid flashing stale data (e.g., approved candidates with parsedData/aiScore
 // briefly visible on the "In Review" tab before the API response replaces them).
+// Ids already requested by `ensureByIds` this session.
+const requestedIds = new Set<string>();
+
 export const useCandidateStore = create<CandidateState & CandidateActions>()(
   persist(
     immer((set, get) => {
@@ -125,16 +129,18 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
           }
         },
 
-        fetchOne: async id => {
-          set(s => {
-            s.loading = true;
-            s.error = null;
-          });
+        fetchOne: async (id, opts) => {
+          const silent = opts?.silent ?? false;
+          if (!silent)
+            set(s => {
+              s.loading = true;
+              s.error = null;
+            });
           try {
             const c = await getJson<Candidate>(`/ats/candidates/${id}`);
             set(s => {
               s.detail[id] = c;
-              s.loading = false;
+              if (!silent) s.loading = false;
               // Keep the admin Ineligible list consistent with the fresh record.
               // The sheet uses this to refresh after a legal-hold toggle, which
               // changes a field rendered by that list.
@@ -142,10 +148,88 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
               if (iIdx !== -1) s.ineligibleItems[iIdx] = c;
             });
           } catch (e) {
+            if (silent) return;
             set(s => {
               s.loading = false;
               s.error = (e as Error).message;
             });
+          }
+        },
+
+        // After a socket reconnect, missed events are not replayed: re-read every
+        // cached row. Rows the server no longer returns (deleted, or hidden
+        // because permanently ineligible) are dropped from the list.
+        refreshCached: async () => {
+          const ids = get().items.map(x => x._id);
+          for (let i = 0; i < ids.length; i += 100) {
+            const chunk = ids.slice(i, i + 100);
+            try {
+              const res = await getJson<
+                Candidate[] | ({ data: Candidate[] } & Pagination)
+              >('/ats/candidates', { ids: chunk.join(','), slim: 1 });
+              const rows = Array.isArray(res) ? res : (res.data ?? []);
+              const byId = new Map(rows.map(r => [r._id, r]));
+              const asked = new Set(chunk);
+              set(s => {
+                s.items = s.items
+                  .filter(x => !asked.has(x._id) || byId.has(x._id))
+                  .map(x => byId.get(x._id) ?? x);
+              });
+            } catch {
+              // Keep what we have; the next event or reload corrects it.
+            }
+          }
+        },
+
+        loadTalentPool: async () => {
+          await get().loadSubset({ inTalentPool: true, limit: 9999 });
+          set(s => {
+            s.poolLoaded = true;
+          });
+        },
+
+        // Pages that need a whole slice of candidates (the talent pool) load it
+        // here without touching the global loading/error flags or the filters.
+        loadSubset: async filters => {
+          const res = await getJson<
+            Candidate[] | ({ data: Candidate[] } & Pagination)
+          >('/ats/candidates', {
+            ...(filters as Record<string, unknown>),
+            slim: 1,
+          });
+          const rows = Array.isArray(res) ? res : (res.data ?? []);
+          // The server copy is authoritative at this moment, so it replaces
+          // any cached row for the same candidate.
+          set(s => {
+            const byId = new Map(rows.map(r => [r._id, r]));
+            s.items = s.items.map(x => byId.get(x._id) ?? x);
+            const known = new Set(s.items.map(x => x._id));
+            for (const r of rows) if (!known.has(r._id)) s.items.push(r);
+          });
+        },
+
+        // Fetches only the ids the shared list does not hold, in chunks, and
+        // merges them in. Ids already being fetched are not requested twice;
+        // ids the server does not return (deleted, or hidden permanently
+        // ineligible candidates) are remembered so they are not retried.
+        ensureByIds: async ids => {
+          const known = new Set(get().items.map(x => x._id));
+          const want = [...new Set(ids)].filter(
+            id => !known.has(id) && !requestedIds.has(id)
+          );
+          if (want.length === 0) return;
+          want.forEach(id => requestedIds.add(id));
+          for (let i = 0; i < want.length; i += 100) {
+            const chunk = want.slice(i, i + 100);
+            try {
+              const res = await getJson<
+                Candidate[] | ({ data: Candidate[] } & Pagination)
+              >('/ats/candidates', { ids: chunk.join(','), slim: 1 });
+              get()._mergeMany(Array.isArray(res) ? res : (res.data ?? []));
+            } catch {
+              // Allow a retry on the next render.
+              chunk.forEach(id => requestedIds.delete(id));
+            }
           }
         },
 
@@ -170,6 +254,7 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             >('/ats/candidates', {
               eligibilityStatus: 'permanently_ineligible',
               limit: 9999,
+              slim: 1,
             });
             const data = Array.isArray(res) ? res : (res.data ?? []);
             set(s => {
@@ -299,12 +384,21 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
             s.filters = { ...s.filters, ...f };
           }),
 
-        reset: () =>
+        reset: () => {
+          requestedIds.clear();
           set(s => {
             Object.assign(s, initialState);
-          }),
+          });
+        },
 
         _patch: c => set(s => applyCandidatePatch(s, c)),
+
+        _mergeMany: rows =>
+          set(s => {
+            const known = new Set(s.items.map(x => x._id));
+            const fresh = rows.filter(r => !known.has(r._id));
+            if (fresh.length > 0) s.items.push(...fresh);
+          }),
 
         _remove: id =>
           set(s => {

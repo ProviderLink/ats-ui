@@ -18,6 +18,7 @@ import { useCandidateTagEditing } from '../_hooks/use-candidate-tag-editing';
 import { useCandidateReviewActions } from '../_hooks/use-candidate-review-actions';
 import { useIneligibleSheetActions } from '../_hooks/use-ineligible-sheet-actions';
 import { useInterviewActions } from '../_hooks/use-interview-actions';
+import { useLoadFullCandidate } from '@/hooks/use-load-full-candidate';
 import { useLatestCandidate } from '../_hooks/use-latest-candidate';
 import { usePipelineNotes } from '../_hooks/use-pipeline-notes';
 import { CandidateDetailBody } from './candidate-detail-body';
@@ -42,6 +43,7 @@ export function CandidateDetailSheet({
   mutating = false,
 }: CandidateDetailSheetProps) {
   const c = useLatestCandidate(candidate);
+  useLoadFullCandidate(candidate?._id, open);
   // True while the interview scorecard form is docked beside this sheet.
   const [scorecardFormOpen, setScorecardFormOpen] = useState(false);
   const fullName = c ? `${c.firstName} ${c.lastName}` : '';

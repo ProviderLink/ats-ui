@@ -11,8 +11,12 @@ import { runAllWithConcurrency } from '../_utils/run-with-concurrency';
 import type { useCandidateApplicationMaps } from './use-candidate-application-maps';
 
 interface BulkActionsArgs {
-  items: Candidate[];
-  filteredData: Candidate[];
+  /** Rows on the current page. */
+  pageRows: Candidate[];
+  /** Rows matching the current filters, across all pages. */
+  totalRows: number;
+  /** Ids of every row matching the current filters. */
+  fetchAllIds: () => Promise<string[]>;
   allApps: Application[];
   activeTab: CandidateTabValue;
   jobIdFilter: string;
@@ -22,8 +26,9 @@ interface BulkActionsArgs {
 
 /** Row selection and the bulk actions (stage, reject, pool, email) on it. */
 export function useCandidateBulkActions({
-  items,
-  filteredData,
+  pageRows,
+  totalRows,
+  fetchAllIds,
   allApps,
   activeTab,
   jobIdFilter,
@@ -54,8 +59,11 @@ export function useCandidateBulkActions({
 
   // ── Bulk selection helpers ───────────────────────────────────────
   const selectedCount = selectedIds.size;
+  // Every row matching the filters (all pages) is selected.
   const allFilteredSelected =
-    filteredData.length > 0 && filteredData.every(c => selectedIds.has(c._id));
+    totalRows > 0 &&
+    selectedIds.size >= totalRows &&
+    pageRows.every(c => selectedIds.has(c._id));
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -66,14 +74,17 @@ export function useCandidateBulkActions({
     });
   }, []);
 
-  const toggleSelectAll = useCallback(() => {
-    setSelectedIds(prev => {
-      const allSelected =
-        filteredData.length > 0 && filteredData.every(c => prev.has(c._id));
-      if (allSelected) return new Set();
-      return new Set(filteredData.map(c => c._id));
-    });
-  }, [filteredData]);
+  const toggleSelectAll = useCallback(async () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+      return;
+    }
+    try {
+      setSelectedIds(new Set(await fetchAllIds()));
+    } catch {
+      toast.error('Could not select all candidates. Please try again.');
+    }
+  }, [allFilteredSelected, fetchAllIds]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
@@ -103,9 +114,14 @@ export function useCandidateBulkActions({
    * that cannot be reached are reported instead of being silently dropped, and
    * an all-unreachable selection refuses to open the composer at all.
    */
-  function openBulkCompose() {
+  async function openBulkCompose() {
     if (selectedCount === 0) return;
-    const selectedRows = items.filter(c => selectedIds.has(c._id));
+    // A "select all" can span pages that were never loaded: fetch any
+    // selected candidate the shared list does not hold before composing.
+    await useCandidateStore.getState().ensureByIds([...selectedIds]);
+    const selectedRows = useCandidateStore
+      .getState()
+      .items.filter(c => selectedIds.has(c._id));
     const reachable = selectedRows.filter(c => (c.email ?? '').trim());
     if (reachable.length === 0) {
       toast.error('None of the selected candidates has an email address.');

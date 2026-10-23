@@ -32,7 +32,10 @@ import { buildTalentPoolColumns } from './talent-pool-table/talent-pool-columns'
 
 export function TalentPoolTable() {
   const items = useCandidateStore(s => s.items);
-  const loading = useCandidateStore(s => s.loading);
+  const storeLoading = useCandidateStore(s => s.loading);
+  const loadTalentPool = useCandidateStore(s => s.loadTalentPool);
+  const poolLoaded = useCandidateStore(s => s.poolLoaded);
+  const loading = storeLoading || !poolLoaded;
   const mutating = useCandidateStore(s => s.mutating);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const allTags = useTagStore(s => s.items);
@@ -54,6 +57,12 @@ export function TalentPoolTable() {
   const assign = useAssignCandidateToJob(() => fetchApps({ limit: 9999 }));
   const { composeOpen, setComposeOpen, composeMode, openComposeFor } =
     useCandidateEmailComposer();
+
+  // The pool is normally preloaded in the background after login, so the page
+  // opens at once; this refresh only picks up changes since then.
+  useEffect(() => {
+    void loadTalentPool().catch(() => undefined);
+  }, [loadTalentPool]);
 
   useEffect(() => {
     if (allTags.length === 0) fetchTags();

@@ -55,6 +55,33 @@ const initialState: EmailState = {
   filters: { page: 1, limit: 20 },
 };
 
+type EmailPage = { data: Email[] } & Pagination;
+
+// Pages already fetched, so paging back and forth or switching tabs is instant.
+// Dropped whenever anything about emails changes (own actions or live events).
+const PAGE_FRESH_MS = 15_000;
+const MAX_PAGES = 40;
+const emailPageCache = new Map<string, { res: EmailPage; at: number }>();
+const emailKey = (f: EmailFilters) => JSON.stringify(f);
+
+// Bumped on every clear so a request that started before a change cannot
+// put its (now outdated) page back into the cache.
+let emailGen = 0;
+function clearEmailPages() {
+  emailGen++;
+  emailPageCache.clear();
+}
+
+function rememberEmailPage(key: string, res: EmailPage, gen = emailGen) {
+  if (gen !== emailGen) return;
+  emailPageCache.delete(key);
+  emailPageCache.set(key, { res, at: Date.now() });
+  if (emailPageCache.size > MAX_PAGES) {
+    const oldest = emailPageCache.keys().next().value;
+    if (oldest !== undefined) emailPageCache.delete(oldest);
+  }
+}
+
 export const useEmailStore = create<EmailState & EmailActions>()(
   persist(
     immer((set, get) => ({
@@ -97,11 +124,8 @@ export const useEmailStore = create<EmailState & EmailActions>()(
           s.error = null;
           if (params) s.filters = filters;
         });
-        try {
-          const res = await getJson<{ data: Email[] } & Pagination>(
-            '/ats/emails',
-            filters as Record<string, unknown>
-          );
+        const key = emailKey(filters);
+        const apply = (res: EmailPage) =>
           set(s => {
             s.items = res.data;
             s.pagination = {
@@ -113,6 +137,32 @@ export const useEmailStore = create<EmailState & EmailActions>()(
             s.loading = false;
             s.isRefreshing = false;
           });
+        const cached = emailPageCache.get(key);
+        if (cached && Date.now() - cached.at < PAGE_FRESH_MS) {
+          apply(cached.res);
+          return;
+        }
+        const gen = emailGen;
+        try {
+          const res = await getJson<EmailPage>(
+            '/ats/emails',
+            filters as Record<string, unknown>
+          );
+          rememberEmailPage(key, res, gen);
+          apply(res);
+          // Fetch the next page ahead of time so "next" is instant.
+          if (res.page < res.totalPages) {
+            const nextFilters = { ...filters, page: res.page + 1 };
+            const nextKey = emailKey(nextFilters);
+            if (!emailPageCache.has(nextKey)) {
+              void getJson<EmailPage>(
+                '/ats/emails',
+                nextFilters as Record<string, unknown>
+              )
+                .then(next => rememberEmailPage(nextKey, next, gen))
+                .catch(() => undefined);
+            }
+          }
         } catch (e) {
           set(s => {
             s.loading = false;
@@ -163,6 +213,7 @@ export const useEmailStore = create<EmailState & EmailActions>()(
       },
 
       send: async data => {
+        clearEmailPages();
         set(s => {
           s.mutating = true;
           s.error = null;
@@ -186,6 +237,7 @@ export const useEmailStore = create<EmailState & EmailActions>()(
       },
 
       resend: async id => {
+        clearEmailPages();
         set(s => {
           s.mutating = true;
         });
@@ -204,6 +256,7 @@ export const useEmailStore = create<EmailState & EmailActions>()(
       },
 
       markAsRead: async id => {
+        clearEmailPages();
         try {
           await patchJson(`/ats/emails/${id}/read`, {});
           set(s => {
@@ -217,6 +270,7 @@ export const useEmailStore = create<EmailState & EmailActions>()(
       },
 
       remove: async id => {
+        clearEmailPages();
         set(s => {
           s.mutating = true;
           s.error = null;
@@ -267,27 +321,33 @@ export const useEmailStore = create<EmailState & EmailActions>()(
           s.filters = { ...s.filters, ...f };
         }),
 
-      reset: () =>
+      reset: () => {
+        clearEmailPages();
         set(s => {
           Object.assign(s, initialState);
-        }),
+        });
+      },
 
-      _patch: email =>
+      _patch: email => {
+        clearEmailPages();
         set(s => {
           const idx = s.items.findIndex(x => x._id === email._id);
           if (idx !== -1) s.items[idx] = email;
           else s.items.unshift(email);
           if (s.detail[email._id]) s.detail[email._id] = email;
-        }),
+        });
+      },
 
-      _removeByCandidateId: candidateId =>
+      _removeByCandidateId: candidateId => {
+        clearEmailPages();
         set(s => {
           s.items = s.items.filter(x => x.context?.candidateId !== candidateId);
           for (const id of Object.keys(s.detail)) {
             if (s.detail[id].context?.candidateId === candidateId)
               delete s.detail[id];
           }
-        }),
+        });
+      },
     })),
     {
       name: 'ats-emails',

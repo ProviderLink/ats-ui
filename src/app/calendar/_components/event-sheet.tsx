@@ -35,7 +35,7 @@ export function EventSheet({
   onMutate,
 }: EventSheetProps) {
   const candidates = useCandidateStore(s => s.items);
-  const fetchCandidates = useCandidateStore(s => s.fetch);
+  const ensureCandidates = useCandidateStore(s => s.ensureByIds);
   const jobs = useJobStore(s => s.items);
   const fetchJobs = useJobStore(s => s.fetch);
   const applications = useApplicationStore(s => s.items);
@@ -60,7 +60,7 @@ export function EventSheet({
 
   useEffect(() => {
     if (open) {
-      if (candidates.length === 0) fetchCandidates({ limit: 200 });
+      if (event?.candidateId) void ensureCandidates([event.candidateId]);
       if (jobs.length === 0) fetchJobs({ limit: 200 });
       if (applications.length === 0) fetchApplications({ limit: 9999 });
     }

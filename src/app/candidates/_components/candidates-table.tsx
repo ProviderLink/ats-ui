@@ -12,10 +12,9 @@ import { useSearchParams } from 'react-router-dom';
 import { useCandidateApplicationMaps } from '../_hooks/use-candidate-application-maps';
 import { useCandidateBulkActions } from '../_hooks/use-candidate-bulk-actions';
 import { useCandidateColumns } from '../_hooks/use-candidate-columns';
-import { useCandidateTabData } from '../_hooks/use-candidate-tab-data';
+import { useCandidateTable } from '../_hooks/use-candidate-table';
 import { CANDIDATE_SORT_OPTIONS, type CandidateSortOption } from '../_utils/candidate-sort';
 import type { CandidateTabValue } from '../_utils/candidate-tabs';
-import { sortCandidates } from '../_utils/sort-candidates';
 import { BulkActionDialogs } from './bulk-action-dialogs';
 import { BulkSelectionBar } from './bulk-selection-bar';
 import { CandidateDetailSheet } from './candidate-detail-sheet';
@@ -25,8 +24,6 @@ import { CandidatesToolbar } from './candidates-toolbar';
 export function CandidatesTable() {
   // ── Store subscriptions ──────────────────────────────────────────
   const items = useCandidateStore(s => s.items);
-  const loading = useCandidateStore(s => s.loading);
-  const isRefreshing = useCandidateStore(s => s.isRefreshing);
   const mutating = useCandidateStore(s => s.mutating);
   const allApps = useApplicationStore(s => s.items);
   const allJobs = useJobStore(s => s.items);
@@ -84,35 +81,38 @@ export function CandidatesTable() {
     setDetailOpen(true);
   }
 
-  // After boot, all candidates are already in the store. No fetch needed —
-  // we filter client-side by activeTab instead of making server calls.
-  const { counts, filteredData } = useCandidateTabData({
-    items,
-    allApps,
-    allJobs,
-    allClients,
-    activeTab,
-    jobIdFilter,
+  // The server filters, searches, sorts and pages; the browser only holds the
+  // current page. `items`/`allApps` changing (own edits or live updates)
+  // refreshes the page.
+  const {
+    rows,
+    total: totalRows,
+    counts,
+    loading,
+    refreshing: isRefreshing,
+    fetchAllIds,
+  } = useCandidateTable({
+    tab: activeTab,
+    jobId: jobIdFilter,
     query: search.query,
+    sortBy,
+    pageIndex,
+    pageSize,
+    itemsVersion: items,
+    appsVersion: allApps,
   });
 
-  const sortedData = useMemo(
-    () => sortCandidates(filteredData, sortBy),
-    [filteredData, sortBy]
-  );
-
-  // Client-side pagination
-  const pagedData = useMemo(() => {
-    const start = pageIndex * pageSize;
-    return sortedData.slice(start, start + pageSize);
-  }, [sortedData, pageIndex, pageSize]);
-
-  const data = pagedData;
-  const totalRows = filteredData.length;
+  // Show the freshest local copy of each row (edits land instantly), falling
+  // back to the server row.
+  const data = useMemo(() => {
+    const byId = new Map(items.map(c => [c._id, c]));
+    return rows.map(r => byId.get(r._id) ?? r);
+  }, [rows, items]);
 
   const bulk = useCandidateBulkActions({
-    items,
-    filteredData,
+    pageRows: data,
+    totalRows,
+    fetchAllIds,
     allApps,
     activeTab,
     jobIdFilter,

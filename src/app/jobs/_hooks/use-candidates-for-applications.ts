@@ -1,49 +1,45 @@
-import { getJson } from '@/lib/api-client';
 import type { Application, Candidate } from '@/store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useEffect, useMemo, useState } from 'react';
 
 /**
- * Candidates to pair with a job's applications. Reads the already-loaded
- * candidate store; only when an application's candidate is not in it (the store
- * was narrowed, or the candidate is excluded from the default list) does it
- * download the whole list once, as the job tabs used to do every time.
+ * Candidates to pair with a job's applications. Reads the shared candidate
+ * list and asks the server for only the candidates it does not hold yet.
  */
 export function useCandidatesForApplications(applications: Application[]): {
   candidates: Candidate[];
   resolving: boolean;
 } {
   const storeItems = useCandidateStore(s => s.items);
-  const [fetched, setFetched] = useState<Candidate[] | null>(null);
+  const ensureByIds = useCandidateStore(s => s.ensureByIds);
 
-  const missing = useMemo(() => {
-    if (applications.length === 0) return false;
+  const missingIds = useMemo(() => {
     const known = new Set(storeItems.map(c => c._id));
     // A rejected application whose candidate is absent belongs to someone the
-    // default list hides (permanently ineligible); a full download cannot
-    // find them either, so it is not a reason to fetch.
-    return applications.some(
-      a => a.phase !== 'rejected' && !known.has(a.candidateId)
-    );
+    // default list hides (permanently ineligible), so it is not a reason to
+    // fetch.
+    return applications
+      .filter(a => a.phase !== 'rejected' && !known.has(a.candidateId))
+      .map(a => a.candidateId);
   }, [applications, storeItems]);
 
+  // Ids the server could not supply (deleted candidates) must not leave the
+  // view "resolving" forever, so track which set has been attempted.
+  const missingKey = missingIds.join(',');
+  const [settledKey, setSettledKey] = useState('');
   useEffect(() => {
-    if (!missing || fetched) return;
+    if (!missingKey) return;
     let alive = true;
-    void getJson<Candidate[] | { data: Candidate[] }>('/ats/candidates', {
-      limit: 9999,
-    })
-      .then(res => {
-        if (alive) setFetched(Array.isArray(res) ? res : (res.data ?? []));
-      })
-      .catch(() => undefined);
+    void ensureByIds(missingKey.split(',')).finally(() => {
+      if (alive) setSettledKey(missingKey);
+    });
     return () => {
       alive = false;
     };
-  }, [missing, fetched]);
+  }, [missingKey, ensureByIds]);
 
   return {
-    candidates: missing && fetched ? fetched : storeItems,
-    resolving: missing && !fetched,
+    candidates: storeItems,
+    resolving: missingKey !== '' && settledKey !== missingKey,
   };
 }

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useCandidateEmailActivity } from '@/hooks/use-candidate-email-activity';
+import { useLoadFullCandidate } from '@/hooks/use-load-full-candidate';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import type { Candidate } from '@/store/types';
 import { useState } from 'react';
@@ -44,6 +45,7 @@ export function TalentPoolDetailSheet({
       ? (s.detail[candidate._id] ?? s.items.find(i => i._id === candidate._id))
       : undefined
   );
+  useLoadFullCandidate(candidate?._id, open);
   const emailActivity = useCandidateEmailActivity((current ?? candidate)?._id);
 
   if (!candidate) return null;

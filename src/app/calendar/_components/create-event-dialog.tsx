@@ -4,7 +4,7 @@ import { useApplicationStore } from '@/store/slices/applications.store';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import { useInterviewStore } from '@/store/slices/interviews.store';
 import { useJobStore } from '@/store/slices/jobs.store';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { resolveScheduleInput } from '../_utils/resolve-schedule-input';
 import { withToast } from '@/lib/with-toast';
@@ -34,6 +34,7 @@ export function CreateEventDialog({
   onClose,
 }: CreateEventDialogProps) {
   const candidates = useCandidateStore(s => s.items);
+  const ensureCandidates = useCandidateStore(s => s.ensureByIds);
   const jobs = useJobStore(s => s.items);
   const applications = useApplicationStore(s => s.items);
   const createInterview = useInterviewStore(s => s.create);
@@ -64,6 +65,20 @@ export function CreateEventDialog({
       })
       .filter((x): x is SchedulableCandidate => x !== null);
   }, [applications, candidates]);
+
+  // The list is no longer preloaded in full: fetch the candidates behind the
+  // approved applications so they can be offered for scheduling.
+  const approvedCandidateKey = useMemo(
+    () =>
+      applications
+        .filter(a => a.phase === 'approved')
+        .map(a => a.candidateId)
+        .join(','),
+    [applications]
+  );
+  useEffect(() => {
+    if (approvedCandidateKey) void ensureCandidates(approvedCandidateKey.split(','));
+  }, [approvedCandidateKey, ensureCandidates]);
 
   const candidatesForJob = useMemo(
     () => schedulable.filter(c => c.jobId === selectedJobId),

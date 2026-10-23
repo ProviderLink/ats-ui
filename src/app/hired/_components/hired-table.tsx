@@ -36,7 +36,7 @@ import { buildHiredColumns } from './hired-table/hired-columns';
  * further job adds a pipeline entry without removing the hire record.
  */
 export function HiredTable() {
-  const loading = useCandidateStore(s => s.loading);
+  const storeLoading = useCandidateStore(s => s.loading);
   const mutating = useCandidateStore(s => s.mutating);
   const updateTalentPool = useCandidateStore(s => s.updateTalentPool);
 
@@ -47,7 +47,9 @@ export function HiredTable() {
     otherActivityByCandidateId,
     openJobs,
     refreshApps,
+    loadingCandidates,
   } = useHiredData();
+  const loading = storeLoading || loadingCandidates;
 
   useSocketRoom('candidates');
   useSocketRoom('applications');

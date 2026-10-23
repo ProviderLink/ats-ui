@@ -31,7 +31,6 @@ export function usePipelineActions({
   const appReject = useApplicationStore(s => s.reject);
   const candAssignJob = useCandidateStore(s => s.assignJob);
   const candChangeJob = useCandidateStore(s => s.changeJob);
-  const candFetch = useCandidateStore(s => s.fetch);
   const candUpdateTalentPool = useCandidateStore(s => s.updateTalentPool);
   const createInterviewForApplication = useInterviewStore(
     s => s.createForApplication
@@ -149,7 +148,6 @@ export function usePipelineActions({
       await appHire(application._id);
       toast.success(`${name} hired`);
       closeDialog();
-      await candFetch();
     });
   }
 
