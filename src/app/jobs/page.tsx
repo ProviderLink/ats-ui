@@ -2,7 +2,7 @@ import { useSocketRoom } from '@/hooks/use-socket-room';
 import { getJson } from '@/lib/api-client';
 import { sortableTime } from '@/lib/utils';
 import type { Client, Job, Pagination } from '@/store';
-import { useJobStore } from '@/store';
+import { useClientStore, useJobStore } from '@/store';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { JobList } from './_components/job-list';
@@ -58,7 +58,12 @@ export default function JobsPage() {
   const setFilters = useJobStore(s => s.setFilters);
   const [clientItems, setClientItems] = useState<Client[]>(EMPTY_CLIENTS);
   const rawJobs = jobItems ?? EMPTY_JOBS;
-  const clients = clientItems ?? EMPTY_CLIENTS;
+  // Clients are already in the shared store from login; show those straight
+  // away and swap in the freshly fetched list when it lands, so client names
+  // are on screen with the jobs instead of arriving after them.
+  const storeClients = useClientStore(s => s.items);
+  const clients =
+    clientItems.length > 0 ? clientItems : (storeClients ?? EMPTY_CLIENTS);
   const jobs = useMemo(() => [...rawJobs].sort(compareJobs), [rawJobs]);
 
   useEffect(() => {

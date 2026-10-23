@@ -14,6 +14,16 @@ import { AuthCard } from '../_components/auth-card';
 import { AuthEmailField } from '../_components/auth-email-field';
 import { AuthSubmitButton } from '../_components/auth-submit-button';
 
+const DASHBOARD_PATH = '/ats/dashboard';
+
+function afterLoginPath(requested?: string): string {
+  if (!requested) return DASHBOARD_PATH;
+  // '/ats/candidates/123' -> ['candidates', '123']: more than one segment
+  // under /ats means a specific record or sub-page, not a section landing page.
+  const segments = requested.replace(/^\/ats\/?/, '').split('/').filter(Boolean);
+  return segments.length > 1 ? requested : DASHBOARD_PATH;
+}
+
 export default function LoginPage() {
   const login = useAuthStore(s => s.login);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -21,9 +31,14 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  // After signing in, land on the Dashboard. The one exception is a link to a
+  // specific record (e.g. /ats/candidates/<id>), which returns the user there;
+  // a plain section page they merely happened to be on does not.
   const from = useRef(
-    (location.state as { from?: { pathname?: string } } | null)?.from
-      ?.pathname ?? '/ats/dashboard'
+    afterLoginPath(
+      (location.state as { from?: { pathname?: string } } | null)?.from
+        ?.pathname
+    )
   ).current;
 
   const [email, setEmail] = useState('');
