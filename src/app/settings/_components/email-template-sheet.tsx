@@ -1,9 +1,14 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   Sheet,
   SheetContent,
@@ -15,22 +20,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { escapeHtml } from '@/lib/html';
 import { cn } from '@/lib/utils';
 import type { EmailTemplate, EmailTemplateType } from '@/store/types';
-import { Loader2Icon } from 'lucide-react';
+import { Loader2Icon, MailIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   EMAIL_TEMPLATE_TYPES,
   emailVariablesForType,
   KNOWN_EMAIL_VARIABLES,
 } from '@/lib/email-templates';
+import { IconTile, PANEL_CLS, SectionHeading } from './template-ui';
 
 export type EmailTemplateInput = Omit<
   EmailTemplate,
-  | '_id'
-  | 'createdBy'
-  | 'updatedBy'
-  | 'createdAt'
-  | 'updatedAt'
-  | 'variables'
+  '_id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt' | 'variables'
 > & { variables: string[] };
 
 type Props = {
@@ -124,7 +125,7 @@ export function EmailTemplateSheet({
     // placeholder removes it from the list on save.
     const combined = `${subject}\n${trimmedBody}`;
     const usedVars = KNOWN_EMAIL_VARIABLES.filter(v =>
-      combined.includes(`{{${v}}}`)
+      combined.includes(`{{${v}}}`),
     );
     setSubmitting(true);
     try {
@@ -146,28 +147,35 @@ export function EmailTemplateSheet({
 
   const isEdit = !!template;
 
+  const typeLabel =
+    EMAIL_TEMPLATE_TYPES.find(t => t.value === type)?.label ?? type;
+  const unknown = unknownPlaceholders(`${subject}\n${bodyText}`);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-sm flex flex-col gap-0 p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle className="text-base">
-            {isEdit ? 'Edit Template' : 'New Email Template'}
-          </SheetTitle>
-          {isEdit && (
-            <p className="text-xs text-muted-foreground">{template.name}</p>
-          )}
-          <SheetDescription className="sr-only">
-            Email template name, type, subject and body.
-          </SheetDescription>
+      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+        <SheetHeader className="flex-row items-start gap-3 border-b px-6 py-5 pr-14">
+          <IconTile icon={MailIcon} />
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="text-base leading-tight">
+              {isEdit ? 'Edit email template' : 'New email template'}
+            </SheetTitle>
+            <SheetDescription className="mt-1 text-xs">
+              {isEdit
+                ? `Update “${template.name}”.`
+                : 'Write a reusable email for recruiters to send.'}
+            </SheetDescription>
+          </div>
         </SheetHeader>
 
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
+          className="flex flex-1 flex-col overflow-hidden"
         >
-          <div className="flex flex-col gap-5 px-6 py-5 overflow-y-auto flex-1">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
+          <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-6 py-6">
+            <section className="flex flex-col gap-4">
+              <SectionHeading>Template</SectionHeading>
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="et-name">
                   Name <span className="text-destructive">*</span>
                 </Label>
@@ -179,188 +187,168 @@ export function EmailTemplateSheet({
                   required
                 />
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>Type</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {EMAIL_TEMPLATE_TYPES.map(t => (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => {
-                        setType(t.value as EmailTemplateType);
-                        setIsDefault(false);
-                      }}
-                      className={cn(
-                        'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                        type === t.value
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground'
-                      )}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="et-type">Type</Label>
+                <Select
+                  value={type}
+                  onValueChange={v => {
+                    setType(v as EmailTemplateType);
+                    setIsDefault(false);
+                  }}
+                >
+                  <SelectTrigger id="et-type" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EMAIL_TEMPLATE_TYPES.map(t => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            </section>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="et-subject">
-                Subject line <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="et-subject"
-                ref={subjectRef}
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                onFocus={() => (lastField.current = 'subject')}
-                maxLength={200}
-                placeholder="e.g. Your interview for {{jobTitle}}"
-                required
-              />
-            </div>
+            <section className="flex flex-col gap-4">
+              <SectionHeading>Content</SectionHeading>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="et-subject">
+                  Subject <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="et-subject"
+                  ref={subjectRef}
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  onFocus={() => (lastField.current = 'subject')}
+                  maxLength={200}
+                  placeholder="e.g. Your interview for {{jobTitle}}"
+                  required
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="et-body">Body</Label>
-              <Textarea
-                id="et-body"
-                ref={bodyRef}
-                value={bodyText}
-                onChange={e => setBodyText(e.target.value)}
-                onFocus={() => (lastField.current = 'body')}
-                readOnly={bodyLocked}
-                placeholder="Write your email body here..."
-                className="resize-y min-h-52 font-mono text-xs leading-relaxed"
-              />
-              {isRichTemplate && (
-                <div className="flex flex-col gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
-                  <span>
-                    This template has rich formatting (links, bold, lists…)
-                    that this plain-text editor can&apos;t show.{' '}
-                    {bodyLocked
-                      ? 'Its body is locked so the formatting is kept. You can still change the name, subject, type and default.'
-                      : 'Saving a changed body will replace the formatting with plain paragraphs.'}
-                  </span>
-                  {bodyLocked && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 w-fit text-xs"
-                      onClick={() => setBodyUnlocked(true)}
-                    >
-                      Edit body as plain text
-                    </Button>
-                  )}
-                </div>
-              )}
-              {unknownPlaceholders(`${subject}\n${bodyText}`).length > 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Unknown variable
-                  {unknownPlaceholders(`${subject}\n${bodyText}`).length > 1
-                    ? 's'
-                    : ''}
-                  :{' '}
-                  {unknownPlaceholders(`${subject}\n${bodyText}`)
-                    .map(v => `{{${v}}}`)
-                    .join(', ')}{' '}
-                  — sent as-is, not filled in.
-                </p>
-              )}
-              <div className="flex flex-col gap-1.5 pt-0.5">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="et-body">Body</Label>
+                <Textarea
+                  id="et-body"
+                  ref={bodyRef}
+                  value={bodyText}
+                  onChange={e => setBodyText(e.target.value)}
+                  onFocus={() => (lastField.current = 'body')}
+                  readOnly={bodyLocked}
+                  placeholder="Write your email body here…"
+                  className="min-h-56 resize-y text-sm leading-relaxed"
+                />
+                {isRichTemplate && (
+                  <div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                    <span>
+                      This template has rich formatting (links, bold, lists…)
+                      that this plain-text editor can&apos;t show.{' '}
+                      {bodyLocked
+                        ? 'Its body is locked so the formatting is kept. You can still change the name, subject, type and default.'
+                        : 'Saving a changed body will replace the formatting with plain paragraphs.'}
+                    </span>
+                    {bodyLocked && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-fit border-amber-400 bg-amber-100 text-xs text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:border-amber-500/40 dark:bg-transparent dark:text-amber-300 dark:hover:bg-amber-500/10"
+                        onClick={() => setBodyUnlocked(true)}
+                      >
+                        Edit body as plain text
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {unknown.length > 0 && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Unknown variable{unknown.length > 1 ? 's' : ''}:{' '}
+                    {unknown.map(v => `{{${v}}}`).join(', ')} — sent as-is, not
+                    filled in.
+                  </p>
+                )}
+              </div>
+
+              <div className={cn(PANEL_CLS, 'flex flex-col gap-2 p-3')}>
                 <p className="text-xs text-muted-foreground">
-                  Insert variable at cursor (subject or body):
+                  <span className="font-medium text-foreground">
+                    Insert variable
+                  </span>{' '}
+                  — adds it at the cursor in the subject or body, whichever you
+                  last clicked.
                 </p>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5">
                   {emailVariablesForType(type).map(v => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => insertVariable(v)}
+                      className="rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 font-mono text-xs text-blue-900 transition-colors hover:bg-blue-200 dark:border-border dark:bg-transparent dark:text-foreground dark:hover:bg-accent"
                     >
-                      <Badge
-                        variant="outline"
-                        className="cursor-pointer hover:bg-accent font-mono text-xs"
-                      >
-                        {`{{${v}}}`}
-                      </Badge>
+                      {`{{${v}}}`}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          <div className="flex flex-col gap-3 px-6 py-4 border-t bg-muted/30">
-            {/* Default toggle — hidden if already default */}
             {!template?.isDefault && (
-              <>
-                <label
-                  htmlFor="et-is-default"
+              <section className="flex flex-col gap-3">
+                <SectionHeading>Settings</SectionHeading>
+                <div
                   className={cn(
-                    'flex items-start gap-3 rounded-md border px-3 py-2.5 cursor-pointer select-none transition-colors',
-                    isDefault
-                      ? 'border-primary/30 bg-primary/5'
-                      : 'border-border bg-background hover:bg-accent/50'
+                    PANEL_CLS,
+                    'flex items-center justify-between gap-4 px-4 py-3',
                   )}
                 >
-                  <Checkbox
-                    checked={isDefault}
-                    onCheckedChange={v => setIsDefault(!!v)}
+                  <label htmlFor="et-is-default" className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">
+                      Default for {typeLabel}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      Auto-selected when composing a {typeLabel} email. Replaces
+                      the current default.
+                    </span>
+                  </label>
+                  <Switch
                     id="et-is-default"
+                    checked={isDefault}
+                    onCheckedChange={setIsDefault}
                     disabled={submitting}
-                    className="mt-0.5"
+                    className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-gray-300 dark:data-[state=checked]:bg-primary dark:data-[state=unchecked]:bg-input"
                   />
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium leading-none">
-                      Set as default for{' '}
-                      <span className={cn(isDefault ? 'text-primary' : '')}>
-                        {EMAIL_TEMPLATE_TYPES.find(t => t.value === type)
-                          ?.label ?? type}
-                      </span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Auto-selected when composing a{' '}
-                      {EMAIL_TEMPLATE_TYPES.find(t => t.value === type)
-                        ?.label ?? type}{' '}
-                      email. Replaces the current default.
-                    </span>
-                  </div>
-                </label>
-                <Separator />
-              </>
+                </div>
+              </section>
             )}
+          </div>
 
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                disabled={submitting}
-                className="text-muted-foreground"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={submitting || !name.trim() || !subject.trim()}
-                className="min-w-28"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2Icon className="size-3.5 animate-spin" />
-                    Saving…
-                  </>
-                ) : isEdit ? (
-                  'Save changes'
-                ) : (
-                  'Create template'
-                )}
-              </Button>
-            </div>
+          <div className="flex items-center justify-end gap-2 border-t bg-gray-50 px-6 py-4 dark:bg-white/3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting || !name.trim() || !subject.trim()}
+              className="min-w-32"
+            >
+              {submitting ? (
+                <>
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                  Saving…
+                </>
+              ) : isEdit ? (
+                'Save changes'
+              ) : (
+                'Create template'
+              )}
+            </Button>
           </div>
         </form>
       </SheetContent>

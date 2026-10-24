@@ -4,15 +4,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { ActiveSwitch } from '../active-switch';
 import type { PipelineTemplate } from '@/store/types';
-import {
-  EyeIcon,
-  PencilIcon,
-  PowerIcon,
-  StarIcon,
-  Trash2Icon,
-} from 'lucide-react';
+import { EyeIcon, PencilIcon, StarIcon, Trash2Icon } from 'lucide-react';
 
 export interface TemplateRowActionsProps {
   template: PipelineTemplate;
@@ -35,22 +29,15 @@ export function TemplateRowActions({
     <div className="flex items-center gap-2 shrink-0">
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onToggleActive}
-            aria-label={
-              tpl.isActive ? `Deactivate ${tpl.name}` : `Activate ${tpl.name}`
-            }
-            className={cn(
-              'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-colors',
-              tpl.isActive
-                ? 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:border-primary/60'
-                : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            <PowerIcon className="size-3" />
-            {tpl.isActive ? 'Active' : 'Inactive'}
-          </button>
+          <span>
+            <ActiveSwitch
+              active={tpl.isActive}
+              label={
+                tpl.isActive ? `Deactivate ${tpl.name}` : `Activate ${tpl.name}`
+              }
+              onToggle={onToggleActive}
+            />
+          </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">
           {tpl.isActive
@@ -64,7 +51,7 @@ export function TemplateRowActions({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 dark:hover:text-amber-400"
+              className="h-7 gap-1 px-2 text-xs border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:border-transparent dark:bg-transparent dark:text-muted-foreground dark:hover:text-amber-400 dark:hover:bg-amber-950/40"
               onClick={onSetDefault}
             >
               <StarIcon className="size-3" />
@@ -81,7 +68,7 @@ export function TemplateRowActions({
       <Button
         variant="outline"
         size="sm"
-        className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+        className="h-7 gap-1 px-2 text-xs border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200 hover:text-gray-900 dark:border-input dark:bg-input/30 dark:text-muted-foreground dark:hover:bg-input/50 dark:hover:text-foreground"
         onClick={onView}
       >
         <EyeIcon className="size-3" />
@@ -90,7 +77,7 @@ export function TemplateRowActions({
       <Button
         variant="outline"
         size="sm"
-        className="h-7 gap-1 px-2 text-xs hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+        className="h-7 gap-1 px-2 text-xs border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-400 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-primary dark:hover:border-primary/30"
         onClick={onEdit}
       >
         <PencilIcon className="size-3" />
@@ -99,7 +86,7 @@ export function TemplateRowActions({
       <Button
         variant="outline"
         size="sm"
-        className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40"
+        className="h-7 gap-1 px-2 text-xs border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 hover:border-red-400 dark:border-input dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/10 dark:hover:border-destructive/40"
         onClick={onDelete}
         disabled={tpl.isDefault}
       >

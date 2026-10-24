@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useSettingsStore } from '@/store';
-import { CheckIcon } from 'lucide-react';
+import { Building2Icon, CheckIcon } from 'lucide-react';
 import { getTimezoneOffsetLabel } from '@/lib/timezones';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -48,7 +48,10 @@ export function WorkspaceCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Workspace</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Building2Icon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
+          Workspace
+        </CardTitle>
         <CardDescription>
           Basic information about your organisation
         </CardDescription>

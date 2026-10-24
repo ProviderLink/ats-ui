@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,12 +6,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
+import { EMAIL_TEMPLATE_TYPE_LABELS } from '@/lib/email-templates';
 import { formatDate } from '@/lib/utils';
 import { useUserStore } from '@/store';
 import type { EmailTemplate } from '@/store/types';
-import { StarIcon } from 'lucide-react';
-import { EMAIL_TEMPLATE_TYPES } from '@/lib/email-templates';
+import { MailIcon, PencilIcon, PowerIcon, StarIcon } from 'lucide-react';
+import { IconTile, PANEL_CLS, Pill, SectionHeading } from './template-ui';
 
 type Props = {
   open: boolean;
@@ -21,9 +20,25 @@ type Props = {
   onEdit?: (template: EmailTemplate) => void;
 };
 
-const TYPE_LABEL = Object.fromEntries(
-  EMAIL_TEMPLATE_TYPES.map(t => [t.value, t.label])
-) as Record<string, string>;
+/** Text with its `{{variables}}` shown as small highlighted tokens. */
+function WithVariables({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\{\{\w+\}\})/g).map((part, i) =>
+        /^\{\{\w+\}\}$/.test(part) ? (
+          <span
+            key={i}
+            className="rounded bg-blue-100 px-1 py-0.5 font-mono text-[0.85em] text-blue-900 dark:bg-blue-500/15 dark:text-blue-300"
+          >
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
 
 export function EmailTemplateViewDialog({
   open,
@@ -41,117 +56,96 @@ export function EmailTemplateViewDialog({
     return u ? `${u.firstName} ${u.lastName}`.trim() : 'System';
   }
 
+  const typeLabel = EMAIL_TEMPLATE_TYPE_LABELS[template.type] ?? template.type;
+  const varCount = template.variables?.length ?? 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-base font-semibold leading-none">
-            {template.name}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            {`Preview of the ${TYPE_LABEL[template.type] ?? template.type} email template.`}
-          </DialogDescription>
-          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-            <Badge variant="outline" className="text-xs h-4 px-1.5">
-              {TYPE_LABEL[template.type] ?? template.type}
-            </Badge>
-            {template.isDefault && (
-              <Badge variant="secondary" className="text-xs h-4 px-1.5 gap-0.5">
-                <StarIcon className="size-2.5" />
-                Default for {TYPE_LABEL[template.type] ?? template.type}
-              </Badge>
-            )}
-            <Badge
-              variant={template.isActive ? 'secondary' : 'outline'}
-              className="text-xs h-4 px-1.5"
-            >
-              {template.isActive ? 'Active' : 'Inactive'}
-            </Badge>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogHeader className="flex-row items-start gap-3 px-6 pt-6 pb-4 pr-14">
+          <IconTile icon={MailIcon} />
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="text-base leading-tight font-semibold">
+              {template.name}
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
+              {typeLabel} email
+              {varCount > 0 &&
+                ` · ${varCount} variable${varCount !== 1 ? 's' : ''}`}
+            </DialogDescription>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {template.isDefault && (
+                <Pill tone="amber" icon={StarIcon}>
+                  Default for {typeLabel}
+                </Pill>
+              )}
+              <Pill
+                tone={template.isActive ? 'emerald' : 'neutral'}
+                icon={PowerIcon}
+              >
+                {template.isActive ? 'Active' : 'Inactive'}
+              </Pill>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="overflow-y-auto max-h-[60vh]">
-          <div className="flex flex-col gap-4 px-6 py-5">
-            {/* Subject */}
-            <div className="flex flex-col gap-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Subject
-              </p>
-              <p className="text-sm">{template.subject}</p>
-            </div>
-
-            <Separator />
-
-            {/* Body */}
-            <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Body
-              </p>
-              {template.bodyText ? (
-                <pre className="text-xs leading-relaxed font-mono whitespace-pre-wrap bg-muted/50 rounded-md border px-4 py-3">
-                  {template.bodyText}
-                </pre>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">
-                  No body content.
+        <div className="max-h-[60vh] overflow-y-auto border-t px-6 py-5">
+          <section className="flex flex-col gap-3">
+            <SectionHeading>Message preview</SectionHeading>
+            <div className={PANEL_CLS}>
+              <div className="border-b border-gray-200 px-4 py-3 dark:border-border">
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  Subject
                 </p>
-              )}
-            </div>
-
-            {/* Variables used */}
-            {template.variables && template.variables.length > 0 && (
-              <>
-                <Separator />
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Variables used
+                <p className="mt-0.5 text-sm font-semibold leading-snug">
+                  <WithVariables text={template.subject} />
+                </p>
+              </div>
+              <div className="px-4 py-4">
+                {template.bodyText ? (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    <WithVariables text={template.bodyText} />
                   </p>
-                  <div className="flex flex-wrap gap-1">
-                    {template.variables.map(v => (
-                      <Badge
-                        key={v}
-                        variant="outline"
-                        className="font-mono text-xs"
-                      >
-                        {`{{${v}}}`}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Separator />
-
-            {/* Meta */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Created by {resolveUser(template.createdBy)}</span>
-              <span>{formatDate(template.createdAt)}</span>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No body content.
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+            <p className="text-xs text-muted-foreground">
+              Highlighted items are filled in automatically when the email is
+              sent.
+            </p>
+          </section>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t bg-muted/30">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-muted-foreground"
-          >
-            Close
-          </Button>
-          {onEdit && (
+        <div className="flex items-center justify-between gap-3 border-t bg-gray-50 px-6 py-3 dark:bg-white/3">
+          <p className="min-w-0 truncate text-xs text-muted-foreground">
+            Created by {resolveUser(template.createdBy)} ·{' '}
+            {formatDate(template.createdAt)}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(template);
-              }}
+              onClick={() => onOpenChange(false)}
             >
-              Edit template
+              Close
             </Button>
-          )}
+            {onEdit && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit(template);
+                }}
+              >
+                <PencilIcon className="size-3.5" />
+                Edit template
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -35,17 +35,17 @@ export function ReasonRow({
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {!r.isActive && (
-            <Badge variant="outline" className="text-[10px] h-4 px-1">
+            <Badge variant="outline" className="text-[10px] h-4 px-1 border-gray-300 bg-gray-100 text-gray-800 dark:border-border dark:bg-transparent dark:text-foreground">
               Inactive
             </Badge>
           )}
           {r.requireInternalNotes && (
-            <Badge variant="outline" className="text-[10px] h-4 px-1">
+            <Badge variant="outline" className="text-[10px] h-4 px-1 border-gray-300 bg-gray-100 text-gray-800 dark:border-border dark:bg-transparent dark:text-foreground">
               Notes required
             </Badge>
           )}
           {stageCount > 0 ? (
-            <Badge variant="outline" className="text-[10px] h-4 px-1">
+            <Badge variant="outline" className="text-[10px] h-4 px-1 border-gray-300 bg-gray-100 text-gray-800 dark:border-border dark:bg-transparent dark:text-foreground">
               {stageCount} stage{stageCount !== 1 ? 's' : ''}
             </Badge>
           ) : (
@@ -62,6 +62,7 @@ export function ReasonRow({
               <Button
                 size="icon-sm"
                 variant="secondary"
+                className="border border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/80"
                 aria-label={`Edit ${r.label}`}
                 onClick={onEdit}
               >
@@ -79,6 +80,7 @@ export function ReasonRow({
               <Button
                 size="icon-sm"
                 variant="destructive"
+                className="border border-red-300 bg-red-100 text-red-700 hover:bg-red-200 dark:border-transparent dark:bg-destructive/10 dark:text-destructive dark:hover:bg-destructive/20"
                 disabled={deleting}
                 aria-label={`Delete ${r.label}`}
                 onClick={onDelete}

@@ -146,7 +146,7 @@ export function CalendarHeader({
             <ToggleGroupItem
               key={value}
               value={value}
-              className="text-xs px-3 h-8 rounded-md"
+              className="text-xs px-3 h-8 rounded-md text-gray-600 hover:bg-gray-100 data-[state=on]:bg-gray-200 data-[state=on]:font-medium data-[state=on]:text-foreground dark:text-muted-foreground dark:hover:bg-muted dark:data-[state=on]:bg-muted dark:data-[state=on]:text-foreground"
             >
               {label}
             </ToggleGroupItem>

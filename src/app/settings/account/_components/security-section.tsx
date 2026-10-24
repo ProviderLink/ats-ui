@@ -20,7 +20,7 @@ export function SecuritySection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <KeyRoundIcon className="size-4 text-muted-foreground" />
+          <KeyRoundIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
           Password
         </CardTitle>
         <CardDescription>

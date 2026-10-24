@@ -75,7 +75,7 @@ export function DispositionReasonsCard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ListFilterIcon className="size-4 text-muted-foreground" />
+            <ListFilterIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
             Rejection Reasons
           </CardTitle>
           <CardDescription>

@@ -84,7 +84,7 @@ export function ApplicationConfirmationCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MailCheckIcon className="size-4 text-muted-foreground" />
+          <MailCheckIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
           Application Confirmation
         </CardTitle>
         <CardDescription>
@@ -93,7 +93,7 @@ export function ApplicationConfirmationCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
           <div>
             <p className="text-sm font-medium">Enable confirmation email</p>
             <p className="text-xs text-muted-foreground">

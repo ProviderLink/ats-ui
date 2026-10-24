@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import type { PipelineTemplate } from '@/store/types';
-import { Loader2Icon } from 'lucide-react';
+import { LayersIcon, Loader2Icon } from 'lucide-react';
 import { useState } from 'react';
 import {
   usePipelineTemplateForm,
   type PipelineTemplateFormData,
 } from '../_hooks/use-pipeline-template-form';
+import { IconTile, SectionHeading } from './template-ui';
 import { StagesEditor } from './pipeline-template-sheet/stages-editor';
 import { StatusSwitches } from './pipeline-template-sheet/status-switches';
 
@@ -69,45 +70,53 @@ export function PipelineTemplateSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="w-full sm:max-w-sm flex flex-col gap-0 p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle>
-            {template ? 'Edit Template' : 'New Pipeline Template'}
-          </SheetTitle>
-          <SheetDescription className="sr-only">
-            Pipeline template name, stages and stage order.
-          </SheetDescription>
+      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+        <SheetHeader className="flex-row items-start gap-3 border-b px-6 py-5 pr-14">
+          <IconTile icon={LayersIcon} />
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="text-base leading-tight">
+              {template ? 'Edit pipeline template' : 'New pipeline template'}
+            </SheetTitle>
+            <SheetDescription className="mt-1 text-xs">
+              {template
+                ? `Update the name, settings and stages of “${template.name}”.`
+                : 'Set up a hiring pipeline you can apply to jobs.'}
+            </SheetDescription>
+          </div>
         </SheetHeader>
 
         <form
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
-          <div className="flex flex-col gap-5 px-6 py-5 overflow-y-auto flex-1">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="tpl-name">
-                Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="tpl-name"
-                value={form.name}
-                onChange={e => form.setName(e.target.value)}
-                placeholder="e.g. Standard Hiring"
-                maxLength={100}
-                required
-              />
-            </div>
+          <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-6 py-6">
+            <section className="flex flex-col gap-4">
+              <SectionHeading>Details</SectionHeading>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="tpl-name">
+                  Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="tpl-name"
+                  value={form.name}
+                  onChange={e => form.setName(e.target.value)}
+                  placeholder="e.g. Standard Hiring"
+                  maxLength={100}
+                  required
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="tpl-desc">Description</Label>
-              <Textarea
-                id="tpl-desc"
-                value={form.description}
-                onChange={e => form.setDescription(e.target.value)}
-                placeholder="Describe when to use this template..."
-                className="resize-none h-20"
-              />
-            </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="tpl-desc">Description</Label>
+                <Textarea
+                  id="tpl-desc"
+                  value={form.description}
+                  onChange={e => form.setDescription(e.target.value)}
+                  placeholder="Describe when to use this template..."
+                  className="resize-none h-20"
+                />
+              </div>
+            </section>
 
             <StatusSwitches
               isDefault={form.isDefault}
@@ -119,7 +128,7 @@ export function PipelineTemplateSheet({
             />
 
             {showErrors && form.errors.length > 0 && (
-              <ul className="list-disc pl-5 text-xs text-destructive">
+              <ul className="list-disc rounded-lg border border-red-300 bg-red-50 py-2.5 pr-3 pl-7 text-xs text-red-800 dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive">
                 {form.errors.map(err => (
                   <li key={err}>{err}</li>
                 ))}
@@ -134,7 +143,7 @@ export function PipelineTemplateSheet({
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t">
+          <div className="flex items-center justify-end gap-2 border-t bg-gray-50 px-6 py-4 dark:bg-white/3">
             <Button
               type="button"
               variant="outline"

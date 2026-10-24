@@ -20,7 +20,7 @@ export function HomeTopbar() {
           <span>Arista ATS</span>
         </Link>
         <Link
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="text-sm font-medium text-pine-teal-700 transition-colors hover:text-pine-teal-900 dark:font-normal dark:text-muted-foreground dark:hover:text-foreground"
           to="/careers"
         >
           Careers

@@ -52,7 +52,7 @@ export function EmailTemplatesCard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MailIcon className="size-4 text-muted-foreground" />
+            <MailIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
             Email Templates
           </CardTitle>
           <CardDescription>

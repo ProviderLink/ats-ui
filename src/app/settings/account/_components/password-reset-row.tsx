@@ -28,7 +28,7 @@ export function PasswordResetRow() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-2.5">
-        <MailIcon className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+        <MailIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground mt-0.5 shrink-0" />
         <p className="text-sm text-muted-foreground">
           Forgot your password? We can send a reset link to{' '}
           <span className="font-medium text-foreground">{user?.email}</span>.
@@ -40,7 +40,7 @@ export function PasswordResetRow() {
         size="sm"
         disabled={sending || sent}
         onClick={sendReset}
-        className="shrink-0"
+        className="shrink-0 border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent"
       >
         {sent ? 'Reset link sent' : sending ? 'Sending…' : 'Send reset link'}
       </Button>

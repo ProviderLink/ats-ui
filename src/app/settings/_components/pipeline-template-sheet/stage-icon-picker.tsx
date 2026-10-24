@@ -25,7 +25,7 @@ export function StageIconPicker({ value, onChange }: StageIconPickerProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="size-8 rounded-md border border-input bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white transition-colors hover:bg-gray-100 dark:border-input dark:bg-muted dark:hover:bg-accent"
           title="Pick icon"
           aria-label="Pick icon"
         >
@@ -53,7 +53,7 @@ export function StageIconPicker({ value, onChange }: StageIconPickerProps) {
                     }}
                     className={cn(
                       'size-7 rounded flex items-center justify-center transition-colors hover:bg-accent',
-                      value === name && 'bg-accent text-accent-foreground'
+                      value === name && 'bg-accent text-accent-foreground',
                     )}
                   >
                     <Ic className="size-3.5" />

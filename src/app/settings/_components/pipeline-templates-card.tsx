@@ -46,7 +46,7 @@ export function PipelineTemplatesCard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <LayersIcon className="size-4 text-muted-foreground" />
+            <LayersIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
             Pipeline Templates
           </CardTitle>
           <CardDescription>

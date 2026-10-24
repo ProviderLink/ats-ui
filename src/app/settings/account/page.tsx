@@ -17,7 +17,7 @@ export default function SettingsAccountPage() {
         </p>
       </div>
 
-      <nav className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 w-fit">
+      <nav className="flex items-center gap-1 rounded-xl bg-gray-200 p-1 w-fit dark:bg-muted/50">
         <AccountTabButton
           active={activeTab === 'profile'}
           onClick={() => setActiveTab('profile')}

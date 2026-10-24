@@ -23,14 +23,15 @@ const DARK_COLOR = [
   'oklch(0.82 0.14 162)',
 ];
 
-// Light mode — neutral grey dots on white background.
-const LIGHT_ALPHA = [0, 0.1, 0.22, 0.38, 0.55];
+// Light mode — the same teal family as dark mode, kept very soft so the grid
+// reads as brand texture on the parchment background instead of grey noise.
+const LIGHT_ALPHA = [0, 0.07, 0.14, 0.22, 0.34];
 const LIGHT_COLOR = [
-  'oklch(0.20 0 0)',
-  'oklch(0.25 0 0)',
-  'oklch(0.32 0 0)',
-  'oklch(0.40 0 0)',
-  'oklch(0.50 0 0)',
+  'oklch(0.54 0.056 161)',
+  'oklch(0.54 0.056 161)',
+  'oklch(0.50 0.06 161)',
+  'oklch(0.46 0.07 161)',
+  'oklch(0.42 0.07 162)',
 ];
 
 // Deterministic pseudo-random in [0,1) from integer coordinates.
@@ -123,6 +124,8 @@ export function HomeBackground() {
       <canvas className="absolute inset-0 h-full w-full" ref={canvasRef} />
 
       {/* Stronger vignette makes the grid recede behind centered content. */}
+      {/* Light mode only: a soft teal glow behind the hero. */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_45%_at_50%_42%,var(--color-pine-teal-200),transparent_70%)] opacity-60 dark:hidden" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_18%,background_72%)]" />
       <div className="absolute inset-0 bg-linear-to-b from-background/65 via-transparent to-background/75" />
     </div>

@@ -72,7 +72,7 @@ export function ProfileSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <UserIcon className="size-4 text-muted-foreground" />
+          <UserIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
           Personal information
         </CardTitle>
         <CardDescription>

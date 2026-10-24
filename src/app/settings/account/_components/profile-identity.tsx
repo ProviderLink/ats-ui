@@ -42,7 +42,7 @@ export function ProfileIdentity({
   const appAccess = user?.appAccess ?? [];
 
   return (
-    <div className="mb-6 flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:gap-5">
+    <div className="mb-6 flex flex-col gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-transparent dark:bg-muted/30 sm:flex-row sm:items-center sm:gap-5">
       <button
         type="button"
         onClick={() => fileRef.current?.click()}
@@ -88,7 +88,7 @@ export function ProfileIdentity({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+            className="inline-flex items-center gap-1 text-xs text-pine-teal-700 transition-colors hover:text-pine-teal-900 dark:text-muted-foreground dark:hover:text-primary disabled:opacity-50"
             disabled={uploading}
           >
             <CameraIcon className="size-3" />
@@ -96,14 +96,18 @@ export function ProfileIdentity({
           </button>
         </div>
         <div className="flex items-center gap-1.5">
-          <MailIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <MailIcon className="size-3.5 shrink-0 text-pine-teal-700 dark:text-muted-foreground" />
           <span className="truncate text-sm text-muted-foreground">
             {user?.email ?? '—'}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {roles.map(r => (
-            <Badge key={r} variant="secondary" className="text-xs font-medium">
+            <Badge
+              key={r}
+              variant="secondary"
+              className="border border-gray-300 bg-gray-200 text-xs font-medium text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground"
+            >
               {ROLE_LABELS[r] ?? r}
             </Badge>
           ))}
@@ -111,7 +115,7 @@ export function ProfileIdentity({
             <Badge
               key={a}
               variant="outline"
-              className="text-xs font-medium uppercase opacity-60"
+              className="border-gray-400 bg-gray-100 text-xs font-medium uppercase text-gray-800 dark:border-border dark:bg-transparent dark:text-foreground dark:opacity-60"
             >
               {a}
             </Badge>

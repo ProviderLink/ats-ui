@@ -85,7 +85,7 @@ export function TagFormSheet({ open, onOpenChange, tag, onSave }: Props) {
                     setHexInput(c);
                   }}
                   className={cn(
-                    'size-6 rounded-full border-2 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'size-6 rounded-full border-2 ring-1 ring-black/10 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:ring-0',
                     color === c
                       ? 'border-foreground scale-110 shadow-sm'
                       : 'border-transparent hover:scale-105'
@@ -97,7 +97,7 @@ export function TagFormSheet({ open, onOpenChange, tag, onSave }: Props) {
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <div
-                className="size-6 rounded border shrink-0"
+                className="size-6 rounded border border-gray-400 shrink-0 dark:border-border"
                 style={{ background: color }}
               />
               <Input
@@ -122,7 +122,7 @@ export function TagFormSheet({ open, onOpenChange, tag, onSave }: Props) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1 px-2 text-xs pointer-events-none"
+                  className="h-7 gap-1 px-2 text-xs pointer-events-none border-gray-300 bg-gray-100 text-gray-800 dark:border-input dark:bg-input/30 dark:text-foreground"
                   tabIndex={-1}
                 >
                   <Palette className="size-3" />
@@ -134,7 +134,7 @@ export function TagFormSheet({ open, onOpenChange, tag, onSave }: Props) {
 
           <div className="flex flex-col gap-2">
             <Label>Preview</Label>
-            <div className="rounded-md border bg-muted/30 px-4 py-3 flex items-center gap-3">
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3 dark:border-border dark:bg-muted/30">
               <TagBadge name={name} color={color} />
               <span className="text-xs text-muted-foreground">
                 How it appears across the app

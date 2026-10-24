@@ -23,8 +23,8 @@ export function ActivityFilterTabs({
           className={cn(
             'rounded-full px-2.5 py-1 text-xs transition-colors',
             value === f.id
-              ? 'bg-muted font-medium text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-gray-200 font-medium text-foreground dark:bg-muted'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-foreground dark:text-muted-foreground dark:hover:bg-transparent'
           )}
         >
           {f.label}

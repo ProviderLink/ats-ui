@@ -13,7 +13,7 @@ import { MousePointerClickIcon } from 'lucide-react';
  * use a stronger tint and a darkened label, while dark mode keeps the original
  * faint tint and the raw colour.
  */
-const TAG_CHIP_CLS =
+export const TAG_CHIP_CLS =
   'inline-flex items-center gap-1 h-5 rounded-full border px-2 text-xs font-medium ' +
   'border-[color-mix(in_srgb,var(--tag)_55%,transparent)] bg-[color-mix(in_srgb,var(--tag)_20%,transparent)] text-[color-mix(in_srgb,var(--tag)_65%,black)] ' +
   'dark:border-[color-mix(in_srgb,var(--tag)_44%,transparent)] dark:bg-[color-mix(in_srgb,var(--tag)_7%,transparent)] dark:text-(--tag)';

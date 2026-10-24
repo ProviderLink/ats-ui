@@ -19,6 +19,20 @@ export function AuthBackground() {
         .ab-3 { animation: ab-drift-3 16s ease-in-out infinite; }
       `}</style>
 
+      <div className="contents dark:hidden">
+      <div className="ab-1 absolute -top-40 -right-32 w-[680px] h-[680px] rounded-full
+                      bg-[radial-gradient(ellipse_at_center,oklch(0.62_0.08_162/0.3),transparent_70%)]
+                      blur-[90px]" />
+      <div className="ab-2 absolute -bottom-48 -left-40 w-[620px] h-[620px] rounded-full
+                      bg-[radial-gradient(ellipse_at_center,oklch(0.5_0.07_162/0.24),transparent_70%)]
+                      blur-[90px]" />
+      <div className="ab-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                      w-[480px] h-[360px] rounded-full
+                      bg-[radial-gradient(ellipse_at_center,oklch(0.6_0.1_162/0.1),transparent_70%)]
+                      blur-[70px]" />
+
+      </div>
+      <div className="hidden dark:contents">
       <div className="ab-1 absolute -top-40 -right-32 w-[680px] h-[680px] rounded-full
                       bg-[radial-gradient(ellipse_at_center,oklch(0.6_0.12_185/0.28),transparent_70%)]
                       blur-[90px]" />
@@ -30,6 +44,7 @@ export function AuthBackground() {
                       bg-[radial-gradient(ellipse_at_center,oklch(0.6_0.1_185/0.1),transparent_70%)]
                       blur-[70px]" />
 
+      </div>
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox="0 0 1440 900"

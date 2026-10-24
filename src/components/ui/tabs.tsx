@@ -25,12 +25,12 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  'group/tabs-list inline-flex w-fit items-center justify-center gap-1 rounded-xl bg-muted p-1 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col',
+  'group/tabs-list inline-flex w-fit items-center justify-center gap-1 rounded-xl bg-gray-200 p-1 dark:bg-muted group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col',
   {
     variants: {
       variant: {
         default: '',
-        line: 'rounded-none bg-transparent p-0 gap-0 h-auto border-b',
+        line: 'rounded-none bg-transparent p-0 gap-0 h-auto border-b dark:bg-transparent',
       },
     },
     defaultVariants: {
@@ -64,19 +64,21 @@ function TabsTrigger({
       data-slot="tabs-trigger"
       className={cn(
         // Base — identical to account page TabButton
-        'relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-200',
-        'hover:text-foreground hover:bg-muted',
+        'relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium whitespace-nowrap text-gray-600 dark:text-muted-foreground transition-all duration-200',
+        'hover:text-foreground hover:bg-gray-100 dark:hover:bg-muted',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
         'disabled:pointer-events-none disabled:opacity-50',
         '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
         // Vertical layout support
         'group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start',
         // Active state — identical to account page active TabButton
-        'data-active:bg-card data-active:text-foreground data-active:shadow-sm data-active:ring-1 data-active:ring-border-subtle',
+        'data-active:bg-card data-active:text-foreground data-active:shadow-sm data-active:ring-1 data-active:ring-gray-300 dark:data-active:ring-border-subtle',
         // Hovering the active tab must not change it
         'data-active:hover:bg-card data-active:hover:text-foreground',
+        // The dark text colour above must not win over the active text colour
+        'dark:data-active:text-foreground',
         // Line variant overrides
-        'group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:px-3 group-data-[variant=line]/tabs-list:py-2.5 group-data-[variant=line]/tabs-list:border-b-2 group-data-[variant=line]/tabs-list:border-transparent group-data-[variant=line]/tabs-list:hover:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:border-primary group-data-[variant=line]/tabs-list:data-active:shadow-none group-data-[variant=line]/tabs-list:data-active:ring-0',
+        'group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:px-3 group-data-[variant=line]/tabs-list:py-2.5 group-data-[variant=line]/tabs-list:border-b-2 group-data-[variant=line]/tabs-list:border-transparent group-data-[variant=line]/tabs-list:hover:bg-transparent group-data-[variant=line]/tabs-list:dark:hover:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:border-primary group-data-[variant=line]/tabs-list:data-active:shadow-none group-data-[variant=line]/tabs-list:data-active:ring-0',
         className
       )}
       {...props}

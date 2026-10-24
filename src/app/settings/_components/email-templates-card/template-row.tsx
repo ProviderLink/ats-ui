@@ -25,7 +25,7 @@ export function TemplateRow({ createdByName, ...actions }: TemplateRowProps) {
       <div className="flex flex-col gap-1 flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium">{tpl.name}</span>
-          <Badge variant="outline" className="text-xs h-4 px-1.5">
+          <Badge variant="outline" className="h-4.5 px-2 py-0 text-[10px] leading-none border-gray-300 bg-gray-100 text-gray-800 dark:border-border dark:bg-transparent dark:text-foreground">
             {typeLabel}
           </Badge>
           {tpl.isDefault && (
@@ -33,10 +33,10 @@ export function TemplateRow({ createdByName, ...actions }: TemplateRowProps) {
               <TooltipTrigger asChild>
                 <Badge
                   variant="secondary"
-                  className="text-xs h-4 px-1.5 gap-0.5 cursor-default"
+                  className="h-4.5 px-2 py-0 text-[10px] leading-none gap-1 cursor-default border border-amber-300 bg-amber-100 text-amber-900 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground"
                 >
-                  <StarIcon className="size-2.5" />
-                  Default for {typeLabel}
+                  <StarIcon className="size-2.5 fill-current" />
+                  Default
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs max-w-52">

@@ -17,12 +17,12 @@ import { TagBadge } from './tag-badge';
 import { ColHeader } from './tag-col-header';
 
 const AVATAR_COLORS = [
-  'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
-  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
-  'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
-  'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+  'bg-violet-200 text-violet-900 dark:bg-violet-900/40 dark:text-violet-300',
+  'bg-amber-200 text-amber-900 dark:bg-amber-900/30 dark:text-amber-300',
+  'bg-rose-200 text-rose-900 dark:bg-rose-900/30 dark:text-rose-300',
+  'bg-sky-200 text-sky-900 dark:bg-sky-900/30 dark:text-sky-300',
+  'bg-emerald-200 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-300',
+  'bg-orange-200 text-orange-900 dark:bg-orange-900/30 dark:text-orange-300',
 ];
 
 function avatarColor(name: string) {
@@ -101,7 +101,7 @@ export function buildTagColumns(
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <span
-            className="size-4 rounded-full shrink-0 border border-foreground/10"
+            className="size-4 rounded-full shrink-0 border border-gray-400 dark:border-foreground/10"
             style={{ background: row.original.color }}
           />
           <span className="text-xs font-mono text-muted-foreground">
@@ -179,7 +179,7 @@ export function buildTagColumns(
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1 px-2 text-xs hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+              className="h-7 gap-1 px-2 text-xs border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-400 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-primary/10 dark:hover:text-primary dark:hover:border-primary/30"
               onClick={() => onEdit(tag)}
             >
               <PencilIcon className="size-3" />
@@ -188,7 +188,7 @@ export function buildTagColumns(
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40"
+              className="h-7 gap-1 px-2 text-xs border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 hover:border-red-400 dark:border-input dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/10 dark:hover:border-destructive/40"
               onClick={() => onDelete(tag)}
             >
               <Trash2Icon className="size-3" />

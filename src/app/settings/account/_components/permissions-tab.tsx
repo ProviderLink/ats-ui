@@ -28,7 +28,7 @@ export function PermissionsTab() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ShieldCheckIcon className="size-4 text-muted-foreground" />
+          <ShieldCheckIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
           Permissions
         </CardTitle>
         <CardDescription>
@@ -37,15 +37,15 @@ export function PermissionsTab() {
       </CardHeader>
       <CardContent>
         {isAdmin && (
-          <div className="mb-4 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-            <ShieldIcon className="size-3.5 text-primary" />
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-pine-teal-300 bg-pine-teal-100 px-3 py-2 text-xs text-pine-teal-900 dark:border-primary/20 dark:bg-primary/5 dark:text-muted-foreground">
+            <ShieldIcon className="size-3.5 text-pine-teal-700 dark:text-primary" />
             You have admin access — all permissions are granted.
           </div>
         )}
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-120">
             <thead>
-              <tr className="border-b bg-muted/40">
+              <tr className="border-b bg-gray-100 dark:bg-muted/40">
                 <th className="h-10 px-5 text-left text-xs font-medium text-muted-foreground">
                   Resource
                 </th>
@@ -77,9 +77,9 @@ export function PermissionsTab() {
                     return (
                       <td key={perm} className="px-3 py-3 text-center">
                         {granted ? (
-                          <CheckIcon className="size-4 text-success mx-auto" />
+                          <CheckIcon className="size-4 text-emerald-700 dark:text-success mx-auto" />
                         ) : (
-                          <MinusIcon className="size-4 text-muted-foreground/20 mx-auto" />
+                          <MinusIcon className="size-4 text-gray-400 dark:text-muted-foreground/20 mx-auto" />
                         )}
                       </td>
                     );

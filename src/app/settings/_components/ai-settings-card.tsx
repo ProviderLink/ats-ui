@@ -66,7 +66,7 @@ export function AiSettingsCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BotIcon className="size-4 text-muted-foreground" />
+          <BotIcon className="size-4 text-pine-teal-700 dark:text-muted-foreground" />
           AI Settings
         </CardTitle>
         <CardDescription>
@@ -76,7 +76,7 @@ export function AiSettingsCard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {/* Provider */}
-        <div className="flex flex-col gap-1.5 rounded-lg border px-4 py-3">
+        <div className="flex flex-col gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
           <Label htmlFor="ai-provider">AI Provider</Label>
           <Select
             value={provider}
@@ -96,7 +96,7 @@ export function AiSettingsCard() {
             key in your environment.
           </p>
         </div>
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
           <div>
             <p className="text-sm font-medium">Resume validation</p>
             <p className="text-xs text-muted-foreground">
@@ -110,7 +110,7 @@ export function AiSettingsCard() {
             aria-label="Resume validation"
           />
         </div>
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
           <div>
             <p className="text-sm font-medium">Candidate scoring</p>
             <p className="text-xs text-muted-foreground">
@@ -124,7 +124,7 @@ export function AiSettingsCard() {
             aria-label="Candidate scoring"
           />
         </div>
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
           <div>
             <p className="text-sm font-medium">Resume parsing</p>
             <p className="text-xs text-muted-foreground">

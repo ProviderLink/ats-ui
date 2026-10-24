@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,11 +6,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { useUserStore } from '@/store';
 import type { PipelineTemplate } from '@/store/types';
-import { StarIcon } from 'lucide-react';
+import { LayersIcon, PencilIcon, PowerIcon, StarIcon } from 'lucide-react';
+import { FALLBACK_STAGE_ICON, STAGE_ICONS } from '../_utils/stage-icons';
+import { IconTile, Pill, SectionHeading } from './template-ui';
 
 type Props = {
   open: boolean;
@@ -45,135 +45,132 @@ export function PipelineTemplateViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-base font-semibold leading-none">
-            {template.name}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Pipeline template stages and their order.
-          </DialogDescription>
-          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-            {template.isDefault && (
-              <Badge variant="secondary" className="text-xs h-4 px-1.5 gap-0.5">
-                <StarIcon className="size-2.5" />
-                Default
-              </Badge>
-            )}
-            <Badge
-              variant={template.isActive ? 'secondary' : 'outline'}
-              className="text-xs h-4 px-1.5"
-            >
-              {template.isActive ? 'Active' : 'Inactive'}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="flex-row items-start gap-3 px-6 pt-6 pb-4 pr-14">
+          <IconTile icon={LayersIcon} />
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="text-base leading-tight font-semibold">
+              {template.name}
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
               {activeStages.length} active stage
               {activeStages.length !== 1 ? 's' : ''}
-            </span>
+              {' · '}Updated {formatDate(template.updatedAt)}
+            </DialogDescription>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {template.isDefault && (
+                <Pill tone="amber" icon={StarIcon}>
+                  Default
+                </Pill>
+              )}
+              <Pill
+                tone={template.isActive ? 'emerald' : 'neutral'}
+                icon={PowerIcon}
+              >
+                {template.isActive ? 'Active' : 'Inactive'}
+              </Pill>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="overflow-y-auto max-h-[60vh]">
-          <div className="flex flex-col gap-4 px-6 py-5">
-            {/* Description */}
+        <div className="max-h-[60vh] overflow-y-auto border-t px-6 py-5">
+          <div className="flex flex-col gap-6">
             {template.description && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {template.description}
-                </p>
-                <Separator />
-              </>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {template.description}
+              </p>
             )}
 
-            {/* Active stages */}
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Pipeline stages
-              </p>
+            <section className="flex flex-col gap-3">
+              <SectionHeading>Pipeline stages</SectionHeading>
               {activeStages.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">
+                <p className="text-sm text-muted-foreground">
                   No active stages.
                 </p>
               ) : (
-                <div className="flex flex-col gap-1.5">
-                  {activeStages.map((s, i) => (
-                    <div key={s._id} className="flex items-center gap-2.5">
-                      <span className="text-xs text-muted-foreground w-4 text-right shrink-0">
-                        {i + 1}
-                      </span>
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border"
-                        style={{
-                          background: `${s.color}18`,
-                          borderColor: `${s.color}55`,
-                          color: s.color,
-                        }}
-                      >
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ background: s.color }}
-                        />
-                        {s.name}
-                      </span>
-                    </div>
+                <ol className="flex flex-col">
+                  {activeStages.map((s, i) => {
+                    const Icon = STAGE_ICONS[s.icon] ?? FALLBACK_STAGE_ICON;
+                    const last = i === activeStages.length - 1;
+                    return (
+                      <li key={s._id} className="flex items-stretch gap-3">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--stage)_18%,transparent)] text-[color-mix(in_srgb,var(--stage)_60%,black)] dark:text-(--stage)"
+                            style={
+                              { '--stage': s.color } as React.CSSProperties
+                            }
+                          >
+                            <Icon className="size-4" />
+                          </span>
+                          {!last && (
+                            <span className="my-1 w-px flex-1 bg-gray-300 dark:bg-border" />
+                          )}
+                        </div>
+                        <div
+                          className={cn(
+                            'flex min-w-0 flex-1 items-center justify-between gap-2 pt-1.5',
+                            !last && 'pb-4',
+                          )}
+                        >
+                          <span className="text-sm font-medium">{s.name}</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            Stage {i + 1}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
+
+            {inactiveStages.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <SectionHeading>
+                  Inactive stages ({inactiveStages.length})
+                </SectionHeading>
+                <div className="flex flex-wrap gap-1.5">
+                  {inactiveStages.map(s => (
+                    <span
+                      key={s._id}
+                      className="rounded-md border border-dashed border-gray-400 bg-gray-100 px-2 py-0.5 text-xs text-gray-600 line-through dark:border-border dark:bg-transparent dark:text-muted-foreground"
+                    >
+                      {s.name}
+                    </span>
                   ))}
                 </div>
-              )}
-            </div>
-
-            {/* Inactive stages */}
-            {inactiveStages.length > 0 && (
-              <>
-                <Separator />
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Inactive stages
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {inactiveStages.map(s => (
-                      <span
-                        key={s._id}
-                        className="text-xs text-muted-foreground border border-dashed rounded-md px-2 py-0.5 line-through"
-                      >
-                        {s.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </>
+              </section>
             )}
-
-            <Separator />
-
-            {/* Meta */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Created by {resolveUser(template.createdBy)}</span>
-              <span>{formatDate(template.createdAt)}</span>
-            </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t bg-muted/30">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-muted-foreground"
-          >
-            Close
-          </Button>
-          {onEdit && (
+        <div className="flex items-center justify-between gap-3 border-t bg-gray-50 px-6 py-3 dark:bg-white/3">
+          <p className="min-w-0 truncate text-xs text-muted-foreground">
+            Created by {resolveUser(template.createdBy)} ·{' '}
+            {formatDate(template.createdAt)}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(template);
-              }}
+              onClick={() => onOpenChange(false)}
             >
-              Edit template
+              Close
             </Button>
-          )}
+            {onEdit && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit(template);
+                }}
+              >
+                <PencilIcon className="size-3.5" />
+                Edit template
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
