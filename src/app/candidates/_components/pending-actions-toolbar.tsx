@@ -45,7 +45,7 @@ export function PendingActionsToolbar({
         size="sm"
         variant="outline"
         disabled={disabled}
-        className="h-8 gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+        className="h-8 gap-1.5 border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 hover:text-emerald-900 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
         onClick={onApprove}
       >
         <CheckIcon className="size-3.5" />
@@ -55,7 +55,7 @@ export function PendingActionsToolbar({
         size="sm"
         variant="outline"
         disabled={disabled}
-        className="h-8 gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+        className="h-8 gap-1.5 border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 hover:text-emerald-900 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
         onClick={onApproveAndEmail}
       >
         <CheckIcon className="size-3.5" />
@@ -66,7 +66,7 @@ export function PendingActionsToolbar({
         size="sm"
         variant="outline"
         disabled={disabled}
-        className="h-8 gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+        className="h-8 gap-1.5 border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 hover:text-emerald-900 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
         onClick={onApproveEmailAndPool}
       >
         <CheckIcon className="size-3.5" />
@@ -102,7 +102,7 @@ export function PendingActionsToolbar({
         size="sm"
         variant="outline"
         disabled={disabled}
-        className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+        className="h-8 gap-1.5 border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:border-input dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/10"
         onClick={onRejectAndEmail}
       >
         <XIcon className="size-3.5" />
@@ -113,7 +113,7 @@ export function PendingActionsToolbar({
         size="sm"
         variant="outline"
         disabled={disabled}
-        className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+        className="h-8 gap-1.5 border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:border-input dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/10"
         onClick={onReject}
       >
         <XIcon className="size-3.5" />

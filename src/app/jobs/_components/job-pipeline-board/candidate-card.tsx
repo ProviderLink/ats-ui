@@ -12,12 +12,12 @@ interface CandidateCardProps {
 
 function scoreClass(score: number) {
   if (score >= 80)
-    return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    return 'border border-green-300 bg-green-100 text-green-800 dark:border-green-500/30 dark:bg-green-900/30 dark:text-green-400';
   if (score >= 60)
-    return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+    return 'border border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/30 dark:bg-amber-900/30 dark:text-amber-400';
   if (score >= 40)
-    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-  return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    return 'border border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-500/30 dark:bg-orange-900/30 dark:text-orange-400';
+  return 'border border-red-300 bg-red-100 text-red-800 dark:border-red-500/30 dark:bg-red-900/30 dark:text-red-400';
 }
 
 export function CandidateCard({

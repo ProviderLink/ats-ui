@@ -101,8 +101,8 @@ export function CandidateSheetHeader({
                 className={cn(
                   'bg-transparent font-medium',
                   aiValidation.isValid
-                    ? 'text-green-700 dark:text-green-300'
-                    : 'text-destructive'
+                    ? 'bg-green-100 border-green-400 text-green-800 dark:bg-transparent dark:text-green-300'
+                    : 'bg-red-100 border-red-300 text-red-700 dark:bg-transparent dark:text-destructive'
                 )}
               >
                 <SparklesIcon className="size-3" />
@@ -110,7 +110,7 @@ export function CandidateSheetHeader({
               </Badge>
             )}
             {c.inTalentPool && (
-              <Badge className="border-violet-400 bg-transparent font-medium text-violet-700 dark:border-violet-400 dark:text-violet-300">
+              <Badge className="border-violet-400 bg-violet-100 font-medium text-violet-800 dark:bg-transparent dark:border-violet-400 dark:text-violet-300">
                 <StarIcon className="size-3" />
                 Talent Pool
               </Badge>

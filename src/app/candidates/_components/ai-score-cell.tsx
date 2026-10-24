@@ -23,12 +23,12 @@ export function AiScoreCell({ candidate }: { candidate: Candidate }) {
           className={cn(
             'inline-flex items-center justify-center size-9 rounded-full text-xs font-bold tabular-nums',
             score >= 80
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              ? 'bg-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               : score >= 60
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                ? 'bg-amber-200 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
                 : score >= 40
-                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                  ? 'bg-orange-200 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+                  : 'bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-400'
           )}
         >
           {score}
@@ -58,8 +58,8 @@ export function AiScoreCell({ candidate }: { candidate: Candidate }) {
           className={cn(
             'inline-flex items-center justify-center size-9 rounded-full text-xs font-bold tabular-nums',
             isValid
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              ? 'bg-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-400'
           )}
         >
           {score}

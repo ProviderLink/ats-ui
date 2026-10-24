@@ -59,25 +59,25 @@ export function CandidateRowCard({
           >
             {phaseLabel}
           </span>
-          {application.currentStage && (
-            <span
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/80 shrink-0 rounded-full border border-border/70 bg-muted/50 px-2 h-5 leading-none"
-              title={`Pipeline stage: ${application.currentStage.stageName}`}
-            >
-              <LayersIcon className="size-3" />
-              <span className="truncate max-w-30">
-                {application.currentStage.stageName}
-              </span>
-            </span>
-          )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-4 pb-3 text-[11px] text-muted-foreground overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-3 text-[11px] text-muted-foreground">
         {candidate.yearsOfExperience > 0 && (
           <span className="inline-flex items-center gap-1 shrink-0 font-semibold text-foreground">
             <BriefcaseIcon className="size-3" />
             {candidate.yearsOfExperience}y exp
+          </span>
+        )}
+        {application.currentStage && (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/80 rounded-full border border-border/70 bg-muted/50 px-2 min-h-5 py-0.5 leading-tight"
+            title={`Pipeline stage: ${application.currentStage.stageName}`}
+          >
+            <LayersIcon className="size-3 shrink-0" />
+            <span className="wrap-break-word">
+              {application.currentStage.stageName}
+            </span>
           </span>
         )}
         {tag?.name && tag.color && (

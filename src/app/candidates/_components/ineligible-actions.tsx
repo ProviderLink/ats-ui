@@ -53,7 +53,7 @@ export function IneligibleActions({
         size="sm"
         variant="outline"
         disabled={disabled}
-        className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+        className="h-8 gap-1.5 border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:border-input dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/10"
         onClick={onDelete}
       >
         <Trash2Icon className="size-3.5" />

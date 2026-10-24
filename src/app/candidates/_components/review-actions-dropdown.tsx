@@ -68,8 +68,8 @@ export function ReviewActionsDropdown({
           <ActionMenuSection>Decide</ActionMenuSection>
           <ActionMenuItem
             icon={CheckIcon}
-            iconBoxClass="bg-green-100 dark:bg-green-900/30"
-            iconClass="text-green-600 dark:text-green-400"
+            iconBoxClass="bg-green-200 dark:bg-green-900/30"
+            iconClass="text-green-700 dark:text-green-400"
             title="Approve"
             description={
               hasJobApplied
@@ -85,8 +85,8 @@ export function ReviewActionsDropdown({
           <ActionMenuItem
             variant="destructive"
             icon={XIcon}
-            iconBoxClass="bg-red-100 dark:bg-red-900/30"
-            iconClass="text-red-600 dark:text-red-400"
+            iconBoxClass="bg-red-200 dark:bg-red-900/30"
+            iconClass="text-red-700 dark:text-red-400"
             title="Reject"
             description={
               liveApplication
@@ -100,8 +100,8 @@ export function ReviewActionsDropdown({
           <ActionMenuSection>Talent Pool</ActionMenuSection>
           <ActionMenuItem
             icon={StarIcon}
-            iconBoxClass="bg-amber-100 dark:bg-amber-900/30"
-            iconClass="text-amber-700 dark:text-amber-400"
+            iconBoxClass="bg-amber-200 dark:bg-amber-900/30"
+            iconClass="text-amber-800 dark:text-amber-400"
             title={
               candidate.inTalentPool
                 ? 'Remove from Talent Pool'
@@ -119,8 +119,8 @@ export function ReviewActionsDropdown({
           <ActionMenuSection>Communication</ActionMenuSection>
           <ActionMenuItem
             icon={MailIcon}
-            iconBoxClass="bg-blue-100 dark:bg-blue-900/30"
-            iconClass="text-blue-600 dark:text-blue-400"
+            iconBoxClass="bg-blue-200 dark:bg-blue-900/30"
+            iconClass="text-blue-700 dark:text-blue-400"
             title="Email"
             description="Compose and send an email"
             onClick={() => setActive('compose')}

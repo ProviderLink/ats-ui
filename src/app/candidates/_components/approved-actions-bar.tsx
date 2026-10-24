@@ -66,7 +66,7 @@ export function ApprovedActionsBar({
           size="sm"
           variant="outline"
           disabled={loading || !hasActiveApp}
-          className="h-8 gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+          className="h-8 gap-1.5 border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:border-emerald-700/40 dark:bg-emerald-950/30 dark:text-emerald-300"
           onClick={onHire}
         >
           <UserCheckIcon className="size-3.5" />
@@ -122,7 +122,7 @@ export function ApprovedActionsBar({
         size="sm"
         variant="outline"
         disabled={loading || !hasActiveApp}
-        className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+        className="h-8 gap-1.5 border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:border-input dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/10"
         onClick={onReject}
       >
         <BanIcon className="size-3.5" />

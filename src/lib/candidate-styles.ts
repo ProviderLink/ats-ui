@@ -27,7 +27,7 @@ export const statusConfig: Record<
   },
   approved: {
     label: 'Approved',
-    cls: 'border-pine-teal-600 text-pine-teal-700 dark:border-pine-teal-400 dark:text-pine-teal-300',
+    cls: 'bg-pine-teal-100 border-pine-teal-600 text-pine-teal-700 dark:bg-transparent dark:border-pine-teal-400 dark:text-pine-teal-300',
   },
   hired: {
     label: 'Hired',
@@ -41,16 +41,19 @@ export const fitConfig: Record<
 > = {
   poor_fit: {
     label: 'Poor Fit',
-    cls: 'bg-destructive/10 text-destructive border-transparent',
+    cls: 'bg-red-100 text-red-700 border-red-300 dark:bg-destructive/10 dark:text-destructive dark:border-transparent',
   },
   moderate_fit: {
     label: 'Moderate Fit',
-    cls: 'bg-secondary text-secondary-foreground border-transparent',
+    cls: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-secondary dark:text-secondary-foreground dark:border-transparent',
   },
-  good_fit: { label: 'Good Fit', cls: 'border-border text-foreground' },
+  good_fit: {
+    label: 'Good Fit',
+    cls: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-transparent dark:text-foreground dark:border-border',
+  },
   strong_fit: {
     label: 'Strong Fit',
-    cls: 'border-pine-teal-600 text-pine-teal-700 dark:border-pine-teal-400 dark:text-pine-teal-300',
+    cls: 'bg-pine-teal-100 border-pine-teal-600 text-pine-teal-700 dark:bg-transparent dark:border-pine-teal-400 dark:text-pine-teal-300',
   },
 };
 

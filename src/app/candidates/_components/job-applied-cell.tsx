@@ -21,13 +21,13 @@ export function JobAppliedCell({
     const first = appInfos[0];
     const rest = appInfos.slice(1);
     return (
-      <div className="flex items-start gap-1.5 min-w-35 max-w-55 rounded-sm border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/30 px-2 py-1 -my-1">
+      <div className="flex items-start gap-1.5 min-w-35 max-w-55 rounded-sm border border-blue-300 bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 px-2 py-1 -my-1">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium whitespace-normal leading-tight">
+          <p className="text-xs font-semibold text-blue-950 dark:text-foreground whitespace-normal leading-tight">
             {first.jobTitle}
           </p>
           {first.clientName && (
-            <p className="text-[11px] text-muted-foreground whitespace-normal leading-tight mt-0.5">
+            <p className="text-[11px] text-blue-900/70 dark:text-muted-foreground whitespace-normal leading-tight mt-0.5">
               {first.clientName}
             </p>
           )}
@@ -64,13 +64,13 @@ export function JobAppliedCell({
         '')
       : '';
     return (
-      <div className="flex items-start gap-1.5 min-w-35 max-w-55 rounded-sm border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/30 px-2 py-1 -my-1">
+      <div className="flex items-start gap-1.5 min-w-35 max-w-55 rounded-sm border border-blue-300 bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 px-2 py-1 -my-1">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium whitespace-normal leading-tight">
+          <p className="text-xs font-semibold text-blue-950 dark:text-foreground whitespace-normal leading-tight">
             {job?.title ?? appliedJobId}
           </p>
           {clientName && (
-            <p className="text-[11px] text-muted-foreground whitespace-normal leading-tight mt-0.5">
+            <p className="text-[11px] text-blue-900/70 dark:text-muted-foreground whitespace-normal leading-tight mt-0.5">
               {clientName}
             </p>
           )}

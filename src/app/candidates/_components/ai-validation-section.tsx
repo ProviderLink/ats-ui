@@ -46,10 +46,10 @@ export function AiValidationSection({ candidate }: { candidate: Candidate }) {
           </span>
           <Badge
             className={cn(
-              'bg-transparent font-medium shrink-0',
+              'font-medium shrink-0',
               aiValidation.isValid
-                ? 'text-green-700 dark:text-green-300 border-green-300 dark:border-green-700'
-                : 'text-destructive border-destructive/30'
+                ? 'bg-green-100 text-green-800 border-green-400 dark:bg-transparent dark:text-green-300 dark:border-green-700'
+                : 'bg-red-100 text-red-700 border-red-300 dark:bg-transparent dark:text-destructive dark:border-destructive/30'
             )}
           >
             {aiValidation.isValid ? 'Valid' : 'Invalid'}

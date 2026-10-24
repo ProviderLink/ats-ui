@@ -36,7 +36,7 @@ export function CandidateProfileSections({ candidate }: { candidate: Candidate }
               {skills.map(skill => (
                 <span
                   key={skill}
-                  className="inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-medium"
+                  className="inline-flex h-5 items-center rounded-full border border-border bg-muted px-2 text-xs font-medium dark:bg-transparent"
                 >
                   {skill}
                 </span>
@@ -59,7 +59,7 @@ export function CandidateProfileSections({ candidate }: { candidate: Candidate }
                 {certifications.map(cert => (
                   <span
                     key={cert}
-                    className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 text-xs font-medium text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-300"
+                    className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-2 text-xs font-medium text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-300"
                   >
                     <StarIcon className="size-2.5" />
                     {cert}
