@@ -1,3 +1,4 @@
+import { Building2Icon, ClipboardListIcon, ContactIcon } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import type { Client } from '@/store/types';
 import { Dash, DetailRow, DetailSection } from './primitives';
@@ -19,8 +20,8 @@ export function OverviewTab({ client }: { client: Client }) {
     : [];
 
   return (
-    <div className="flex flex-col gap-6 py-5">
-      <DetailSection title="Contact">
+    <div className="flex flex-col gap-4 py-5">
+      <DetailSection title="Contact" icon={ContactIcon}>
         <DetailRow label="Email">
           <a href={`mailto:${client.email}`} className={linkCls}>
             {client.email}
@@ -62,7 +63,7 @@ export function OverviewTab({ client }: { client: Client }) {
         </DetailRow>
       </DetailSection>
 
-      <DetailSection title="Company">
+      <DetailSection title="Company" icon={Building2Icon}>
         <DetailRow label="Industry">
           {client.industry ? (
             <span className="capitalize">{client.industry}</span>
@@ -82,7 +83,7 @@ export function OverviewTab({ client }: { client: Client }) {
         )}
       </DetailSection>
 
-      <DetailSection title="Record">
+      <DetailSection title="Record" icon={ClipboardListIcon}>
         <DetailRow label="Created">{formatDate(client.createdAt)}</DetailRow>
         <DetailRow label="Created by">
           <UserCell userId={client.createdBy} />

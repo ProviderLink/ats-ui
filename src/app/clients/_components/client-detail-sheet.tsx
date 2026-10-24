@@ -87,7 +87,7 @@ function ClientDetailSheetContent({
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col">
           <ClientTabs client={client} />
         </div>
       </SheetContent>

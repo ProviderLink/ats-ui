@@ -1,5 +1,10 @@
 import { cn } from '@/lib/utils';
-import { CheckCircleIcon, StarIcon, XCircleIcon } from 'lucide-react';
+import {
+  CheckCircleIcon,
+  StarIcon,
+  XCircleIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import React from 'react';
 import { ClientAvatar } from '../clients-table/client-avatar';
 
@@ -98,17 +103,24 @@ export function CompanyAvatar({
 
 export function DetailSection({
   title,
+  icon: Icon,
   children,
 }: {
   title: string;
+  icon?: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-1">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <section className="rounded-xl bg-muted/40 p-4">
+      <h3 className="mb-2 flex items-center gap-2.5 text-sm font-semibold tracking-tight text-foreground">
+        {Icon && (
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="size-4" />
+          </span>
+        )}
         {title}
       </h3>
-      <dl className="divide-y">{children}</dl>
+      <dl className="flex flex-col gap-0.5">{children}</dl>
     </section>
   );
 }
@@ -121,9 +133,9 @@ export function DetailRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[7rem_1fr] items-baseline gap-3 py-2.5">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words text-sm">{children}</dd>
+    <div className="grid grid-cols-[7rem_1fr] items-baseline gap-3 rounded-md px-2 py-2 hover:bg-background/70 transition-colors">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words text-sm font-medium">{children}</dd>
     </div>
   );
 }

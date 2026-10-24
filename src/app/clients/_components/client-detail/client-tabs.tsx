@@ -10,8 +10,8 @@ import { OverviewTab } from './overview-tab';
 
 export function ClientTabs({ client }: { client: Client }) {
   return (
-    <Tabs defaultValue="overview" className="gap-0">
-      <div className="overflow-x-auto px-6 pt-1">
+    <Tabs defaultValue="overview" className="min-h-0 flex-1 gap-0">
+      <div className="shrink-0 overflow-x-auto px-6 pt-1">
         <TabsList variant="line" className="w-full justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="contacts">
@@ -32,23 +32,23 @@ export function ClientTabs({ client }: { client: Client }) {
         </TabsList>
       </div>
 
-      <TabsContent value="overview" className="mt-0 px-6">
+      <TabsContent value="overview" className="mt-0 min-h-0 flex-1 overflow-y-auto px-6">
         <OverviewTab client={client} />
       </TabsContent>
-      <TabsContent value="contacts" className="mt-0 px-6">
+      <TabsContent value="contacts" className="mt-0 min-h-0 flex-1 overflow-y-auto px-6">
         <ContactsTab clientId={client._id} contacts={client.contacts} />
       </TabsContent>
-      <TabsContent value="jobs" className="mt-0 px-6">
+      <TabsContent value="jobs" className="mt-0 min-h-0 flex-1 overflow-y-auto px-6">
         <JobsTab clientId={client._id} />
       </TabsContent>
-      <TabsContent value="activity" className="mt-0 px-6">
+      <TabsContent value="activity" className="mt-0 min-h-0 flex-1 overflow-y-auto px-6">
         <ActivityTab clientId={client._id} />
       </TabsContent>
-      <TabsContent value="notes" className="mt-0 px-6">
+      <TabsContent value="notes" className="mt-0 min-h-0 flex-1 overflow-y-auto px-6">
         <NotesTab clientId={client._id} />
       </TabsContent>
       {client.crmProfile && (
-        <TabsContent value="crm" className="mt-0 px-6">
+        <TabsContent value="crm" className="mt-0 min-h-0 flex-1 overflow-y-auto px-6">
           <CrmTab clientId={client._id} crm={client.crmProfile} />
         </TabsContent>
       )}

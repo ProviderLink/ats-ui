@@ -26,7 +26,7 @@ import { Loader2Icon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
-  clientFormSchema,
+  getClientFormSchema,
   COMPANY_SIZES,
   getClientFormDefaults,
   type ClientFormValues,
@@ -70,7 +70,7 @@ export function NewClientSheet({
     reset,
     formState: { errors },
   } = useForm<ClientFormValues>({
-    resolver: zodResolver(clientFormSchema),
+    resolver: zodResolver(getClientFormSchema(isEdit)),
     defaultValues: getClientFormDefaults(client),
   });
 
@@ -230,7 +230,7 @@ export function NewClientSheet({
 
             <Separator />
             <p className={SECTION_LABEL}>Address</p>
-            <AddressFields register={register} />
+            <AddressFields register={register} errors={errors} />
 
             {!isEdit && (
               <>
