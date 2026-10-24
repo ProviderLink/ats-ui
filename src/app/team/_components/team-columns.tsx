@@ -112,7 +112,7 @@ export const baseColumns: ColumnDef<User>[] = [
       ) : (
         <div className="flex gap-1">
           {access.map(a => (
-            <Badge key={a} variant="secondary" className="uppercase text-xs">
+            <Badge key={a} variant="secondary" className="uppercase text-xs border border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground">
               {a}
             </Badge>
           ))}

@@ -67,7 +67,12 @@ export function EventDetail({
         <>
           <Separator />
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={onEdit}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent"
+              onClick={onEdit}
+            >
               Edit
             </Button>
             <Button
@@ -91,7 +96,7 @@ export function EventDetail({
               size="sm"
               onClick={actions.markNoShow}
               disabled={actions.busy.no_show}
-              className="text-warning border-warning/40 hover:bg-warning/10"
+              className="border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:bg-transparent dark:text-warning dark:border-warning/40 dark:hover:bg-warning/10"
             >
               {actions.busy.no_show ? 'Saving...' : 'No Show'}
             </Button>

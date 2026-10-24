@@ -1,6 +1,7 @@
 import { WhenFields } from '@/components/schedule-interview/when-fields';
 import { InterviewerPicker } from '@/components/schedule-interview/interviewer-picker';
 import { nextHourDefaults } from '@/components/schedule-interview/next-hour-defaults';
+import { MeetingTypeIcon } from '@/components/meeting-type-logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -173,7 +174,7 @@ export function ExternalMeetingDialog({
             </DialogTitle>
             <Badge
               variant="outline"
-              className="gap-1 border-dashed border-teal-500/50 bg-teal-500/10 text-[10px] uppercase tracking-wide text-teal-800 dark:text-teal-300"
+              className="gap-1 border-dashed border-teal-500 bg-teal-100 text-[10px] uppercase tracking-wide text-teal-900 dark:border-teal-500/50 dark:bg-teal-500/10 dark:text-teal-300"
             >
               <UserRoundIcon className="size-3" aria-hidden />
               External
@@ -275,6 +276,7 @@ export function ExternalMeetingDialog({
                 {Object.entries(EXTERNAL_MEETING_TYPE_LABELS).map(
                   ([value, label]) => (
                     <SelectItem key={value} value={value}>
+                      <MeetingTypeIcon type={value} />
                       {label}
                     </SelectItem>
                   )
@@ -350,7 +352,7 @@ export function ExternalMeetingDialog({
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Times are in</span>
-            <Badge variant="secondary" className="text-xs font-medium">
+            <Badge variant="secondary" className="text-xs font-medium border border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground">
               {timezone.replace(/_/g, ' ')}
             </Badge>
             <span>— set in Settings</span>

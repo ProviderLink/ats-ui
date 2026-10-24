@@ -1,3 +1,4 @@
+import { MeetingTypeIcon } from '@/components/meeting-type-logo';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -24,10 +25,22 @@ export function InterviewTypeSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="zoom">Zoom (link auto-created)</SelectItem>
-          <SelectItem value="google_meet">Google Meet</SelectItem>
-          <SelectItem value="phone_call">Phone Call</SelectItem>
-          <SelectItem value="in_person">In Person</SelectItem>
+          <SelectItem value="zoom">
+            <MeetingTypeIcon type="zoom" />
+            Zoom (link auto-created)
+          </SelectItem>
+          <SelectItem value="google_meet">
+            <MeetingTypeIcon type="google_meet" />
+            Google Meet
+          </SelectItem>
+          <SelectItem value="phone_call">
+            <MeetingTypeIcon type="phone_call" />
+            Phone Call
+          </SelectItem>
+          <SelectItem value="in_person">
+            <MeetingTypeIcon type="in_person" />
+            In Person
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>

@@ -1,8 +1,8 @@
-import { useCandidateStore } from "@/store/slices/candidates.store";
-import { useClientStore } from "@/store/slices/clients.store";
-import { useJobStore } from "@/store/slices/jobs.store";
-import type { Email } from "@/store/types";
-import { useEffect } from "react";
+import { useCandidateStore } from '@/store/slices/candidates.store';
+import { useClientStore } from '@/store/slices/clients.store';
+import { useJobStore } from '@/store/slices/jobs.store';
+import type { Email } from '@/store/types';
+import { useEffect } from 'react';
 
 /**
  * Human-readable names for an email's candidate/job context. Reads the shared
@@ -13,22 +13,22 @@ export function useEmailContextNames(email: Email) {
   const candidateId = email.context?.candidateId ?? null;
   const jobId = email.context?.jobId ?? null;
 
-  const candidate = useCandidateStore((s) =>
+  const candidate = useCandidateStore(s =>
     candidateId
       ? (s.detail[candidateId] ??
-        s.items.find((c) => c._id === candidateId) ??
+        s.items.find(c => c._id === candidateId) ??
         null)
       : null,
   );
-  const fetchOne = useCandidateStore((s) => s.fetchOne);
-  const job = useJobStore((s) =>
+  const fetchOne = useCandidateStore(s => s.fetchOne);
+  const job = useJobStore(s =>
     jobId
-      ? (s.detail[jobId] ?? s.items.find((j) => j._id === jobId) ?? null)
+      ? (s.detail[jobId] ?? s.items.find(j => j._id === jobId) ?? null)
       : null,
   );
-  const fetchJob = useJobStore((s) => s.fetchOne);
-  const clientName = useClientStore((s) =>
-    job ? s.items.find((c) => c._id === job.clientId)?.companyName : undefined,
+  const fetchJob = useJobStore(s => s.fetchOne);
+  const clientName = useClientStore(s =>
+    job ? s.items.find(c => c._id === job.clientId)?.companyName : undefined,
   );
 
   useEffect(() => {

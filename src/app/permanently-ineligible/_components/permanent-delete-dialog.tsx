@@ -40,7 +40,7 @@ export function PermanentDeleteDialog({
               and all associated data — applications, interviews, emails, and
               history — across every job.
             </p>
-            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs">
+            <p className="rounded-md border border-red-300 bg-red-100 px-3 py-2 text-red-800 dark:border-destructive/30 dark:bg-destructive/5 dark:text-destructive text-xs">
               This action <em>cannot</em> be undone. To keep their history
               instead, use Restore.
             </p>

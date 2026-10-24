@@ -1,4 +1,5 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { MeetingTypeLabel } from '@/components/meeting-type-logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +14,6 @@ import {
   EXTERNAL_MEETING_BADGE,
   EXTERNAL_MEETING_STATUS_LABELS,
   EXTERNAL_MEETING_STATUS_STYLES,
-  EXTERNAL_MEETING_TYPE_LABELS,
 } from '@/lib/external-meeting-styles';
 import { cn } from '@/lib/utils';
 import { withToast } from '@/lib/with-toast';
@@ -66,13 +66,13 @@ export function ExternalEventSheet({
 
   // The store row is the source of truth: a status change must show at once.
   const live = useExternalMeetingStore(s =>
-    event ? s.items.find(x => x._id === event._id) : undefined
+    event ? s.items.find(x => x._id === event._id) : undefined,
   );
   const m = live ?? event;
 
   async function run(
     kind: 'complete' | 'cancel',
-    task: () => Promise<unknown>
+    task: () => Promise<unknown>,
   ) {
     setBusy(kind);
     try {
@@ -96,13 +96,13 @@ export function ExternalEventSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="flex flex-col gap-0 p-0 sm:max-w-xl md:max-w-2xl">
-          <SheetHeader className="px-4 pt-4 pb-3 border-b border-dashed border-teal-500/40 bg-teal-500/5">
+          <SheetHeader className="px-4 pt-4 pb-3 border-b border-dashed border-teal-500 bg-teal-50 dark:border-teal-500/40 dark:bg-teal-500/5">
             <div className="flex items-center gap-2 pr-8">
               <Badge
                 variant="outline"
                 className={cn(
                   'gap-1 text-[10px] uppercase tracking-wide',
-                  EXTERNAL_MEETING_BADGE
+                  EXTERNAL_MEETING_BADGE,
                 )}
               >
                 <UserRoundIcon className="size-3" aria-hidden />
@@ -112,7 +112,7 @@ export function ExternalEventSheet({
                 variant="outline"
                 className={cn(
                   'text-xs',
-                  EXTERNAL_MEETING_STATUS_STYLES[m.status]
+                  EXTERNAL_MEETING_STATUS_STYLES[m.status],
                 )}
               >
                 {EXTERNAL_MEETING_STATUS_LABELS[m.status]}
@@ -120,8 +120,13 @@ export function ExternalEventSheet({
             </div>
             <SheetTitle>{m.title}</SheetTitle>
             <SheetDescription>
-              {startTime} · {m.duration} min ·{' '}
-              {EXTERNAL_MEETING_TYPE_LABELS[m.type]}
+              <span className="inline-flex flex-wrap items-center gap-x-1.5">
+                {startTime} · {m.duration} min ·{' '}
+                <MeetingTypeLabel
+                  type={m.type}
+                  className="text-sm font-normal text-muted-foreground"
+                />
+              </span>
             </SheetDescription>
           </SheetHeader>
 
@@ -205,7 +210,7 @@ export function ExternalEventSheet({
                     <Badge
                       key={m.attendeeIds[i] ?? i}
                       variant="secondary"
-                      className="text-xs font-medium"
+                      className="text-xs font-medium border border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground"
                     >
                       {name}
                     </Badge>
@@ -226,7 +231,12 @@ export function ExternalEventSheet({
               <>
                 <Separator />
                 <div className="flex gap-2 flex-wrap">
-                  <Button variant="outline" size="sm" onClick={onEdit}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent"
+                    onClick={onEdit}
+                  >
                     Edit
                   </Button>
                   <Button
@@ -236,8 +246,8 @@ export function ExternalEventSheet({
                     onClick={() =>
                       run('complete', () =>
                         withToast('Meeting marked as completed', () =>
-                          update(m._id, { status: 'completed' })
-                        )
+                          update(m._id, { status: 'completed' }),
+                        ),
                       )
                     }
                   >
@@ -269,7 +279,7 @@ export function ExternalEventSheet({
         loading={busy === 'cancel'}
         onConfirm={async () => {
           const ok = await run('cancel', () =>
-            withToast('Meeting cancelled — team notified', () => cancel(m._id))
+            withToast('Meeting cancelled — team notified', () => cancel(m._id)),
           );
           if (ok) setConfirmCancel(false);
         }}

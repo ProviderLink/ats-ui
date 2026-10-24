@@ -1,13 +1,13 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import type { Candidate } from "@/store/types";
-import { BriefcaseIcon, MailIcon, StarIcon } from "lucide-react";
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import type { Candidate } from '@/store/types';
+import { BriefcaseIcon, MailIcon, StarIcon } from 'lucide-react';
 
 interface HiredRowActionsProps {
   candidate: Candidate;
@@ -28,10 +28,7 @@ export function HiredRowActions({
   const inPool = !!candidate.inTalentPool;
 
   return (
-    <div
-      className="flex items-center gap-1"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -64,7 +61,7 @@ export function HiredRowActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
-            {candidate.email ? "Email candidate" : "No email address"}
+            {candidate.email ? 'Email candidate' : 'No email address'}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -78,13 +75,13 @@ export function HiredRowActions({
               className="rounded p-2 border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
               disabled={mutating}
               onClick={onToggleTalentPool}
-              aria-label={`${inPool ? "Remove" : "Add"} ${name} ${inPool ? "from" : "to"} the talent pool`}
+              aria-label={`${inPool ? 'Remove' : 'Add'} ${name} ${inPool ? 'from' : 'to'} the talent pool`}
             >
-              <StarIcon className={cn("size-3.5", inPool && "fill-current")} />
+              <StarIcon className={cn('size-3.5', inPool && 'fill-current')} />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
-            {inPool ? "Remove from talent pool" : "Add to talent pool"}
+            {inPool ? 'Remove from talent pool' : 'Add to talent pool'}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

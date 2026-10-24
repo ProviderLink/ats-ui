@@ -60,7 +60,7 @@ export function WeekView({ currentDate, events, onEventClick }: WeekViewProps) {
               key={i}
               className={cn(
                 'p-1.5 flex flex-col gap-1 overflow-y-auto',
-                isToday(day) && 'bg-primary/5'
+                isToday(day) && 'bg-primary/10 dark:bg-primary/5'
               )}
             >
               {dayEvents.length === 0 ? (

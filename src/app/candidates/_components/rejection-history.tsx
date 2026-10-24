@@ -184,19 +184,19 @@ export function RejectionHistory({
 
             const tone =
               label === 'Ineligible'
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                ? 'border-red-300 bg-red-200 text-red-800 dark:border-transparent dark:bg-red-900/30 dark:text-red-400'
                 : label === 'Hired'
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  ? 'border-emerald-300 bg-emerald-200 text-emerald-800 dark:border-transparent dark:bg-emerald-900/30 dark:text-emerald-400'
                   : label === 'Restored'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    ? 'border-blue-300 bg-blue-200 text-blue-800 dark:border-transparent dark:bg-blue-900/30 dark:text-blue-400'
                     : label === 'Job Changed'
-                      ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
-                      : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
+                      ? 'border-teal-300 bg-teal-200 text-teal-800 dark:border-transparent dark:bg-teal-900/30 dark:text-teal-400'
+                      : 'border-violet-300 bg-violet-200 text-violet-800 dark:border-transparent dark:bg-violet-900/30 dark:text-violet-400';
 
             return (
               <div
                 key={entry._id ?? i}
-                className="rounded-md border bg-muted/20 px-3 py-2 text-sm"
+                className="rounded-md border bg-gray-100 dark:bg-muted/20 px-3 py-2 text-sm"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">

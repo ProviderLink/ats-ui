@@ -1,9 +1,8 @@
+import { MeetingTypeLabel } from '@/components/meeting-type-logo';
 import { Badge } from '@/components/ui/badge';
 import {
   INTERVIEW_STATUS_LABELS,
   INTERVIEW_STATUS_STYLES,
-  INTERVIEW_TYPE_LABELS,
-  INTERVIEW_TYPE_STYLES,
 } from '@/lib/interview-styles';
 import { cn } from '@/lib/utils';
 import type { Interview } from '@/store/types';
@@ -45,7 +44,7 @@ export function EventDetailInfo({
   const endTime = getInterviewEndTime(
     event.scheduledAt,
     event.duration,
-    event.timezone
+    event.timezone,
   );
   const meeting = event.meetingDetails;
   const link = meeting?.link;
@@ -53,14 +52,7 @@ export function EventDetailInfo({
   return (
     <>
       <div className="flex items-center gap-2 flex-wrap">
-        <span
-          className={cn(
-            'text-xs px-2 py-0.5 rounded border font-medium',
-            INTERVIEW_TYPE_STYLES[event.type]
-          )}
-        >
-          {INTERVIEW_TYPE_LABELS[event.type]}
-        </span>
+        <MeetingTypeLabel type={event.type} className="text-sm" />
         <Badge
           variant="outline"
           className={cn('text-xs', INTERVIEW_STATUS_STYLES[event.status])}
@@ -72,7 +64,10 @@ export function EventDetailInfo({
       {(candidateName || jobTitle) && (
         <div className="flex flex-col gap-1.5">
           {candidateName && (
-            <Badge variant="secondary" className="text-xs w-fit">
+            <Badge
+              variant="secondary"
+              className="text-xs w-fit border border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground"
+            >
               {candidateName}
             </Badge>
           )}
@@ -139,7 +134,7 @@ export function EventDetailInfo({
               <Badge
                 key={event.interviewerIds[i] ?? i}
                 variant="secondary"
-                className="text-xs font-medium"
+                className="text-xs font-medium border border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground"
               >
                 {name}
               </Badge>

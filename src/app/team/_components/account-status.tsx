@@ -14,19 +14,19 @@ const STATES = {
     Icon: CircleCheckIcon,
     label: 'Active account',
     hint: 'Accepted the invite and can sign in.',
-    tone: 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-400',
+    tone: 'border-emerald-400 bg-emerald-100 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-400',
   },
   invited: {
     Icon: ClockIcon,
     label: 'Invite pending',
     hint: 'Invite sent, not accepted yet. They cannot sign in until they set a password.',
-    tone: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-400',
+    tone: 'border-amber-400 bg-amber-100 text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-400',
   },
   inactive: {
     Icon: CircleOffIcon,
     label: 'Inactive account',
     hint: 'Deactivated. They cannot sign in.',
-    tone: 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-950/40 dark:text-rose-400',
+    tone: 'border-rose-400 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-950/40 dark:text-rose-400',
   },
 } as const;
 

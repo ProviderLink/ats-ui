@@ -1,8 +1,8 @@
+import { MeetingTypeLabel } from '@/components/meeting-type-logo';
 import { Badge } from '@/components/ui/badge';
 import {
   INTERVIEW_STATUS_STYLES,
   INTERVIEW_TYPE_ACCENTS,
-  INTERVIEW_TYPE_LABELS,
 } from '@/lib/interview-styles';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/store/types';
@@ -33,7 +33,7 @@ export function AgendaEventCard({
   const endTime = getInterviewEndTime(
     event.scheduledAt,
     event.duration,
-    event.timezone
+    event.timezone,
   );
   // A raw meeting URL is long and unreadable in a card; the type already says
   // where it happens and the sheet holds the link.
@@ -71,10 +71,14 @@ export function AgendaEventCard({
       }}
       className={cn(
         'group flex w-full cursor-pointer items-stretch gap-3 text-left bg-card ring-1 ring-foreground/10 rounded-xl pl-3 pr-4 py-3 shadow-xs transition-shadow hover:shadow-sm',
-        inactive && 'opacity-70'
       )}
     >
-      <div className="flex w-14 shrink-0 flex-col text-xs tabular-nums">
+      <div
+        className={cn(
+          'flex w-14 shrink-0 flex-col text-xs tabular-nums',
+          inactive && 'opacity-70',
+        )}
+      >
         <span className="font-medium text-foreground">{startTime}</span>
         <span className="text-muted-foreground">{endTime}</span>
       </div>
@@ -83,27 +87,44 @@ export function AgendaEventCard({
         aria-hidden
         className={cn(
           'w-0.5 shrink-0 self-stretch rounded-full',
-          INTERVIEW_TYPE_ACCENTS[event.type]
+          INTERVIEW_TYPE_ACCENTS[event.type],
+          inactive && 'opacity-70',
         )}
       />
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{event.title}</span>
+          <span
+            className={cn(
+              'truncate text-sm font-medium',
+              inactive && 'opacity-70',
+            )}
+          >
+            {event.title}
+          </span>
           {inactive && (
             <Badge
               variant="outline"
               className={cn(
                 'shrink-0 text-[10px] capitalize',
-                INTERVIEW_STATUS_STYLES[event.status]
+                INTERVIEW_STATUS_STYLES[event.status],
               )}
             >
               {event.status === 'no_show' ? 'No show' : event.status}
             </Badge>
           )}
         </div>
-        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="shrink-0">{INTERVIEW_TYPE_LABELS[event.type]}</span>
+        <p
+          className={cn(
+            'flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground',
+            inactive && 'opacity-70',
+          )}
+        >
+          <MeetingTypeLabel
+            type={event.type}
+            className="shrink-0 text-xs"
+            iconClassName="size-3.5"
+          />
           <span aria-hidden>·</span>
           <span className="shrink-0">{event.duration} min</span>
           {place && (

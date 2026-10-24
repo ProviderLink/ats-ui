@@ -1,18 +1,18 @@
-import type { Client, UpdateClientDto } from "@/store/types";
-import { CompanySize } from "@/store/types";
-import type { DefaultValues } from "react-hook-form";
-import { z } from "zod";
+import type { Client, UpdateClientDto } from '@/store/types';
+import { CompanySize } from '@/store/types';
+import type { DefaultValues } from 'react-hook-form';
+import { z } from 'zod';
 
 export const COMPANY_SIZES = Object.values(CompanySize);
 
 const baseClientFormSchema = z.object({
-  companyName: z.string().min(1, "Required").max(100),
-  email: z.string().email("Invalid email"),
+  companyName: z.string().min(1, 'Required').max(100),
+  email: z.string().email('Invalid email'),
   phone: z.string().optional(),
   website: z.string().optional(),
   industry: z.string().optional(),
   companySize: z.enum(COMPANY_SIZES).optional(),
-  status: z.enum(["active", "inactive", "suspended"]).optional(),
+  status: z.enum(['active', 'inactive', 'suspended']).optional(),
   description: z.string().optional(),
   address: z
     .object({
@@ -26,16 +26,16 @@ const baseClientFormSchema = z.object({
   contactName: z.string().optional(),
   contactEmail: z
     .string()
-    .email("Invalid contact email")
+    .email('Invalid contact email')
     .optional()
-    .or(z.literal("")),
+    .or(z.literal('')),
   contactPhone: z.string().optional(),
   contactPosition: z.string().optional(),
 });
 
 export type ClientFormValues = z.infer<typeof baseClientFormSchema>;
 
-const REQUIRED = "Required";
+const REQUIRED = 'Required';
 
 /** Creating a client requires city/state/country and a full primary contact; editing does not (those fields aren't shown). */
 export function getClientFormSchema(isEdit: boolean) {
@@ -43,44 +43,44 @@ export function getClientFormSchema(isEdit: boolean) {
   return baseClientFormSchema.superRefine((v, ctx) => {
     const req = (path: (string | number)[], value?: string) => {
       if (!value?.trim())
-        ctx.addIssue({ code: "custom", path, message: REQUIRED });
+        ctx.addIssue({ code: 'custom', path, message: REQUIRED });
     };
-    req(["address", "city"], v.address?.city);
-    req(["address", "state"], v.address?.state);
-    req(["address", "country"], v.address?.country);
-    req(["contactName"], v.contactName);
-    req(["contactPosition"], v.contactPosition);
-    req(["contactEmail"], v.contactEmail);
-    req(["contactPhone"], v.contactPhone);
+    req(['address', 'city'], v.address?.city);
+    req(['address', 'state'], v.address?.state);
+    req(['address', 'country'], v.address?.country);
+    req(['contactName'], v.contactName);
+    req(['contactPosition'], v.contactPosition);
+    req(['contactEmail'], v.contactEmail);
+    req(['contactPhone'], v.contactPhone);
   });
 }
 
-export const DEFAULT_COUNTRY = "USA";
+export const DEFAULT_COUNTRY = 'USA';
 
 function sanitizeCompanySize(v?: string): CompanySize | undefined {
-  if (v === "1-50") return CompanySize["11-50"];
-  return COMPANY_SIZES.find((size) => size === v);
+  if (v === '1-50') return CompanySize['11-50'];
+  return COMPANY_SIZES.find(size => size === v);
 }
 
 export function getClientFormDefaults(
   client?: Client,
 ): DefaultValues<ClientFormValues> {
   const contact = {
-    contactName: "",
-    contactEmail: "",
-    contactPhone: "",
-    contactPosition: "",
+    contactName: '',
+    contactEmail: '',
+    contactPhone: '',
+    contactPosition: '',
   };
   if (!client) return { address: { country: DEFAULT_COUNTRY }, ...contact };
   return {
     companyName: client.companyName,
     email: client.email,
-    phone: client.phone ?? "",
-    website: client.website ?? "",
-    industry: client.industry ?? "",
+    phone: client.phone ?? '',
+    website: client.website ?? '',
+    industry: client.industry ?? '',
     companySize: sanitizeCompanySize(client.companySize),
-    status: client.status as ClientFormValues["status"],
-    description: client.description ?? "",
+    status: client.status as ClientFormValues['status'],
+    description: client.description ?? '',
     address: client.address ?? {},
     ...contact,
   };
@@ -99,7 +99,7 @@ export function buildClientUpdatePayload(
   const payload: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(clientData)) {
     if (v === undefined) continue;
-    if (k === "address" && v && typeof v === "object") {
+    if (k === 'address' && v && typeof v === 'object') {
       const addr: Record<string, unknown> = {};
       for (const [ak, av] of Object.entries(v)) {
         if (av) addr[ak] = av;

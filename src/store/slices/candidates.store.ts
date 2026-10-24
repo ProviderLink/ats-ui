@@ -145,7 +145,11 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
               // The sheet uses this to refresh after a legal-hold toggle, which
               // changes a field rendered by that list.
               const iIdx = s.ineligibleItems.findIndex(x => x._id === id);
-              if (iIdx !== -1) s.ineligibleItems[iIdx] = c;
+              // Merge, don't replace: the list endpoint adds fields the single-
+              // record endpoint doesn't return (permanentlyIneligibleReasonLabel),
+              // and replacing would blank the table's Reason cell.
+              if (iIdx !== -1)
+                s.ineligibleItems[iIdx] = { ...s.ineligibleItems[iIdx], ...c };
             });
           } catch (e) {
             if (silent) return;

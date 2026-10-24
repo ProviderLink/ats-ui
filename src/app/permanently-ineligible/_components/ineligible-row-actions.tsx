@@ -2,7 +2,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Candidate } from '@/store/types';
 import {
   BanIcon,
-  ExternalLinkIcon,
   ShieldAlertIcon,
   ShieldOffIcon,
   Trash2Icon,
@@ -14,7 +13,6 @@ interface IneligibleRowActionsProps {
   restoring: boolean;
   holdToggling: boolean;
   deleting: boolean;
-  onView: () => void;
   onRestore: () => void;
   onToggleLegalHold: () => void;
   onDelete: () => void;
@@ -25,7 +23,6 @@ export function IneligibleRowActions({
   restoring,
   holdToggling,
   deleting,
-  onView,
   onRestore,
   onToggleLegalHold,
   onDelete,
@@ -42,15 +39,10 @@ export function IneligibleRowActions({
         onClick={e => e.stopPropagation()}
       >
         <IconActionButton
-          label={`View details for ${name}`}
-          tooltip="View details"
-          icon={<ExternalLinkIcon className="size-3.5" />}
-          onClick={onView}
-        />
-        <IconActionButton
           label={`Restore ${name}`}
           tooltip="Restore candidate (requires a job)"
-          icon={<ShieldOffIcon className="size-3.5 text-amber-600" />}
+          icon={<ShieldOffIcon className="size-3.5" />}
+          tone="emerald"
           disabled={restoring}
           onClick={onRestore}
         />
@@ -58,11 +50,12 @@ export function IneligibleRowActions({
           label={holdLabel}
           icon={
             candidate.legalHold ? (
-              <BanIcon className="size-3.5 text-red-600" />
+              <BanIcon className="size-3.5" />
             ) : (
-              <ShieldAlertIcon className="size-3.5 text-muted-foreground" />
+              <ShieldAlertIcon className="size-3.5" />
             )
           }
+          tone={candidate.legalHold ? 'red' : 'amber'}
           disabled={holdToggling}
           onClick={onToggleLegalHold}
         />
@@ -70,7 +63,7 @@ export function IneligibleRowActions({
           label={`Delete ${name} permanently`}
           tooltip="Delete permanently"
           icon={<Trash2Icon className="size-3.5" />}
-          destructive
+          tone="red"
           disabled={deleting}
           onClick={onDelete}
         />

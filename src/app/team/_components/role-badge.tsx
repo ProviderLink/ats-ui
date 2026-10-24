@@ -11,20 +11,20 @@ import type { UserRole } from '@/store/types/enums';
 // is never read as a status. Class names are written out in full for Tailwind.
 const ROLE_TONES: Record<UserRole, string> = {
   admin:
-    'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-500/40 dark:bg-violet-950/40 dark:text-violet-300',
+    'border-violet-400 bg-violet-100 text-violet-800 dark:border-violet-500/40 dark:bg-violet-950/40 dark:text-violet-300',
   hiring_manager:
-    'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-950/40 dark:text-blue-300',
+    'border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-500/40 dark:bg-blue-950/40 dark:text-blue-300',
   recruiter:
-    'border-cyan-300 bg-cyan-50 text-cyan-700 dark:border-cyan-500/40 dark:bg-cyan-950/40 dark:text-cyan-300',
+    'border-cyan-400 bg-cyan-100 text-cyan-800 dark:border-cyan-500/40 dark:bg-cyan-950/40 dark:text-cyan-300',
   coordinator:
-    'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-500/40 dark:bg-pink-950/40 dark:text-pink-300',
+    'border-pink-400 bg-pink-100 text-pink-800 dark:border-pink-500/40 dark:bg-pink-950/40 dark:text-pink-300',
   interviewer:
-    'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-950/40 dark:text-indigo-300',
+    'border-indigo-400 bg-indigo-100 text-indigo-800 dark:border-indigo-500/40 dark:bg-indigo-950/40 dark:text-indigo-300',
   account_manager:
-    'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-300',
+    'border-orange-400 bg-orange-100 text-orange-800 dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-300',
   client:
-    'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-800/50 dark:text-slate-300',
-  va: 'border-stone-300 bg-stone-100 text-stone-700 dark:border-stone-500/40 dark:bg-stone-800/50 dark:text-stone-300',
+    'border-slate-400 bg-slate-200 text-slate-800 dark:border-slate-500/40 dark:bg-slate-800/50 dark:text-slate-300',
+  va: 'border-stone-400 bg-stone-200 text-stone-800 dark:border-stone-500/40 dark:bg-stone-800/50 dark:text-stone-300',
 };
 
 const FALLBACK_TONE = 'border-border bg-muted text-muted-foreground';

@@ -1,7 +1,7 @@
-import { Input } from "@/components/ui/input";
-import type { FieldErrors, UseFormRegister } from "react-hook-form";
-import type { ClientFormValues } from "../../_utils/client-form";
-import { FormField } from "./form-field";
+import { Input } from '@/components/ui/input';
+import type { FieldErrors, UseFormRegister } from 'react-hook-form';
+import type { ClientFormValues } from '../../_utils/client-form';
+import { FormField } from './form-field';
 
 interface PrimaryContactFieldsProps {
   register: UseFormRegister<ClientFormValues>;
@@ -18,7 +18,7 @@ export function PrimaryContactFields({
         <FormField label="Contact Name *" error={errors.contactName?.message}>
           <Input
             placeholder="e.g. Sarah Johnson"
-            {...register("contactName")}
+            {...register('contactName')}
           />
         </FormField>
         <FormField
@@ -27,7 +27,7 @@ export function PrimaryContactFields({
         >
           <Input
             placeholder="e.g. HR Director"
-            {...register("contactPosition")}
+            {...register('contactPosition')}
           />
         </FormField>
       </div>
@@ -36,13 +36,13 @@ export function PrimaryContactFields({
           <Input
             type="email"
             placeholder="sarah@company.com"
-            {...register("contactEmail")}
+            {...register('contactEmail')}
           />
         </FormField>
         <FormField label="Contact Phone *" error={errors.contactPhone?.message}>
           <Input
             placeholder="+1 (555) 000-0000"
-            {...register("contactPhone")}
+            {...register('contactPhone')}
           />
         </FormField>
       </div>

@@ -33,7 +33,7 @@ export function useIneligibleActions() {
         'candidate',
         candidate._id,
         'eligibility_changed',
-        `${fullName(candidate)} restored from permanently ineligible`
+        `${fullName(candidate)} restored from permanently ineligible`,
       );
       toast.success(`${fullName(candidate)} restored — now in review`);
       return true;
@@ -64,6 +64,40 @@ export function useIneligibleActions() {
     }
   }
 
+  /**
+   * Deletes candidates one by one (there is no bulk endpoint) and reports the
+   * outcome once. Candidates on legal hold are rejected by the backend, so they
+   * are counted as failures rather than aborting the batch.
+   */
+  async function removeMany(candidates: Candidate[]) {
+    setDeletingId('bulk');
+    let deleted = 0;
+    const failed: Candidate[] = [];
+    try {
+      for (const c of candidates) {
+        try {
+          await removeCandidate(c._id);
+          deleted++;
+        } catch {
+          failed.push(c);
+        }
+      }
+    } finally {
+      setDeletingId(null);
+    }
+    if (deleted > 0)
+      toast.success(
+        `${deleted} ${deleted === 1 ? 'candidate' : 'candidates'} permanently deleted`,
+      );
+    if (failed.length > 0)
+      toast.error(
+        `${failed.length} could not be deleted (${failed
+          .map(fullName)
+          .join(', ')})`,
+      );
+    return { deleted, failed };
+  }
+
   // Refetching the one candidate refreshes both the detail cache and the
   // ineligible-list row, without reloading the whole list.
   const toggleLegalHold = useCallback(
@@ -81,7 +115,7 @@ export function useIneligibleActions() {
         setHoldTogglingId(null);
       }
     },
-    [fetchOne]
+    [fetchOne],
   );
 
   return {
@@ -90,6 +124,7 @@ export function useIneligibleActions() {
     deletingId,
     restore,
     remove,
+    removeMany,
     toggleLegalHold,
   };
 }

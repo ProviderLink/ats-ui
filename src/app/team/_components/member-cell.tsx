@@ -52,7 +52,7 @@ export function MemberCell({
           {first} {last}
         </button>
         {!member.isInviteAccepted && (
-          <span className="inline-flex w-fit items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:border-amber-500/50 dark:text-amber-400">
+          <span className="inline-flex w-fit items-center gap-1 rounded-full border border-amber-500 bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950/40 dark:border-amber-500/50 dark:text-amber-400">
             <span className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
             Invite pending
           </span>
