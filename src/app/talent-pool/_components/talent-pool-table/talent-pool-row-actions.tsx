@@ -33,7 +33,7 @@ export function TalentPoolRowActions({
             <Button
               variant="outline"
               size="icon-xs"
-              className="rounded p-2 text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 dark:hover:bg-destructive/10 dark:hover:border-destructive/40"
+              className="rounded p-2 border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:bg-input/30 dark:text-destructive hover:border-red-400 dark:hover:bg-destructive/10 dark:hover:border-destructive/40"
               disabled={mutating}
               onClick={onRemove}
               aria-label={`Remove ${name} from the talent pool`}
@@ -51,7 +51,7 @@ export function TalentPoolRowActions({
             <Button
               variant="outline"
               size="icon-xs"
-              className="rounded p-2 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
+              className="rounded p-2 border-teal-300 bg-teal-100 text-teal-800 hover:bg-teal-200 hover:text-teal-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
               onClick={onAssign}
               aria-label={`Assign ${name} to a job`}
             >
@@ -68,7 +68,7 @@ export function TalentPoolRowActions({
             <Button
               variant="outline"
               size="icon-xs"
-              className="rounded p-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 dark:hover:border-blue-700/40"
+              className="rounded p-2 border-blue-300 bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800 hover:border-blue-400 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-blue-900/30 dark:hover:text-blue-400 dark:hover:border-blue-700/40"
               disabled={!candidate.email || mutating}
               onClick={onEmail}
               aria-label={`Email ${name}`}

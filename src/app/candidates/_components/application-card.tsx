@@ -37,10 +37,7 @@ export function ApplicationCard({
     <div
       className={cn(
         'flex flex-col gap-3 rounded-lg border px-4 py-3.5',
-        isRejected &&
-          'border-destructive/30 bg-destructive/5 dark:bg-destructive/10',
-        isHired &&
-          'border-emerald-300/60 bg-emerald-50/30 dark:border-emerald-700/30 dark:bg-emerald-950/20'
+        'bg-card'
       )}
     >
       {/* Header row: job title + phase badge */}
@@ -83,10 +80,10 @@ export function ApplicationCard({
 
       {/* Pipeline progress — approved apps only */}
       {hasPipeline && (
-        <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-700/40 bg-linear-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/30 dark:to-transparent p-4">
+        <div className="rounded-xl border bg-muted/40 dark:bg-white/3 p-4">
           <div className="flex items-center gap-1.5 mb-3">
-            <GitCommitHorizontalIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+            <GitCommitHorizontalIcon className="size-3.5 text-emerald-700 dark:text-emerald-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
               Pipeline
             </span>
           </div>
@@ -101,7 +98,7 @@ export function ApplicationCard({
       {isApproved && (app.approvedAt || approverName || app.notes) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
           {app.approvedAt && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
               <CheckCircle2Icon className="size-3" />
               <span className="font-medium">{formatDate(app.approvedAt)}</span>
             </span>
@@ -124,9 +121,9 @@ export function ApplicationCard({
 
       {/* AI Validation — compact row */}
       {app.aiValidation && (
-        <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2.5 py-2 text-xs">
+        <div className="flex items-start gap-2 rounded-md bg-gray-100 dark:bg-muted/40 px-2.5 py-2 text-xs">
           {app.aiValidation.isValid ? (
-            <CheckCircle2Icon className="size-3.5 mt-px shrink-0 text-emerald-600" />
+            <CheckCircle2Icon className="size-3.5 mt-px shrink-0 text-emerald-700 dark:text-emerald-600" />
           ) : (
             <XCircleIcon className="size-3.5 mt-px shrink-0 text-destructive" />
           )}
@@ -149,8 +146,8 @@ export function ApplicationCard({
 
       {/* Rejected banner */}
       {isRejected && (
-        <div className="flex flex-col gap-0.5 rounded-md bg-destructive/8 px-2.5 py-2 text-xs">
-          <div className="flex items-center gap-1.5 font-medium text-destructive">
+        <div className="flex flex-col gap-0.5 rounded-md bg-muted/60 px-2.5 py-2 text-xs">
+          <div className="flex items-center gap-1.5 font-medium text-red-700 dark:text-destructive">
             <BanIcon className="size-3" />
             Rejected
             {app.rejectedAt && (
@@ -167,9 +164,9 @@ export function ApplicationCard({
 
       {/* Hired banner */}
       {isHired && app.hiredAt && (
-        <div className="flex items-center gap-2 rounded-md bg-emerald-100/60 px-2.5 py-2 text-xs dark:bg-emerald-900/20">
-          <UserCheckIcon className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span className="font-medium text-emerald-700 dark:text-emerald-300">
+        <div className="flex items-center gap-2 rounded-md bg-muted/60 px-2.5 py-2 text-xs">
+          <UserCheckIcon className="size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400" />
+          <span className="font-medium text-emerald-800 dark:text-emerald-300">
             Hired
           </span>
           <span className="text-muted-foreground">
@@ -180,7 +177,7 @@ export function ApplicationCard({
 
       {/* Activity trail — collapsible, hidden for untouched pending apps */}
       {!isPending && (
-        <details className="group rounded-md border bg-muted/30">
+        <details className="group rounded-md border bg-gray-100 dark:bg-muted/30">
           <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             <ChevronRightIcon className="size-3 transition-transform group-open:rotate-90" />
             Activity log

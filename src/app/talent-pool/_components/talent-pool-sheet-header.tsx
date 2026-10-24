@@ -119,7 +119,7 @@ export function TalentPoolSheetHeader({
         {c.eligibilityStatus === 'permanently_ineligible' && (
           <Badge
             variant="secondary"
-            className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[11px]"
+            className="border-red-300 bg-red-200 text-red-800 dark:border-transparent dark:bg-red-900/30 dark:text-red-400 text-[11px]"
           >
             Permanently Ineligible
           </Badge>
@@ -127,7 +127,7 @@ export function TalentPoolSheetHeader({
         {c.legalHold && (
           <Badge
             variant="secondary"
-            className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[11px]"
+            className="border-amber-300 bg-amber-200 text-amber-900 dark:border-transparent dark:bg-amber-900/30 dark:text-amber-400 text-[11px]"
           >
             Legal Hold
           </Badge>

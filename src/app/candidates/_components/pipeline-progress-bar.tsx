@@ -19,7 +19,7 @@ export function PipelineProgressBar({
     <div className="flex flex-col gap-3">
       {/* Progress indicator */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="flex-1 h-1.5 rounded-full bg-gray-300 dark:bg-muted overflow-hidden">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all duration-500"
             style={{ width: `${progressPct}%` }}
@@ -48,7 +48,7 @@ export function PipelineProgressBar({
                       'bg-emerald-500 text-white shadow-sm shadow-emerald-500/25',
                     isCurrent && 'text-white shadow-md',
                     isFuture &&
-                      'bg-muted text-muted-foreground border-2 border-border'
+                      'bg-gray-200 text-gray-700 border-2 border-gray-400 dark:bg-muted dark:text-muted-foreground dark:border-border'
                   )}
                   style={
                     isCurrent
@@ -89,7 +89,7 @@ export function PipelineProgressBar({
                         ? 'text-emerald-500'
                         : isCurrent
                           ? 'text-emerald-400/50'
-                          : 'text-muted-foreground/30'
+                          : 'text-gray-400 dark:text-muted-foreground/30'
                     )}
                   />
                 </div>

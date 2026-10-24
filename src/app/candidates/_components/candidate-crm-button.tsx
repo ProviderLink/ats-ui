@@ -39,7 +39,7 @@ export function CandidateCrmButton({
 
   if (hasCrmAccess) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-pine-teal-500/40 bg-pine-teal-50 px-2 py-0.5 text-[11px] font-medium text-pine-teal-700 dark:bg-pine-teal-950/50 dark:text-pine-teal-400">
+      <span className="inline-flex items-center gap-1 rounded-full border border-pine-teal-500/60 bg-pine-teal-100 px-2 py-0.5 text-[11px] font-medium text-pine-teal-800 dark:bg-pine-teal-950/50 dark:text-pine-teal-400">
         <ShieldCheckIcon className="size-3" />
         CRM Active
         {!crmUser?.isInviteAccepted && (
@@ -53,12 +53,12 @@ export function CandidateCrmButton({
     <Button
       size="sm"
       variant="outline"
-      className="h-7 gap-1 px-2 text-xs"
+      className="h-7 gap-1 px-2 text-xs border-pine-teal-400 bg-pine-teal-100 text-pine-teal-800 hover:bg-pine-teal-200 hover:text-pine-teal-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-input/50 dark:hover:text-foreground"
       onClick={handleProvision}
       disabled={busy}
       title="Send CRM portal invite to this VA"
     >
-      <ShieldCheckIcon className="size-3 text-muted-foreground" />
+      <ShieldCheckIcon className="size-3 text-pine-teal-700 dark:text-muted-foreground" />
       {busy ? '…' : 'Give CRM Portal Access'}
     </Button>
   );

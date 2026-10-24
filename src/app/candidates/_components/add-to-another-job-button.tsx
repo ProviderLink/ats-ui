@@ -26,7 +26,7 @@ export function AddToAnotherJobButton({
               size="sm"
               variant="outline"
               disabled={disabled}
-              className="h-8 gap-1.5"
+              className="h-8 gap-1.5 border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 hover:text-emerald-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-input/50 dark:hover:text-foreground"
               onClick={onClick}
             >
               <PlusIcon className="size-3.5" />

@@ -23,7 +23,7 @@ export const statusConfig: Record<
 > = {
   pending: {
     label: 'Pending',
-    cls: 'bg-secondary text-secondary-foreground',
+    cls: 'border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground',
   },
   approved: {
     label: 'Approved',
@@ -31,7 +31,7 @@ export const statusConfig: Record<
   },
   hired: {
     label: 'Hired',
-    cls: 'border-[#16a34a]/40 bg-[#16a34a]/[0.08] text-[#16a34a] dark:border-[#69c58a] dark:bg-[#69c58a]/15 dark:text-[#69c58a]',
+    cls: 'border-[#16a34a]/60 bg-[#16a34a]/20 text-[#166534] dark:border-[#69c58a] dark:bg-[#69c58a]/15 dark:text-[#69c58a]',
   },
 };
 
@@ -74,19 +74,19 @@ export const phaseConfig: Record<
 > = {
   pending: {
     label: 'Pending',
-    cls: 'bg-secondary text-secondary-foreground',
+    cls: 'border-gray-300 bg-gray-200 text-gray-800 dark:border-transparent dark:bg-secondary dark:text-secondary-foreground',
   },
   approved: {
     label: 'In Pipeline',
-    cls: 'bg-pine-teal-100 text-pine-teal-700 dark:bg-pine-teal-900/30 dark:text-pine-teal-300 border-transparent',
+    cls: 'border-pine-teal-300 bg-pine-teal-200 text-pine-teal-800 dark:border-transparent dark:bg-pine-teal-900/30 dark:text-pine-teal-300',
   },
   hired: {
     label: 'Hired',
-    cls: 'border-[#16a34a]/40 bg-[#16a34a]/[0.08] text-[#16a34a] dark:border-[#69c58a] dark:bg-[#69c58a]/15 dark:text-[#69c58a]',
+    cls: 'border-[#16a34a]/60 bg-[#16a34a]/20 text-[#166534] dark:border-[#69c58a] dark:bg-[#69c58a]/15 dark:text-[#69c58a]',
   },
   rejected: {
     label: 'Rejected',
-    cls: 'bg-destructive/10 text-destructive border-transparent',
+    cls: 'border-red-300 bg-red-100 text-red-700 dark:border-transparent dark:bg-destructive/10 dark:text-destructive',
   },
 };
 

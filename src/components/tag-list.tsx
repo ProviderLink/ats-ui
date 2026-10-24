@@ -8,6 +8,16 @@ import { useResolvedTags, type RawTag } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import { MousePointerClickIcon } from 'lucide-react';
 
+/**
+ * Chip colours come from the tag's own hex via a CSS variable so light mode can
+ * use a stronger tint and a darkened label, while dark mode keeps the original
+ * faint tint and the raw colour.
+ */
+const TAG_CHIP_CLS =
+  'inline-flex items-center gap-1 h-5 rounded-full border px-2 text-xs font-medium ' +
+  'border-[color-mix(in_srgb,var(--tag)_55%,transparent)] bg-[color-mix(in_srgb,var(--tag)_20%,transparent)] text-[color-mix(in_srgb,var(--tag)_65%,black)] ' +
+  'dark:border-[color-mix(in_srgb,var(--tag)_44%,transparent)] dark:bg-[color-mix(in_srgb,var(--tag)_7%,transparent)] dark:text-(--tag)';
+
 export interface TagListProps {
   /** Raw tags from the entity — strings (ObjectIds) and/or full Tag objects. */
   tags: RawTag[] | null | undefined;
@@ -48,12 +58,8 @@ export function TagList({ tags, max = 2, stacked, className }: TagListProps) {
       {visible.map(tag => (
         <span
           key={tag._id}
-          className="inline-flex items-center gap-1 h-5 rounded-full border px-2 text-xs font-medium"
-          style={{
-            borderColor: tag.color + '70',
-            color: tag.color,
-            backgroundColor: tag.color + '12',
-          }}
+          className={TAG_CHIP_CLS}
+          style={{ '--tag': tag.color } as React.CSSProperties}
         >
           <span
             className="size-1.5 rounded-full"
@@ -66,21 +72,17 @@ export function TagList({ tags, max = 2, stacked, className }: TagListProps) {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="inline-flex items-center gap-1 h-5 shrink-0 rounded-md border border-dashed px-1.5 text-xs leading-none text-muted-foreground bg-muted/40 cursor-pointer">
+              <span className="inline-flex items-center gap-1 h-5 shrink-0 rounded-md border border-dashed px-1.5 text-xs leading-none bg-gray-100 dark:bg-muted/40 border-gray-400 dark:border-border cursor-pointer text-gray-700 dark:text-muted-foreground">
                 +{overflow} more
-                <MousePointerClickIcon className="size-3 text-warning" />
+                <MousePointerClickIcon className="size-3 text-amber-600 dark:text-warning" />
               </span>
             </TooltipTrigger>
             <TooltipContent className="flex flex-col gap-1.5 p-2 text-xs bg-popover text-popover-foreground border border-border">
               {resolved.map(t => (
                 <span
                   key={t._id}
-                  className="inline-flex items-center gap-1 h-5 rounded-full border px-2 text-xs font-medium"
-                  style={{
-                    borderColor: t.color + '70',
-                    color: t.color,
-                    backgroundColor: t.color + '12',
-                  }}
+                  className={TAG_CHIP_CLS}
+                  style={{ '--tag': t.color } as React.CSSProperties}
                 >
                   <span
                     className="size-1.5 rounded-full"

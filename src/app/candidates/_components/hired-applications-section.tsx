@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { phaseConfig } from '@/lib/candidate-styles';
 import { formatDate } from '@/lib/utils';
 import type { Application, Job } from '@/store/types';
 import { SectionLabel } from './section-label';
@@ -31,7 +32,7 @@ export function HiredApplicationsSection({
           return (
             <div
               key={app._id}
-              className="rounded-lg border border-emerald-200 bg-emerald-50/50 dark:border-emerald-700/40 dark:bg-emerald-950/20 p-3 flex flex-col gap-2"
+              className="rounded-lg border bg-card p-3 flex flex-col gap-2"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -44,10 +45,7 @@ export function HiredApplicationsSection({
                       : app.clientId}
                   </p>
                 </div>
-                <Badge
-                  variant="outline"
-                  className="h-5 text-[10px] font-medium border-[#69c58a] text-[#3d8a5a] dark:border-[#69c58a] dark:text-[#69c58a]"
-                >
+                <Badge className={`h-5 text-[10px] font-medium ${phaseConfig.hired.cls}`}>
                   Hired
                 </Badge>
               </div>

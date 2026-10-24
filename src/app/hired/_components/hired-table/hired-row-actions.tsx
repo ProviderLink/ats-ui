@@ -1,18 +1,13 @@
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import type { Candidate } from '@/store/types';
-import { BriefcaseIcon, EllipsisIcon, MailIcon, StarIcon } from 'lucide-react';
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { Candidate } from "@/store/types";
+import { BriefcaseIcon, MailIcon, StarIcon } from "lucide-react";
 
 interface HiredRowActionsProps {
   candidate: Candidate;
@@ -30,16 +25,20 @@ export function HiredRowActions({
   onToggleTalentPool,
 }: HiredRowActionsProps) {
   const name = `${candidate.firstName} ${candidate.lastName}`;
+  const inPool = !!candidate.inTalentPool;
 
   return (
-    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+    <div
+      className="flex items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="outline"
               size="icon-xs"
-              className="rounded p-2 hover:bg-accent hover:text-accent-foreground"
+              className="rounded p-2 border-teal-300 bg-teal-100 text-teal-800 hover:bg-teal-200 hover:text-teal-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
               onClick={onAssign}
               aria-label={`Assign ${name} to a job`}
             >
@@ -56,7 +55,7 @@ export function HiredRowActions({
             <Button
               variant="outline"
               size="icon-xs"
-              className="rounded p-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+              className="rounded p-2 border-blue-300 bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800 hover:border-blue-400 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
               disabled={!candidate.email || mutating}
               onClick={onEmail}
               aria-label={`Email ${name}`}
@@ -65,31 +64,30 @@ export function HiredRowActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
-            {candidate.email ? 'Email candidate' : 'No email address'}
+            {candidate.email ? "Email candidate" : "No email address"}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="rounded p-2"
-            aria-label={`More actions for ${name}`}
-          >
-            <EllipsisIcon className="size-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem className="gap-2.5" onClick={onToggleTalentPool}>
-            <StarIcon className="size-3.5" />
-            {candidate.inTalentPool
-              ? 'Remove from Talent Pool'
-              : 'Add to Talent Pool'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="rounded p-2 border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
+              disabled={mutating}
+              onClick={onToggleTalentPool}
+              aria-label={`${inPool ? "Remove" : "Add"} ${name} ${inPool ? "from" : "to"} the talent pool`}
+            >
+              <StarIcon className={cn("size-3.5", inPool && "fill-current")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {inPool ? "Remove from talent pool" : "Add to talent pool"}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }

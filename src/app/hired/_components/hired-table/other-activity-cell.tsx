@@ -21,7 +21,7 @@ export function OtherActivityCell({ info }: { info: OtherActivity | undefined })
             <TooltipTrigger asChild>
               <Badge
                 variant="outline"
-                className="h-5 gap-1 border-blue-200 bg-blue-50 text-[10px] font-medium text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300"
+                className="h-5 gap-1 border-blue-300 bg-blue-100 text-[10px] font-medium text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300"
               >
                 <BriefcaseIcon className="size-2.5" />
                 {inPipeline} pipeline
@@ -37,7 +37,7 @@ export function OtherActivityCell({ info }: { info: OtherActivity | undefined })
       {inTalentPool && (
         <Badge
           variant="outline"
-          className="h-5 gap-1 border-violet-200 bg-violet-50 text-[10px] font-medium text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300"
+          className="h-5 gap-1 border-violet-300 bg-violet-100 text-[10px] font-medium text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300"
         >
           <StarIcon className="size-2.5" />
           Pool
