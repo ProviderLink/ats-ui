@@ -28,7 +28,7 @@ export function EmailDetailFooter({
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          className="gap-2 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:bg-transparent dark:text-muted-foreground dark:hover:text-destructive dark:hover:bg-destructive/10"
           onClick={onDelete}
         >
           <Trash2Icon className="size-4" />

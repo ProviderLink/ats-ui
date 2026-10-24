@@ -1,5 +1,6 @@
 import type { Email } from '@/store/types';
 import { BriefcaseIcon, UserIcon, UserRoundIcon } from 'lucide-react';
+import { useEmailContextNames } from '../../_hooks/use-email-context-names';
 import { isExternalEmail } from '../../_utils/is-external-email';
 
 const CHIP_CLASS =
@@ -7,6 +8,7 @@ const CHIP_CLASS =
 
 export function ContextChip({ email }: { email: Email }) {
   const { context } = email;
+  const { candidateName, jobLabel } = useEmailContextNames(email);
   if (!context) return null;
 
   if (isExternalEmail(email)) {
@@ -22,12 +24,12 @@ export function ContextChip({ email }: { email: Email }) {
     return (
       <span className={CHIP_CLASS}>
         <UserIcon className="size-3" />
-        Candidate #{context.candidateId}
+        {candidateName ?? 'Candidate'}
         {context.jobId && (
           <>
             <span className="text-border">·</span>
             <BriefcaseIcon className="size-3" />
-            Job #{context.jobId}
+            {jobLabel ?? 'Job'}
           </>
         )}
       </span>
@@ -38,7 +40,7 @@ export function ContextChip({ email }: { email: Email }) {
     return (
       <span className={CHIP_CLASS}>
         <BriefcaseIcon className="size-3" />
-        Job #{context.jobId}
+        {jobLabel ?? 'Job'}
       </span>
     );
   }

@@ -42,7 +42,7 @@ export function ImportResumeCard({
             prompt="Click or drag to upload resume"
             hint="PDF only (text-based), up to 10 MB"
           />
-          <div className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+          <div className="mt-4 flex items-start gap-2 rounded-md border border-amber-400 bg-amber-100 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
             <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
             <p className="text-xs">
               <strong>Important:</strong> Upload a{' '}

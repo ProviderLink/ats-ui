@@ -8,7 +8,8 @@ export function DirectionIcon({ direction }: { direction: EmailDirection }) {
     <div
       className={cn(
         'flex size-7 shrink-0 items-center justify-center rounded-md',
-        isOut ? 'bg-primary/10 text-primary' : 'bg-blue-500/10 text-blue-500'
+        isOut ? 'bg-primary/20 text-primary dark:bg-primary/10'
+          : 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-500'
       )}
     >
       {isOut ? (

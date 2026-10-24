@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils';
 
 const COLORS = [
-  'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400',
-  'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-400',
-  'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
-  'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-400',
-  'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400',
+  'bg-violet-200 text-violet-800 dark:bg-violet-950 dark:text-violet-400',
+  'bg-teal-200 text-teal-800 dark:bg-teal-950 dark:text-teal-400',
+  'bg-orange-200 text-orange-800 dark:bg-orange-950 dark:text-orange-400',
+  'bg-pink-200 text-pink-800 dark:bg-pink-950 dark:text-pink-400',
+  'bg-sky-200 text-sky-800 dark:bg-sky-950 dark:text-sky-400',
 ];
 
 export function SenderAvatar({ address }: { address: string }) {

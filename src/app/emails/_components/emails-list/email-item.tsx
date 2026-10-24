@@ -83,7 +83,7 @@ export function EmailItem({
             <EmailContextChip email={email} />
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-red-100 text-red-700 hover:bg-red-200 dark:bg-transparent dark:text-muted-foreground dark:hover:text-destructive dark:hover:bg-destructive/10 transition-colors"
               onClick={e => {
                 e.stopPropagation();
                 onDelete();

@@ -35,7 +35,7 @@ export function EmailBulkBar({
       <Button
         size="sm"
         variant="outline"
-        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        className="border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:border-input dark:bg-transparent dark:text-destructive dark:hover:text-destructive dark:hover:bg-destructive/10"
         onClick={onDelete}
       >
         <Trash2Icon className="size-4" />
