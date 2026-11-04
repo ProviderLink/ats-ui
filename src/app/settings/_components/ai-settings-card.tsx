@@ -37,6 +37,9 @@ export function AiSettingsCard() {
   const [resumeParsing, setResumeParsing] = useState(
     settings?.ai.resumeParsing ?? true
   );
+  const [reviewWorkText, setReviewWorkText] = useState(
+    settings?.ai.reviewWorkText ?? false
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -45,6 +48,7 @@ export function AiSettingsCard() {
       setResumeValidation(settings.ai.resumeValidation);
       setCandidateScoring(settings.ai.candidateScoring);
       setResumeParsing(settings.ai.resumeParsing);
+      setReviewWorkText(settings.ai.reviewWorkText ?? false);
     }
   }, [settings?.ai]);
 
@@ -52,7 +56,13 @@ export function AiSettingsCard() {
     if (!settings) return;
     try {
       await update({
-        ai: { provider, resumeValidation, candidateScoring, resumeParsing },
+        ai: {
+          provider,
+          resumeValidation,
+          candidateScoring,
+          resumeParsing,
+          reviewWorkText,
+        },
       });
       toast.success('AI settings saved');
       setSaved(true);
@@ -88,7 +98,7 @@ export function AiSettingsCard() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="claude">Anthropic Claude</SelectItem>
-              <SelectItem value="openai">OpenAI (GPT-4o)</SelectItem>
+              <SelectItem value="openai">OpenAI GPT</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
@@ -137,6 +147,22 @@ export function AiSettingsCard() {
             onCheckedChange={setResumeParsing}
             disabled={loading || !settings}
             aria-label="Resume parsing"
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
+          <div>
+            <p className="text-sm font-medium">Work text in AI reviews</p>
+            <p className="text-xs text-muted-foreground">
+              Send what VAs write in daily reports to the AI when drafting
+              performance reviews. Turn on only once your AI provider agreement
+              covers patient data. Hours and task counts are always used.
+            </p>
+          </div>
+          <Switch
+            checked={reviewWorkText}
+            onCheckedChange={setReviewWorkText}
+            disabled={loading || !settings}
+            aria-label="Work text in AI reviews"
           />
         </div>
         <div className="flex justify-end">

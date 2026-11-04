@@ -8,6 +8,7 @@ export interface AppSettings {
     resumeValidation: boolean;
     candidateScoring: boolean;
     resumeParsing: boolean;
+    reviewWorkText?: boolean;
   };
   companyTimezone: string;
   applicationConfirmation: {
@@ -26,6 +27,7 @@ export interface UpdateSettingsDto {
     resumeValidation?: boolean;
     candidateScoring?: boolean;
     resumeParsing?: boolean;
+    reviewWorkText?: boolean;
   };
   companyTimezone?: string;
   applicationConfirmation?: {
