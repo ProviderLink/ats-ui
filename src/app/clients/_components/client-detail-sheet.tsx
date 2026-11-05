@@ -5,24 +5,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { HeaderBackdrop } from "@/components/header-backdrop";
 import type { Client } from "@/store/types";
-import type { CSSProperties } from "react";
 import { ClientIdentity } from "./client-detail/client-identity";
 import { ClientTabs } from "./client-detail/client-tabs";
 import { ClientTagsBar } from "./client-detail/client-tags-bar";
 import { SheetHeaderActions } from "./client-detail/sheet-header-actions";
 import { useClientCrmAccess } from "./client-detail/use-client-crm-access";
-
-// A fine grid in the theme colour that fades out towards the bottom left.
-const GRID_LINE = "color-mix(in oklab, var(--primary) 14%, transparent)";
-const GRID_FADE =
-  "radial-gradient(120% 130% at 100% 0%, black 15%, transparent 72%)";
-const HEADER_PATTERN: CSSProperties = {
-  backgroundImage: `linear-gradient(to right, ${GRID_LINE} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_LINE} 1px, transparent 1px)`,
-  backgroundSize: "22px 22px",
-  maskImage: GRID_FADE,
-  WebkitMaskImage: GRID_FADE,
-};
 
 interface ClientDetailSheetProps {
   client: Client | null;
@@ -63,12 +52,8 @@ function ClientDetailSheetContent({
         side="right"
         className="flex flex-col gap-0 p-0 w-full sm:!max-w-[500px]"
       >
-        <SheetHeader className="relative shrink-0 gap-0 overflow-hidden border-b p-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={HEADER_PATTERN}
-          />
+        <SheetHeader className="relative shrink-0 gap-0 overflow-hidden border-b bg-card p-6">
+          <HeaderBackdrop />
           <div className="relative flex flex-col gap-4">
             <SheetTitle className="sr-only">{client.companyName}</SheetTitle>
             <SheetDescription className="sr-only">
