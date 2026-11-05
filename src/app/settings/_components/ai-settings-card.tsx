@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -6,19 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useSettingsStore } from '@/store';
 import { BotIcon, CheckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { AiProviderPicker } from './ai-provider-picker';
 
 export function AiSettingsCard() {
   const settings = useSettingsStore(s => s.settings);
@@ -41,6 +35,10 @@ export function AiSettingsCard() {
     settings?.ai.reviewWorkText ?? false
   );
   const [saved, setSaved] = useState(false);
+  // The radio stays on the current provider until the switch is confirmed.
+  const [switchTo, setSwitchTo] = useState(provider);
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
+  const switchToName = switchTo === 'openai' ? 'OpenAI' : 'Anthropic';
 
   useEffect(() => {
     if (settings?.ai) {
@@ -86,25 +84,25 @@ export function AiSettingsCard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {/* Provider */}
-        <div className="flex flex-col gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
-          <Label htmlFor="ai-provider">AI Provider</Label>
-          <Select
+        <div className="flex flex-col gap-3 rounded-lg border border-gray-300 bg-gray-50 px-4 py-4 dark:border-border dark:bg-transparent">
+          <div>
+            <p id="ai-provider" className="text-sm font-semibold">
+              AI Provider
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              All AI features will use this provider. Set the corresponding API
+              key in your environment.
+            </p>
+          </div>
+          <AiProviderPicker
             value={provider}
-            onValueChange={v => setProvider(v as 'claude' | 'openai')}
+            onChange={next => {
+              setSwitchTo(next);
+              setConfirmSwitch(true);
+            }}
             disabled={loading || !settings}
-          >
-            <SelectTrigger id="ai-provider" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="claude">Anthropic Claude</SelectItem>
-              <SelectItem value="openai">OpenAI GPT</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            All AI features will use this provider. Set the corresponding API
-            key in your environment.
-          </p>
+            labelledBy="ai-provider"
+          />
         </div>
         <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 dark:border-border dark:bg-transparent">
           <div>
@@ -177,6 +175,17 @@ export function AiSettingsCard() {
           </Button>
         </div>
       </CardContent>
+      <ConfirmDialog
+        open={confirmSwitch}
+        onOpenChange={setConfirmSwitch}
+        title={`Switch AI provider to ${switchToName}?`}
+        description={`After you save, all AI features will use ${switchToName}. Make sure its API key is set in your environment, or they will stop working.`}
+        confirmLabel={`Switch to ${switchToName}`}
+        onConfirm={() => {
+          setProvider(switchTo);
+          setConfirmSwitch(false);
+        }}
+      />
     </Card>
   );
 }

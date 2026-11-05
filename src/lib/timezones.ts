@@ -147,13 +147,11 @@ export const TIMEZONE_OPTIONS: TimezoneOption[] = [
   },
 ];
 
-/** Display order for the grouped dropdown. */
-export const TIMEZONE_GROUP_ORDER: TimezoneGroup[] = [
-  'United States',
-  'Asia',
-  'Europe',
-  'Other',
-];
+/**
+ * Groups offered in the dropdown, in display order. Only US zones can be picked
+ * for now; the other options stay above so saved values still get their labels.
+ */
+export const TIMEZONE_GROUP_ORDER: TimezoneGroup[] = ['United States'];
 
 export const TIMEZONE_GROUPS: {
   group: TimezoneGroup;
