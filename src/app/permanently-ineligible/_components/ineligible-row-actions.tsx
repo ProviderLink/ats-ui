@@ -23,7 +23,7 @@ export function IneligibleRowActions({
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        className="flex items-center gap-1 justify-start"
+        className="flex items-center justify-center gap-1"
         onClick={e => e.stopPropagation()}
       >
         <IconActionButton

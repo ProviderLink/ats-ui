@@ -85,23 +85,29 @@ export function buildIneligibleColumns({
     {
       id: 'ineligibleAt',
       accessorFn: row => row.permanentlyIneligibleAt ?? '',
-      header: () => <ColHeader>Marked Ineligible</ColHeader>,
+      header: () => (
+        <div className="flex justify-center">
+          <ColHeader>Marked Ineligible</ColHeader>
+        </div>
+      ),
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
+        <div className="text-center text-sm text-muted-foreground">
           {row.original.permanentlyIneligibleAt
             ? formatDate(row.original.permanentlyIneligibleAt)
             : '—'}
-        </span>
+        </div>
       ),
       size: 160,
     },
     {
       id: 'actions',
       header: () => (
-        <ColHeader
-          label="Actions"
-          icon={<ShieldAlertIcon className="size-3" />}
-        />
+        <div className="flex justify-center">
+          <ColHeader
+            label="Actions"
+            icon={<ShieldAlertIcon className="size-3" />}
+          />
+        </div>
       ),
       enableSorting: false,
       size: 130,
