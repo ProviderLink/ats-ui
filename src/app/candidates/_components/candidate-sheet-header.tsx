@@ -1,3 +1,4 @@
+import { HeaderBackdrop } from '@/components/header-backdrop';
 import { LockableRegion } from '@/components/profile-lock';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +33,8 @@ export function CandidateSheetHeader({
   const fitCls = hasScoring ? fitCfg.cls : '';
 
   return (
-    <SheetHeader className="shrink-0 border-b pl-6 pr-14 py-5">
+    <SheetHeader className="relative shrink-0 overflow-hidden rounded-t-md border-b bg-card px-6 py-5">
+      <HeaderBackdrop />
       {/*
         Visually hidden. The markup below presents the candidate's name
         and avatar directly, so without these the sheet has no accessible
@@ -43,7 +45,7 @@ export function CandidateSheetHeader({
       <SheetDescription className="sr-only">
         Candidate profile, applications, interviews and activity.
       </SheetDescription>
-      <div className="flex items-start gap-4">
+      <div className="relative flex items-start gap-4">
         {/* Avatar */}
         {c.avatar ? (
           <img
@@ -127,7 +129,7 @@ export function CandidateSheetHeader({
         </div>
 
         {(aiScore || hasValidation) && (
-          <div className="shrink-0 text-right">
+          <div className="shrink-0 rounded-lg border bg-background/70 px-3 py-2 text-center">
             <p
               className={cn(
                 'text-2xl font-semibold tabular-nums leading-none',
@@ -137,7 +139,7 @@ export function CandidateSheetHeader({
               {aiScore?.score ?? aiValidation?.score ?? 0}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {aiScore ? 'AI Score' : 'Validation'}
+              {aiScore ? 'AI Score' : 'AI Validation'}
             </p>
             <div className="mt-1.5 h-1.5 w-16 overflow-hidden rounded-full bg-muted">
               <div

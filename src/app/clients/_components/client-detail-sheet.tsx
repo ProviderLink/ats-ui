@@ -52,7 +52,7 @@ function ClientDetailSheetContent({
         side="right"
         className="flex flex-col gap-0 p-0 w-full sm:!max-w-[500px]"
       >
-        <SheetHeader className="relative shrink-0 gap-0 overflow-hidden border-b bg-card p-6">
+        <SheetHeader className="relative shrink-0 gap-0 overflow-hidden rounded-t-md border-b bg-card p-6">
           <HeaderBackdrop />
           <div className="relative flex flex-col gap-4">
             <SheetTitle className="sr-only">{client.companyName}</SheetTitle>
