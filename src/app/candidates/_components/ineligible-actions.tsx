@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ShieldAlertIcon, ShieldOffIcon, Trash2Icon } from 'lucide-react';
+import { ShieldOffIcon, Trash2Icon } from 'lucide-react';
 
 /**
  * IneligibleActions
@@ -11,34 +11,16 @@ import { ShieldAlertIcon, ShieldOffIcon, Trash2Icon } from 'lucide-react';
  * outright, the single permanent-delete path in the ATS.
  */
 export function IneligibleActions({
-  legalHold,
-  onToggleLegalHold,
   onRestore,
   onDelete,
   disabled,
 }: {
-  legalHold: boolean;
-  onToggleLegalHold: () => void;
   onRestore: () => void;
   onDelete: () => void;
   disabled: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={disabled}
-        className="h-8 gap-1.5 border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-input/50 dark:hover:text-foreground"
-        onClick={onToggleLegalHold}
-      >
-        {legalHold ? (
-          <ShieldOffIcon className="size-3.5" />
-        ) : (
-          <ShieldAlertIcon className="size-3.5" />
-        )}
-        {legalHold ? 'Remove Legal Hold' : 'Place Legal Hold'}
-      </Button>
       <Button
         size="sm"
         variant="outline"

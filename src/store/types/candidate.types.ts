@@ -97,7 +97,6 @@ export interface Candidate {
   permanentlyIneligibleReason?: string | null;
   /** Derived server-side — resolved label for `permanentlyIneligibleReason`. */
   permanentlyIneligibleReasonLabel?: string | null;
-  legalHold?: boolean;
   crmProfile?: CandidateCrmProfile | null;
   createdBy?: string;
   updatedBy?: string;

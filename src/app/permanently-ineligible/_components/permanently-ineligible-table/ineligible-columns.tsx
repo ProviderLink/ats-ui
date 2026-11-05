@@ -1,7 +1,6 @@
 import { CandidateCell } from '@/components/candidate-table/candidate-cell';
 import { ColHeader } from '@/components/candidate-table/col-header';
 import { SortHeader } from '@/components/candidate-table/sort-header';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatDate } from '@/lib/utils';
 import type { Candidate } from '@/store/types';
@@ -9,19 +8,14 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { ShieldAlertIcon } from 'lucide-react';
 import { IneligibleRowActions } from '../ineligible-row-actions';
 
-const LEGAL_HOLD_CLS =
-  'border-red-300 bg-red-100 text-red-800 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-400';
-
 interface IneligibleColumnsArgs {
   rows: Candidate[];
   selectedIds: Set<string>;
   onToggleRow: (id: string) => void;
   onToggleAll: () => void;
   restoringId: string | null;
-  holdTogglingId: string | null;
   deletingId: string | null;
   onRestore: (candidate: Candidate) => void;
-  onToggleLegalHold: (candidate: Candidate) => void;
   onDelete: (candidate: Candidate) => void;
 }
 
@@ -33,10 +27,8 @@ export function buildIneligibleColumns({
   onToggleRow,
   onToggleAll,
   restoringId,
-  holdTogglingId,
   deletingId,
   onRestore,
-  onToggleLegalHold,
   onDelete,
 }: IneligibleColumnsArgs): ColumnDef<Candidate>[] {
   return [
@@ -104,19 +96,6 @@ export function buildIneligibleColumns({
       size: 160,
     },
     {
-      id: 'legalHold',
-      header: () => <ColHeader>Legal Hold</ColHeader>,
-      cell: ({ row }) =>
-        row.original.legalHold ? (
-          <Badge variant="outline" className={LEGAL_HOLD_CLS}>
-            ON HOLD
-          </Badge>
-        ) : (
-          DASH
-        ),
-      size: 90,
-    },
-    {
       id: 'actions',
       header: () => (
         <ColHeader
@@ -131,10 +110,8 @@ export function buildIneligibleColumns({
         <IneligibleRowActions
           candidate={row.original}
           restoring={!!restoringId}
-          holdToggling={holdTogglingId === row.original._id}
           deleting={deletingId === row.original._id}
           onRestore={() => onRestore(row.original)}
-          onToggleLegalHold={() => onToggleLegalHold(row.original)}
           onDelete={() => onDelete(row.original)}
         />
       ),

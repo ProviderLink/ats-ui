@@ -1,23 +1,20 @@
 import { logOptimisticActivity } from '@/lib/activity';
-import { patchJson } from '@/lib/api-client';
 import { useCandidateStore } from '@/store/slices/candidates.store';
 import type { Candidate } from '@/store/types';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const fullName = (c: Candidate) => `${c.firstName} ${c.lastName}`;
 
 /**
- * Admin actions on a permanently ineligible candidate: restore, delete and
- * legal hold. Busy state is per candidate id so a list can disable one row.
+ * Admin actions on a permanently ineligible candidate: restore and delete.
+ * Busy state is per candidate id so a list can disable one row.
  * `restore` and `remove` resolve true on success.
  */
 export function useIneligibleActions() {
   const restoreCandidate = useCandidateStore(s => s.restoreCandidate);
   const removeCandidate = useCandidateStore(s => s.remove);
-  const fetchOne = useCandidateStore(s => s.fetchOne);
   const [restoringId, setRestoringId] = useState<string | null>(null);
-  const [holdTogglingId, setHoldTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   /**
@@ -66,8 +63,8 @@ export function useIneligibleActions() {
 
   /**
    * Deletes candidates one by one (there is no bulk endpoint) and reports the
-   * outcome once. Candidates on legal hold are rejected by the backend, so they
-   * are counted as failures rather than aborting the batch.
+   * outcome once. A candidate that fails is counted rather than aborting the
+   * batch.
    */
   async function removeMany(candidates: Candidate[]) {
     setDeletingId('bulk');
@@ -98,33 +95,11 @@ export function useIneligibleActions() {
     return { deleted, failed };
   }
 
-  // Refetching the one candidate refreshes both the detail cache and the
-  // ineligible-list row, without reloading the whole list.
-  const toggleLegalHold = useCallback(
-    async (id: string, current: boolean) => {
-      setHoldTogglingId(id);
-      try {
-        await patchJson(`/ats/candidates/${id}/legal-hold`, {
-          legalHold: !current,
-        });
-        toast.success(`Legal hold ${!current ? 'enabled' : 'disabled'}`);
-        await fetchOne(id);
-      } catch (e) {
-        toast.error((e as Error).message || 'Failed to toggle legal hold');
-      } finally {
-        setHoldTogglingId(null);
-      }
-    },
-    [fetchOne],
-  );
-
   return {
     restoringId,
-    holdTogglingId,
     deletingId,
     restore,
     remove,
     removeMany,
-    toggleLegalHold,
   };
 }

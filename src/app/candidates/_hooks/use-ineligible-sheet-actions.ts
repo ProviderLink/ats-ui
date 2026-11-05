@@ -3,7 +3,7 @@ import { useRestoreJobOptions } from '@/hooks/use-restore-job-options';
 import type { Candidate } from '@/store/types';
 import { useState } from 'react';
 
-/** Restore / delete / legal-hold dialogs for the candidate sheet. */
+/** Restore / delete dialogs for the candidate sheet. */
 export function useIneligibleSheetActions(
   candidate: Candidate | null,
   onClosed: () => void
@@ -25,17 +25,8 @@ export function useIneligibleSheetActions(
     onClosed();
   }
 
-  async function handleToggleLegalHold() {
-    if (!candidate) return;
-    await actions.toggleLegalHold(candidate._id, !!candidate.legalHold);
-  }
-
   return {
-    loading: !!(
-      actions.restoringId ||
-      actions.deletingId ||
-      actions.holdTogglingId
-    ),
+    loading: !!(actions.restoringId || actions.deletingId),
     restoreJobs,
     restoreOpen,
     setRestoreOpen,
@@ -43,6 +34,5 @@ export function useIneligibleSheetActions(
     setDeleteOpen,
     handleRestoreConfirm,
     handleDeleteConfirm,
-    handleToggleLegalHold,
   };
 }

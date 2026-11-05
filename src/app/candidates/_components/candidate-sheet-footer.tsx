@@ -44,9 +44,7 @@ export function CandidateSheetFooter({
   if (c.eligibilityStatus === 'permanently_ineligible') {
     return (
       <IneligibleActions
-        legalHold={!!c.legalHold}
         disabled={ineligible.loading || mutating}
-        onToggleLegalHold={ineligible.handleToggleLegalHold}
         onRestore={() => ineligible.setRestoreOpen(true)}
         onDelete={() => ineligible.setDeleteOpen(true)}
       />

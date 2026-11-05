@@ -142,8 +142,6 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
               s.detail[id] = c;
               if (!silent) s.loading = false;
               // Keep the admin Ineligible list consistent with the fresh record.
-              // The sheet uses this to refresh after a legal-hold toggle, which
-              // changes a field rendered by that list.
               const iIdx = s.ineligibleItems.findIndex(x => x._id === id);
               // Merge, don't replace: the list endpoint adds fields the single-
               // record endpoint doesn't return (permanentlyIneligibleReasonLabel),
@@ -239,7 +237,7 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
 
         // Loads the permanently-ineligible list once per session and caches it
         // in the store, mirroring how the boot loader preloads the rest of the
-        // candidate data. `force` is used after restore / legal-hold mutations.
+        // candidate data. `force` is used after a restore.
         fetchIneligible: async (force = false) => {
           if (!force && (get().ineligibleLoaded || get().ineligibleLoading))
             return;

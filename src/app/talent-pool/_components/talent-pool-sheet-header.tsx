@@ -124,14 +124,6 @@ export function TalentPoolSheetHeader({
             Permanently Ineligible
           </Badge>
         )}
-        {c.legalHold && (
-          <Badge
-            variant="secondary"
-            className="border-amber-300 bg-amber-200 text-amber-900 dark:border-transparent dark:bg-amber-900/30 dark:text-amber-400 text-[11px]"
-          >
-            Legal Hold
-          </Badge>
-        )}
         <TagsSelector
           allTags={allTags}
           selectedIds={getTagIds(c.tags)}

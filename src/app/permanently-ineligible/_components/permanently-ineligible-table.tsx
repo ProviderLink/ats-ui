@@ -30,7 +30,7 @@ import { buildIneligibleColumns } from './permanently-ineligible-table/ineligibl
 import { IneligibleDataTable } from './permanently-ineligible-table/ineligible-data-table';
 
 export function PermanentlyIneligibleTable() {
-  // Cached once per session; refetched only after a restore or legal-hold.
+  // Cached once per session; refetched only after a restore.
   const items = useCandidateStore(s => s.ineligibleItems);
   const loading = useCandidateStore(s => s.ineligibleLoading);
   const fetchIneligible = useCandidateStore(s => s.fetchIneligible);
@@ -40,19 +40,16 @@ export function PermanentlyIneligibleTable() {
 
   const {
     restoringId,
-    holdTogglingId,
     deletingId,
     restore,
     remove,
     removeMany,
-    toggleLegalHold,
   } = useIneligibleActions();
   const selection = useIdSelection();
   const { selectedIds, toggle, toggleAll, clear } = selection;
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<Candidate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Candidate | null>(null);
-  const [holdTarget, setHoldTarget] = useState<Candidate | null>(null);
   const detail = useDetailSheet<Candidate>();
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'ineligibleAt', desc: true },
@@ -84,7 +81,6 @@ export function PermanentlyIneligibleTable() {
     () => data.filter(c => selectedIds.has(c._id)),
     [data, selectedIds],
   );
-  const heldCount = selectedRows.filter(c => c.legalHold).length;
 
   const columns = useMemo(
     () =>
@@ -94,14 +90,12 @@ export function PermanentlyIneligibleTable() {
         onToggleRow: toggle,
         onToggleAll: () => toggleAll(data.map(c => c._id)),
         restoringId,
-        holdTogglingId,
         deletingId,
         onRestore: setRestoreTarget,
-        onToggleLegalHold: setHoldTarget,
         onDelete: setDeleteTarget,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [restoringId, holdTogglingId, deletingId, selectedIds, data],
+    [restoringId, deletingId, selectedIds, data],
   );
 
   const table = useReactTable({
@@ -182,30 +176,6 @@ export function PermanentlyIneligibleTable() {
         />
 
         <ConfirmDialog
-          open={!!holdTarget}
-          onOpenChange={open => {
-            if (!open) setHoldTarget(null);
-          }}
-          title={
-            holdTarget?.legalHold ? 'Remove legal hold?' : 'Place legal hold?'
-          }
-          description={
-            holdTarget
-              ? holdTarget.legalHold
-                ? `${holdTarget.firstName} ${holdTarget.lastName} will no longer be protected from deletion.`
-                : `${holdTarget.firstName} ${holdTarget.lastName}'s records will be preserved and protected from deletion.`
-              : undefined
-          }
-          confirmLabel={holdTarget?.legalHold ? 'Remove hold' : 'Place hold'}
-          loading={!!holdTogglingId}
-          onConfirm={async () => {
-            if (!holdTarget) return;
-            await toggleLegalHold(holdTarget._id, !!holdTarget.legalHold);
-            setHoldTarget(null);
-          }}
-        />
-
-        <ConfirmDialog
           open={bulkDeleteOpen}
           onOpenChange={setBulkDeleteOpen}
           title={`Permanently delete ${selectedRows.length} ${selectedRows.length === 1 ? 'candidate' : 'candidates'}?`}
@@ -214,19 +184,11 @@ export function PermanentlyIneligibleTable() {
           variant="destructive"
           loading={deletingId === 'bulk'}
           onConfirm={async () => {
-            await removeMany(selectedRows.filter(c => !c.legalHold));
+            await removeMany(selectedRows);
             clear();
             setBulkDeleteOpen(false);
           }}
-        >
-          {heldCount > 0 && (
-            <p className="rounded-md border border-amber-400 bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-300">
-              {heldCount} selected{' '}
-              {heldCount === 1 ? 'candidate is' : 'candidates are'} on legal
-              hold and will be skipped.
-            </p>
-          )}
-        </ConfirmDialog>
+        />
 
         <PermanentDeleteDialog
           candidate={deleteTarget}
@@ -241,7 +203,7 @@ export function PermanentlyIneligibleTable() {
           candidate={detail.selected}
           open={detail.open}
           onOpenChange={detail.onOpenChange}
-          mutating={!!holdTogglingId || !!deletingId || !!restoringId}
+          mutating={!!deletingId || !!restoringId}
         />
       </div>
     </TooltipProvider>

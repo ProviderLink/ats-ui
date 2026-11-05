@@ -51,18 +51,6 @@ export function CandidateCell({ candidate }: { candidate: Candidate }) {
               </TooltipContent>
             </Tooltip>
           )}
-          {candidate.legalHold && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex items-center shrink-0 rounded-full border border-amber-500/60 bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-400 select-none">
-                  HOLD
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Legal hold
-              </TooltipContent>
-            </Tooltip>
-          )}
         </p>
         <p className="text-xs text-muted-foreground truncate">
           {candidate.email}
