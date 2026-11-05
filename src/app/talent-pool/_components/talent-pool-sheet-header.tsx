@@ -1,3 +1,4 @@
+import { HeaderBackdrop } from '@/components/header-backdrop';
 import { TagsSelector } from '@/components/tags-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,28 +36,15 @@ export function TalentPoolSheetHeader({
   const latestRole = c.parsedData?.experience?.[0]?.title;
 
   return (
-    <SheetHeader className="relative shrink-0 gap-4 overflow-hidden border-b px-6 py-5">
-      {/* Decorative dot-grid in the top-right corner, behind the content. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-20 -right-16 -z-10 size-56 rounded-full"
-        style={{
-          backgroundImage:
-            'radial-gradient(color-mix(in oklab, var(--primary) 20%, transparent) 1px, transparent 1px)',
-          backgroundSize: '11px 11px',
-          maskImage:
-            'radial-gradient(circle at 50% 50%, black 45%, transparent 78%)',
-          WebkitMaskImage:
-            'radial-gradient(circle at 50% 50%, black 45%, transparent 78%)',
-        }}
-      />
+    <SheetHeader className="relative shrink-0 gap-4 overflow-hidden rounded-t-md border-b bg-card px-6 py-5">
+      <HeaderBackdrop />
       {/* The visible name and avatar below give the sheet no accessible name. */}
       <SheetTitle className="sr-only">{`Candidate: ${fullName}`}</SheetTitle>
       <SheetDescription className="sr-only">
         Talent pool candidate profile, resume and activity.
       </SheetDescription>
 
-      <div className="flex items-start gap-4">
+      <div className="relative flex items-start gap-4">
         {/* The border keeps the first avatar tile visible in dark mode, where
             its background equals the sheet's own. */}
         {c.avatar ? (
@@ -115,7 +103,7 @@ export function TalentPoolSheetHeader({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+      <div className="relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
         {c.eligibilityStatus === 'permanently_ineligible' && (
           <Badge
             variant="secondary"
@@ -132,7 +120,7 @@ export function TalentPoolSheetHeader({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         {c.talentPoolAddedAt && (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <CalendarIcon className="size-3.5 shrink-0" />

@@ -1,4 +1,5 @@
 import { ActivityTimeline } from '@/components/activity-timeline';
+import { HeaderBackdrop } from '@/components/header-backdrop';
 import {
   Sheet,
   SheetContent,
@@ -45,18 +46,21 @@ export function TeamMemberSheet({
         side="right"
         className="flex flex-col gap-0 p-0 w-full sm:max-w-md"
       >
-        <SheetHeader className="gap-4 px-6 pt-6 pb-4">
+        <SheetHeader className="relative gap-4 overflow-hidden rounded-t-md border-b bg-card px-6 pt-6 pb-4">
+          <HeaderBackdrop />
           <SheetTitle className="sr-only">Member details</SheetTitle>
           <SheetDescription className="sr-only">
             Team member profile, access and activity.
           </SheetDescription>
-          <MemberHeader
-            member={member}
-            onEdit={() => {
-              onOpenChange(false);
-              onEdit(member);
-            }}
-          />
+          <div className="relative">
+            <MemberHeader
+              member={member}
+              onEdit={() => {
+                onOpenChange(false);
+                onEdit(member);
+              }}
+            />
+          </div>
         </SheetHeader>
 
         <Tabs defaultValue="overview" className="min-h-0 flex-1 gap-0">
