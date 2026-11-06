@@ -6,18 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { getJson } from '@/lib/api-client';
 import { useSettingsStore } from '@/store';
-import type { EmailTemplate } from '@/store/types';
 import { CheckIcon, MailCheckIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -28,28 +18,10 @@ export function ApplicationConfirmationCard() {
   const mutating = useSettingsStore(s => s.mutating);
   const update = useSettingsStore(s => s.update);
 
-  const [confirmationTemplates, setConfirmationTemplates] = useState<
-    EmailTemplate[]
-  >([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-
   const [enabled, setEnabled] = useState(
     settings?.applicationConfirmation?.enabled ?? false
   );
-  const [templateId, setTemplateId] = useState<string>(
-    settings?.applicationConfirmation?.templateId ?? ''
-  );
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    setTemplatesLoading(true);
-    getJson<EmailTemplate[]>(
-      '/ats/email-templates?type=application_confirmation'
-    )
-      .then(data => setConfirmationTemplates(data.filter(t => t.isActive)))
-      .catch(() => setConfirmationTemplates([]))
-      .finally(() => setTemplatesLoading(false));
-  }, []);
 
   const initialized = useRef(false);
 
@@ -57,7 +29,6 @@ export function ApplicationConfirmationCard() {
     if (initialized.current) return;
     if (settings?.applicationConfirmation !== undefined) {
       setEnabled(settings.applicationConfirmation.enabled);
-      setTemplateId(settings.applicationConfirmation.templateId ?? '');
       initialized.current = true;
     }
   }, [settings?.applicationConfirmation]);
@@ -65,10 +36,8 @@ export function ApplicationConfirmationCard() {
   async function handleSave() {
     try {
       await update({
-        applicationConfirmation: {
-          enabled,
-          templateId: enabled && templateId ? templateId : null,
-        },
+        // The email is fixed now, so no template is used.
+        applicationConfirmation: { enabled, templateId: null },
       });
       toast.success('Application confirmation settings saved');
       setSaved(true);
@@ -108,36 +77,21 @@ export function ApplicationConfirmationCard() {
           />
         </div>
         {enabled && (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="app-confirm-template">Email template</Label>
-            <Select
-              value={templateId || undefined}
-              onValueChange={setTemplateId}
-              disabled={templatesLoading}
-            >
-              <SelectTrigger id="app-confirm-template" className="w-full">
-                <SelectValue placeholder="Select a template…" />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {confirmationTemplates.length === 0 ? (
-                  <SelectItem value="__none__" disabled>
-                    No application confirmation templates found
-                  </SelectItem>
-                ) : (
-                  confirmationTemplates.map(t => (
-                    <SelectItem key={t._id} value={t._id}>
-                      {t.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border px-4 py-3 text-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Email the candidate receives
+            </p>
+            <p className="font-medium">Thank you for your application</p>
+            <p className="text-muted-foreground">
+              Hi [first name], thank you for applying for the [job title]
+              position. We have received your application and will be in touch
+              if your profile is a good match.
+            </p>
+            <p className="text-muted-foreground">
+              {settings?.email?.fromName || 'Arista ATS'}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Go to the <strong>Email Templates</strong> tab, create a template
-              and set its type to{' '}
-              <strong>&quot;Application Confirmation&quot;</strong>. It will
-              appear here. Available variables: <code>candidateName</code>,{' '}
-              <code>jobTitle</code>, <code>companyName</code>.
+              The client is never named. It is signed with the sender name from Email settings.
             </p>
           </div>
         )}
@@ -146,7 +100,7 @@ export function ApplicationConfirmationCard() {
             size="sm"
             className="gap-1.5"
             onClick={handleSave}
-            disabled={mutating || (enabled && !templateId)}
+            disabled={mutating}
           >
             {saved ? <CheckIcon className="size-3.5" /> : null}
             {saved ? 'Saved' : mutating ? 'Saving…' : 'Save changes'}
