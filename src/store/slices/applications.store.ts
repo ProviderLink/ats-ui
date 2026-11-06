@@ -13,6 +13,7 @@ import type {
 } from './applications.store.types';
 import { canSkipFetch } from './boot.store';
 import { createMutate } from './mutation';
+import { noPersistStorage } from './no-persist';
 
 const initialState: ApplicationState = {
   items: [],
@@ -236,7 +237,8 @@ export const useApplicationStore = create<
     }),
     {
       name: 'ats-applications',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
     }
   )
 );

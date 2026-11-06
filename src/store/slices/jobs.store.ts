@@ -13,6 +13,7 @@ import { canSkipFetch } from './boot.store';
 import { replaceJob, upsertJob } from './jobs.store.helpers';
 import type { JobActions, JobState } from './jobs.store.types';
 import { createMutate } from './mutation';
+import { noPersistStorage } from './no-persist';
 
 const initialState: JobState = {
   items: [],
@@ -209,7 +210,8 @@ export const useJobStore = create<JobState & JobActions>()(
     }),
     {
       name: 'ats-jobs',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
       partialize: s => ({
         items: s.items,
         pagination: s.pagination,

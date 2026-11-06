@@ -21,6 +21,7 @@ import type {
   CandidateState,
 } from './candidates.store.types';
 import { createMutate } from './mutation';
+import { noPersistStorage } from './no-persist';
 
 const initialState: CandidateState = {
   items: [],
@@ -412,7 +413,8 @@ export const useCandidateStore = create<CandidateState & CandidateActions>()(
     }),
     {
       name: 'ats-candidates',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
       partialize: s => ({ detail: s.detail }),
     }
   )

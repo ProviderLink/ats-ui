@@ -15,6 +15,7 @@ import type {
   Pagination,
   SendEmailDto,
 } from '../types';
+import { noPersistStorage } from './no-persist';
 
 interface EmailState {
   items: Email[];
@@ -351,7 +352,8 @@ export const useEmailStore = create<EmailState & EmailActions>()(
     })),
     {
       name: 'ats-emails',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
     }
   )
 );

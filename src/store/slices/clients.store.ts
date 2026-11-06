@@ -20,6 +20,7 @@ import {
 import type { ClientActions, ClientState } from './clients.store.types';
 import { useJobStore } from './jobs.store';
 import { createMutate } from './mutation';
+import { noPersistStorage } from './no-persist';
 
 const initialState: ClientState = {
   items: [],
@@ -344,7 +345,8 @@ export const useClientStore = create<ClientState & ClientActions>()(
     }),
     {
       name: 'ats-clients',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
       partialize: s => ({
         items: s.items,
         pagination: s.pagination,

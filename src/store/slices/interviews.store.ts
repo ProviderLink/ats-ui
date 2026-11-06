@@ -19,6 +19,7 @@ import type {
   InterviewState,
 } from './interviews.store.types';
 import { createMutate } from './mutation';
+import { noPersistStorage } from './no-persist';
 
 const initialState: InterviewState = {
   items: [],
@@ -298,7 +299,8 @@ export const useInterviewStore = create<InterviewState & InterviewActions>()(
     }),
     {
       name: 'ats-interviews',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
     }
   )
 );

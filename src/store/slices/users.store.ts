@@ -15,6 +15,7 @@ import { canSkipFetch } from './boot.store';
 import { createMutate } from './mutation';
 import { replaceUser, upsertUser } from './users.store.helpers';
 import type { UserActions, UserState } from './users.store.types';
+import { noPersistStorage } from './no-persist';
 
 const initialState: UserState = {
   items: [],
@@ -212,7 +213,8 @@ export const useUserStore = create<UserState & UserActions>()(
     }),
     {
       name: 'ats-users',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
       partialize: s => ({ items: s.items }),
     }
   )

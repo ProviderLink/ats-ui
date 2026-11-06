@@ -8,6 +8,7 @@ import type {
   ActivityLogListResponse,
   ActivityResourceType,
 } from '../types';
+import { noPersistStorage } from './no-persist';
 
 /** Compound key (resourceType|resourceId) so per-entity feeds cache independently. */
 function feedKey(resourceType: string, resourceId: string): string {
@@ -182,7 +183,8 @@ export const useActivityLogStore = create<
     })),
     {
       name: 'ats-activity-logs',
-      storage: createJSONStorage(() => localStorage),
+      // Personal data: kept in memory only, never written to the browser.
+      storage: createJSONStorage(() => noPersistStorage),
       // Only persist the per-entity feed cache, not loading flags.
       partialize: s => ({
         feeds: s.feeds,
