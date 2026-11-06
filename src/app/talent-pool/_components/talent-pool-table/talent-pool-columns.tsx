@@ -8,6 +8,7 @@ import type { Candidate } from '@/store/types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { EllipsisIcon } from 'lucide-react';
 import { CurrentRoleCell } from '../current-role-cell';
+import { PendingApplicationBadge } from '../pending-application-badge';
 import { TalentPoolNotesCell } from '../talent-pool-notes-cell';
 import { ExperienceCell } from './experience-cell';
 import { TalentPoolRowActions } from './talent-pool-row-actions';
@@ -65,7 +66,12 @@ export function buildTalentPoolColumns({
       id: 'candidate',
       accessorFn: row => `${row.firstName} ${row.lastName}`,
       header: ({ column }) => <SortHeader column={column} label="Candidate" />,
-      cell: ({ row }) => <CandidateCell candidate={row.original} />,
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <CandidateCell candidate={row.original} />
+          <PendingApplicationBadge candidateId={row.original._id} />
+        </div>
+      ),
       size: 200,
       minSize: 150,
     },
