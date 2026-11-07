@@ -10,10 +10,14 @@ import type { User } from '@/store/types/user.types';
 import { AccountStatus } from '../account-status';
 import { RoleBadges } from '../role-badge';
 import { memberAvatarClass } from '../../_utils/member-avatar';
+import { postJson } from '@/lib/api-client';
 import {
   BadgeCheckIcon,
+  MailIcon,
   PencilIcon,
 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface MemberHeaderProps {
   member: User;
@@ -27,6 +31,21 @@ export function MemberHeader({ member, onEdit }: MemberHeaderProps) {
 
   const isOnline = usePresenceStore(st => Boolean(st.online[member._id]));
   const roles = member.roles ?? [];
+  const [resending, setResending] = useState(false);
+
+  // Invites last 24 hours. Until the person sets a password, a fresh link can
+  // be sent from here.
+  async function resendInvite() {
+    setResending(true);
+    try {
+      await postJson(`/shared/users/${member._id}/resend-invite`, {});
+      toast.success(`Invite sent to ${member.email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not send invite');
+    } finally {
+      setResending(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -72,6 +91,17 @@ export function MemberHeader({ member, onEdit }: MemberHeaderProps) {
             )}
           </div>
         </div>
+        {!member.emailVerified && member.isActive && (
+          <Button
+            variant="outline"
+            className="h-9 shrink-0 gap-2 px-3.5 text-sm font-medium"
+            onClick={resendInvite}
+            disabled={resending}
+          >
+            <MailIcon className="size-4" />
+            {resending ? 'Sending…' : 'Resend invite'}
+          </Button>
+        )}
         <Button
           variant="outline"
           className="h-9 shrink-0 gap-2 px-3.5 text-sm font-medium"
