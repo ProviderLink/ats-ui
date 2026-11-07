@@ -9,7 +9,7 @@ import {
   reviewFromParsed,
   type ReviewData,
 } from '@/components/candidate-form/review-data';
-import { postForm, postJson } from '@/lib/api-client';
+import { postForm } from '@/lib/api-client';
 import type { Job } from '@/store';
 import type { CandidateParsedData } from '@/store/types';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -101,14 +101,11 @@ export function useQuickImportFlow(presetJobId: string, allJobs: Job[]) {
       const formData = applicantFormData(inputValues);
       formData.append('parsedData', JSON.stringify(reviewData));
       formData.append('file', resumeFile);
+      // One request: the server creates the candidate and assigns the job
+      // together, so a failure never leaves a candidate without a job.
+      formData.append('jobId', inputValues.jobId);
 
-      const created = await postForm<{ _id: string }>(
-        '/ats/candidates',
-        formData
-      );
-      await postJson(`/ats/candidates/${created._id}/assign-job`, {
-        jobId: inputValues.jobId,
-      });
+      await postForm<{ _id: string }>('/ats/candidates', formData);
 
       const job = allJobs.find(j => j._id === inputValues.jobId);
       toast.success(
