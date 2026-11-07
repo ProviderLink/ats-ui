@@ -1,3 +1,4 @@
+import { safeEmailDocument } from '@/lib/html';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -63,8 +64,8 @@ export function EmailMessage({
       <div className="text-sm leading-relaxed">
         {email.bodyHtml ? (
           <iframe
-            srcDoc={email.bodyHtml}
-            sandbox="allow-same-origin"
+            srcDoc={safeEmailDocument(email.bodyHtml)}
+            sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
             className="w-full min-h-48 border-0 rounded"
             title={`Email body ${email._id}`}
           />

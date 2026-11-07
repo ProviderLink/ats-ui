@@ -165,3 +165,11 @@ export function summarizeText(
     lastBreak > maxWords * 0.4 ? slice.slice(0, lastBreak + 1) : slice;
   return { summary: summary.trim(), truncated: true };
 }
+
+/**
+ * Wrap a received email for display in a sandboxed iframe: remote images
+ * (often tracking pixels) are blocked, and links open in a new tab.
+ */
+export function safeEmailDocument(html: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:"><base target="_blank"></head><body>${html}</body></html>`;
+}

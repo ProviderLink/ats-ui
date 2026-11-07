@@ -1,3 +1,4 @@
+import { safeEmailDocument } from '@/lib/html';
 import type { Email } from '@/store/types';
 import { PaperclipIcon } from 'lucide-react';
 import { AttachmentItem } from './attachment-item';
@@ -9,8 +10,8 @@ export function EmailBody({ email }: { email: Email }) {
       {email.bodyHtml ? (
         <div className="px-6 py-1">
           <iframe
-            srcDoc={email.bodyHtml}
-            sandbox="allow-same-origin"
+            srcDoc={safeEmailDocument(email.bodyHtml)}
+            sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
             className="w-full min-h-64 border-0"
             title="Email body"
           />

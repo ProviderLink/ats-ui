@@ -134,6 +134,6 @@ export const router = createBrowserRouter([
       { path: 'unauthorized', element: <UnauthorizedPage /> },
     ],
   },
-  { path: '/', element: <NotFoundPage /> },
+  { path: '/', element: <Navigate to="/ats" replace /> },
   { path: '*', element: <NotFoundPage /> },
 ]);
