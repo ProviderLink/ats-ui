@@ -21,5 +21,5 @@ export function monogram(name: string) {
  * and the table and detail sheet always render the same colour.
  */
 export function avatarBg(name: string) {
-  return `oklch(0.52 0.13 ${hueOf(name)})`;
+  return `oklch(0.52 0.07 ${hueOf(name)})`;
 }
