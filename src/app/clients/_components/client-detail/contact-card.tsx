@@ -2,7 +2,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ClientContact } from '@/store/types';
 import { MailIcon, PencilIcon, PhoneIcon, Trash2Icon } from 'lucide-react';
-import { avatarBg } from '../clients-table/client-avatar-utils';
 import { nameInitials } from './config';
 
 interface ContactCardProps {
@@ -26,8 +25,7 @@ export function ContactCard({
         <div className="flex items-center gap-3 min-w-0">
           <div
             aria-hidden
-            style={{ backgroundColor: avatarBg(c.name) }}
-            className="size-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 text-white"
+            className="size-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 bg-silver-200 text-silver-800 dark:bg-muted dark:text-foreground/80"
           >
             {nameInitials(c.name)}
           </div>
