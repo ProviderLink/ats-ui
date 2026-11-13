@@ -6,6 +6,7 @@ import { useCandidateStore } from '@/store/slices/candidates.store';
 import type { Application, Candidate } from '@/store/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { requestAiRecheck } from '../_utils/ai-recheck';
 import type { CandidateTabValue } from '../_utils/candidate-tabs';
 import { runAllWithConcurrency } from '../_utils/run-with-concurrency';
 import type { useCandidateApplicationMaps } from './use-candidate-application-maps';
@@ -135,6 +136,23 @@ export function useCandidateBulkActions({
     }
     setBulkComposeMode(buildCandidateComposeMode(reachable));
     setBulkComposeOpen(true);
+  }
+
+  /** Re-read the selected resumes and redo AI validation and scoring. */
+  async function handleBulkAiRecheck() {
+    if (selectedCount === 0) return;
+    setBulkActing(true);
+    try {
+      const n = await requestAiRecheck([...selectedIds]);
+      clearSelection();
+      toast.success(
+        `Re-checking ${n} ${n === 1 ? 'candidate' : 'candidates'} with AI. Scores update over the next few minutes.`
+      );
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBulkActing(false);
+    }
   }
 
   async function handleBulkTalentPool() {
@@ -302,6 +320,7 @@ export function useCandidateBulkActions({
     bulkComposeMode,
     openBulkCompose,
     handleBulkTalentPool,
+    handleBulkAiRecheck,
     handleBulkMoveToTalentPool,
     handleBulkReject,
     handleBulkMoveStage,

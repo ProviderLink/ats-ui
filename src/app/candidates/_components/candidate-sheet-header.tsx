@@ -7,6 +7,7 @@ import { avatarBg, getFitConfig, scoreBarColor, scoreTextColor } from '@/lib/can
 import { getTagIds } from '@/lib/tags';
 import { cn } from '@/lib/utils';
 import type { Candidate, Tag } from '@/store/types';
+import { AiRecheckButton } from './ai-recheck-button';
 import { BriefcaseIcon, MailIcon, PhoneIcon, SparklesIcon, StarIcon } from 'lucide-react';
 
 interface CandidateSheetHeaderProps {
@@ -128,34 +129,37 @@ export function CandidateSheetHeader({
           </div>
         </div>
 
-        {(aiScore || hasValidation) && (
-          <div className="shrink-0 rounded-lg border bg-background/70 px-3 py-2 text-center">
-            <p
-              className={cn(
-                'text-2xl font-semibold tabular-nums leading-none',
-                scoreTextColor(aiScore?.score ?? aiValidation?.score ?? 0)
-              )}
-            >
-              {aiScore?.score ?? aiValidation?.score ?? 0}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {aiScore ? 'AI Score' : 'AI Validation'}
-            </p>
-            <div className="mt-1.5 h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-              <div
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {(aiScore || hasValidation) && (
+            <div className="shrink-0 rounded-lg border bg-background/70 px-3 py-2 text-center">
+              <p
                 className={cn(
-                  'h-full rounded-full',
-                  scoreBarColor(
-                    aiScore?.score ?? aiValidation?.score ?? 0
-                  )
+                  'text-2xl font-semibold tabular-nums leading-none',
+                  scoreTextColor(aiScore?.score ?? aiValidation?.score ?? 0)
                 )}
-                style={{
-                  width: `${aiScore?.score ?? aiValidation?.score ?? 0}%`,
-                }}
-              />
+              >
+                {aiScore?.score ?? aiValidation?.score ?? 0}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {aiScore ? 'AI Score' : 'AI Validation'}
+              </p>
+              <div className="mt-1.5 h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    'h-full rounded-full',
+                    scoreBarColor(
+                      aiScore?.score ?? aiValidation?.score ?? 0
+                    )
+                  )}
+                  style={{
+                    width: `${aiScore?.score ?? aiValidation?.score ?? 0}%`,
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          <AiRecheckButton candidate={c} />
+        </div>
       </div>
     </SheetHeader>
   );

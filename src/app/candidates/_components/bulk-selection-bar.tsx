@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BanIcon, GitCommitHorizontalIcon, MailIcon, StarIcon, UserMinusIcon, XIcon } from 'lucide-react';
+import { BanIcon, GitCommitHorizontalIcon, MailIcon, RefreshCwIcon, StarIcon, UserMinusIcon, XIcon } from 'lucide-react';
 import type { CandidateTabValue } from '../_utils/candidate-tabs';
 
 interface BulkSelectionBarProps {
@@ -12,6 +12,7 @@ interface BulkSelectionBarProps {
   onRemoveFromJob: () => void;
   onTalentPool: () => void;
   onEmail: () => void;
+  onAiRecheck: () => void;
   onClear: () => void;
 }
 
@@ -24,6 +25,7 @@ export function BulkSelectionBar({
   onRemoveFromJob,
   onTalentPool,
   onEmail,
+  onAiRecheck,
   onClear,
 }: BulkSelectionBarProps) {
   return (
@@ -77,6 +79,16 @@ export function BulkSelectionBar({
     <Button size="sm" variant="outline" onClick={onEmail}>
       <MailIcon className="size-4" />
       Email
+    </Button>
+
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={onAiRecheck}
+      disabled={bulkActing}
+    >
+      <RefreshCwIcon className="size-4" />
+      Re-check with AI
     </Button>
 
     <Button

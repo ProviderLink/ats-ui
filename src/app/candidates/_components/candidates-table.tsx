@@ -183,6 +183,7 @@ export function CandidatesTable() {
             onRemoveFromJob={() => bulk.setBulkPoolMoveOpen(true)}
             onTalentPool={bulk.handleBulkTalentPool}
             onEmail={bulk.openBulkCompose}
+            onAiRecheck={bulk.handleBulkAiRecheck}
             onClear={bulk.clearSelection}
           />
         )}
